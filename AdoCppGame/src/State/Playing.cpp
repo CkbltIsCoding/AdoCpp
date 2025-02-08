@@ -144,7 +144,8 @@ void StatePlaying::update()
 			p = ms / 6,
 			lep = ms / 4,
 			vle = ms / 3,
-			timing = m_game->level.getTiming(playerTileIndex, timer);
+			timing = m_game->level.getTiming(playerTileIndex, timer),
+			x = std::min(65.0 / 2, std::max(-65.0 / 2, timing / vle * 65 / 2));
 		AdoCpp::HitMargin hitMargin
 			= m_game->level.getHitMargin(playerTileIndex, timer, m_game->difficulty);
 		if (playerTileIndex == 1 && hitMargin == AdoCpp::HitMargin::TooEarly)
@@ -176,7 +177,7 @@ void StatePlaying::update()
 		hitErrorMeterSystem.addTick(
 			timer,
 			hitMargin,
-			timing / vle * 65);
+			x);
 	}
 	keyInputCnt = 0;
 	while (playerTileIndex < m_game->level.tiles.size() - 1
@@ -192,7 +193,7 @@ void StatePlaying::update()
 			hitErrorMeterSystem.addTick(
 				timer,
 				AdoCpp::HitMargin::TooLate,
-				m_game->level.getTiming(playerTileIndex, timer)
+				65.0 / 2
 			);
 		}
 	}
