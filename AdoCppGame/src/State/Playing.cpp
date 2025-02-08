@@ -7,6 +7,7 @@ StatePlaying StatePlaying::m_statePlaying;
 void StatePlaying::init(Game* game)
 {
 	m_game = game;
+
 	planet1.setFillColor(sf::Color::Red);
 	planet2.setFillColor(sf::Color::Blue);
 	planet1.setRadius(0.25);
@@ -38,21 +39,24 @@ void StatePlaying::init(Game* game)
 
 void StatePlaying::cleanup()
 {
-	if (m_game->music.getDuration().asMilliseconds() != 0)
+	const bool musicPlayable = m_game->music.getDuration().asMilliseconds() != 0;
+	if (musicPlayable)
 		m_game->music.stop();
 	m_game->window.setKeyRepeatEnabled(true);
 }
 
 void StatePlaying::pause()
 {
-	if (m_game->music.getDuration().asMilliseconds() != 0)
+	const bool musicPlayable = m_game->music.getDuration().asMilliseconds() != 0;
+	if (musicPlayable)
 		m_game->music.pause();
 	m_game->window.setKeyRepeatEnabled(true);
 }
 
 void StatePlaying::resume()
 {
-	if (m_game->music.getDuration().asMilliseconds() != 0
+	const bool musicPlayable = m_game->music.getDuration().asMilliseconds() != 0;
+	if (musicPlayable
 		&& m_game->music.getStatus() == sf::Music::Status::Paused)
 		m_game->music.play();
 	m_game->window.setKeyRepeatEnabled(false);
@@ -79,10 +83,11 @@ void StatePlaying::handleEvent(sf::Event event)
 
 void StatePlaying::update()
 {
+	const bool musicPlayable = m_game->music.getDuration().asMilliseconds() != 0;
 	// Time
 	if (!waiting)
 	{
-		if (m_game->music.getDuration().asMilliseconds() != 0)
+		if (musicPlayable)
 			timer = m_game->music.getPlayingOffset().asMilliseconds() + m_game->inputOffset;
 		else
 			timer = spareClock.getElapsedTime().asMilliseconds() + m_game->inputOffset + spareClockOffset;
@@ -102,24 +107,35 @@ void StatePlaying::update()
 	// Judgement
 	if (waiting && keyInputCnt > 0)
 	{
+		// Start the music/timer
 		waiting = false;
-		timer = 0, beat = m_game->level.timer2beat(timer);
-		if (m_game->music.getDuration().asMilliseconds() != 0)
-		{
+		if (musicPlayable)
 			m_game->music.play();
-			if (m_game->activeTileIndex >= 1)
-				m_game->music.setPlayingOffset(sf::milliseconds((int32_t)
-					m_game->level.beat2timer
-					(m_game->level.tiles[m_game->activeTileIndex].beat)
-				));
-		}
 		else
-		{
 			spareClock.restart();
-			if (m_game->activeTileIndex >= 1)
+		if (m_game->activeTileIndex >= 1)
+		{
+			const double beginTimer = m_game->level.beat2timer
+			(m_game->level.tiles[m_game->activeTileIndex].beat)
+				- m_game->inputOffset;
+
+			if (musicPlayable)
+				m_game->music.setPlayingOffset(sf::milliseconds(int32_t(std::max(0.0, beginTimer))));
+			else
 				spareClockOffset = m_game->level.beat2timer
 				(m_game->level.tiles[m_game->activeTileIndex].beat) - m_game->inputOffset;
+
+			if (musicPlayable)
+				timer = m_game->music.getPlayingOffset().asMilliseconds() + m_game->inputOffset;
 			else
+				timer = spareClock.getElapsedTime().asMilliseconds() + m_game->inputOffset + spareClockOffset;
+			beat = m_game->level.timer2beat(timer),
+				nowTileIndex = m_game->level.getTileIndexByBeat(beat);
+		}
+ 		else
+		{
+			timer = 0, beat = m_game->level.timer2beat(timer);
+			if (!musicPlayable)
 				spareClockOffset = -m_game->inputOffset;
 		}
 	}

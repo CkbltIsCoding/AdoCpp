@@ -314,5 +314,5 @@ void StateCharting::ImGuiInputDouble(const char* text, const char* id, double* d
 
 	ImGui::Text(text);
 	ImGui::SetNextItemWidth(-1);
-	ImGui::InputDouble(id, &m_game->level.settings.bpm);
+	ImGui::InputDouble(id, doublePtr);
 }
