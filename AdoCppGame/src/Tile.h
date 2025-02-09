@@ -209,7 +209,7 @@ public:
         if (m_nextAngleDeg == 999)
         {
             sf::Vector2f v(1, 0);
-            v = v.rotatedBy(sf::degrees(m_angleDeg));
+            v = v.rotatedBy(sf::degrees((float)m_angleDeg));
             m_twirlShape.setPosition(v);
         }
         m_speedShape.setOrigin({ 0.15f, 0.15f });

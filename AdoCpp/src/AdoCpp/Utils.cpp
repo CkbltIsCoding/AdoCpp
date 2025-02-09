@@ -2,7 +2,7 @@
 
 namespace AdoCpp
 {
-	bool to_bool(const rapidjson::Value& data)
+	bool toBool(const rapidjson::Value& data)
 	{
 		if (data.IsBool())
 			return data.GetBool();
@@ -13,7 +13,7 @@ namespace AdoCpp
 		}
 		throw std::exception();
 	}
-	RelativeIndex to_RelativeIndex(const rapidjson::Value& data)
+	RelativeIndex toRelativeIndex(const rapidjson::Value& data)
 	{
 		RelativeIndex relativeIndex;
 		relativeIndex.first = data[0].GetInt(), relativeIndex.second = data[1].GetString();

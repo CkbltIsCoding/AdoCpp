@@ -24,7 +24,11 @@ Game::Game() :
 	AssetManager mgr;
 	font = AssetManager::GetFont("SourceHanSansSC.otf");
 
-	ImGui::SFML::Init(window, false);
+	if (!ImGui::SFML::Init(window, false))
+	{
+		std::cerr << "Error! ImGui::SFML::Init() returns false.";
+		exit(-1);
+	}
 	ImGuiIO& io = ImGui::GetIO();
 	//io.FontGlobalScale = 2.f;
 
@@ -45,7 +49,11 @@ Game::Game() :
 		"assets/font/SourceHanSansSC.otf", fontSize * fontScale, &chineseConfig,
 		io.Fonts->GetGlyphRangesChineseFull());
 
-	ImGui::SFML::UpdateFontTexture();
+	if (!ImGui::SFML::UpdateFontTexture())
+	{
+		std::cerr << "Error! ImGui::SFML::UpdateFontTexture() returns false.";
+		exit(-1);
+	}
 
 	level.defaultLevel();
 	changeState(StateCharting::instance());
@@ -127,7 +135,7 @@ void Game::handleEvent()
 
 void Game::update()
 {
-	ImGui::SFML::Update(window, sf::milliseconds(deltaTime));
+	ImGui::SFML::Update(window, sf::milliseconds((int32_t)deltaTime));
 	states.back()->update();
 }
 

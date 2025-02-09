@@ -99,7 +99,7 @@ void StateCharting::update()
 {
 	//if (!sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 	//	m_isDragging = false;
-	float w = m_game->windowSize.x, h = m_game->windowSize.y;
+	float w = (float)m_game->windowSize.x, h = (float)m_game->windowSize.y;
 	m_game->view.setSize( { w / (w + h) * 16 * m_game->zoom.x,
 		-h / (w + h) * 16 * m_game->zoom.y });
 	m_game->tileSystem.setActiveTileIndex(m_game->activeTileIndex);
@@ -284,7 +284,12 @@ void StateCharting::newLevel()
 	m_game->tileSystem.update();
 	m_game->musicPath = m_game->levelPath.parent_path().append(m_game->level.settings.songFilename);
 	if (!m_game->musicPath.empty())
-		m_game->music.openFromFile(m_game->musicPath);;;;;;;;;;;;;;
+		if (!m_game->music.openFromFile(m_game->musicPath))
+		{
+			std::cerr << "Warning: failed to load music from file \""
+				<< m_game->musicPath
+				<< "\". Maybe the file does not exist or it is not a music file.";
+		}
 	m_game->view.setCenter({
 		(float)m_game->level.tiles[0].pos.first,
 		(float)m_game->level.tiles[0].pos.second });

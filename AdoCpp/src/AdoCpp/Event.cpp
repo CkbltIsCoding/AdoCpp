@@ -121,20 +121,20 @@ namespace AdoCpp
 					if (!posOff[0].IsNull()) positionOffset.first = posOff[0].GetDouble();
 					if (!posOff[1].IsNull()) positionOffset.second = posOff[1].GetDouble();
 				}
-				relativeTo = data.HasMember("relativeTo") ? to_RelativeIndex(data["relativeTo"]) : RelativeIndex(0, "ThisTile");
+				relativeTo = data.HasMember("relativeTo") ? toRelativeIndex(data["relativeTo"]) : RelativeIndex(0, "ThisTile");
 				rotation = data.HasMember("rotation") ? data["rotation"].GetDouble() : 0;
 				scale = data.HasMember("scale") ? data["scale"].GetDouble() : 100;
 				opacity = data.HasMember("opacity") ? data["opacity"].GetDouble() : 100;
-				justThisTile = data.HasMember("justThisTile") ? to_bool(data["justThisTile"]) : false;
-				editorOnly = data.HasMember("editorOnly") ? to_bool(data["editorOnly"]) : false;
+				justThisTile = data.HasMember("justThisTile") ? toBool(data["justThisTile"]) : false;
+				editorOnly = data.HasMember("editorOnly") ? toBool(data["editorOnly"]) : false;
 				if (data.HasMember("stickToFloors"))
-					stickToFloors = to_bool(data["stickToFloors"]);
+					stickToFloors = toBool(data["stickToFloors"]);
 			}
 			MoveTrack::MoveTrack(const rapidjson::Value& data)
 				: BeatEvent(data)
 			{
-				startTile = to_RelativeIndex(data["startTile"]);
-				endTile = to_RelativeIndex(data["endTile"]);
+				startTile = toRelativeIndex(data["startTile"]);
+				endTile = toRelativeIndex(data["endTile"]);
 				duration = data["duration"].GetDouble();
 				if (data.HasMember("positionOffset"))
 				{
@@ -170,8 +170,8 @@ namespace AdoCpp
 			RecolorTrack::RecolorTrack(const rapidjson::Value& data)
 				: BeatEvent(data)
 			{
-				startTile = to_RelativeIndex(data["startTile"]);
-				endTile = to_RelativeIndex(data["endTile"]);
+				startTile = toRelativeIndex(data["startTile"]);
+				endTile = toRelativeIndex(data["endTile"]);
 				if (data.HasMember("duration"))
 					duration = data["duration"].GetDouble();
 				trackColorType = string2trackColorType[data["trackColorType"].GetString()];
@@ -216,7 +216,7 @@ namespace AdoCpp
 				floorCount = data.HasMember("floorCount") ? data["floorCount"].GetUint64() : 0;
 				interval = data["interval"].GetDouble();
 				executeOnCurrentFloor = data.HasMember("executeOnCurrentFloor")
-					? to_bool(data["executeOnCurrentFloor"]) : false;
+					? toBool(data["executeOnCurrentFloor"]) : false;
 				tag = stringSplit(data["tag"].GetString(), ' ');
 			}
 		}

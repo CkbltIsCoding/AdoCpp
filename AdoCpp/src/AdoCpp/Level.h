@@ -13,6 +13,9 @@
 
 namespace AdoCpp
 {
+    /**
+     * @brief An exception.
+     */
     class LevelNotParsedException : public std::exception
     {
     public:
@@ -23,10 +26,16 @@ namespace AdoCpp
         }
     };
 
+    /**
+     * @brief Adofai's difficulty.
+     */
     enum class Difficulty
     {
         Lenient, Normal, Strict
     };
+    /**
+     * @brief Adofai's hit margin.
+     */
     enum class HitMargin
     {
         Perfect,
@@ -34,21 +43,92 @@ namespace AdoCpp
         VeryLate, VeryEarly,
         TooLate, TooEarly
     };
-
+    
+    /**
+     * @brief Tile struct used for storing tile datas.
+     */
     struct Tile
     {
+        /**
+         * @brief The tile's angle.
+         */
         double angle = 0;
+        /**
+         * @brief The orbit of the planets when one of them lands on the tile.
+         */
         bool orbit = true;
+        /**
+         * @brief The tile's beat.
+         */
         double beat = 0;
-        double oRotation = 0, rotation = 0;
+        /**
+         * @brief The original rotation of the tile.
+         */
+        double oRotation = 0;
+        /**
+         * @brief The current rotation of the tile.
+         */
+        double rotation = 0;
+        /**
+         * @brief The current opacity of the tile.
+         */
         double opacity = 100;
+        /**
+         * @brief Whether the planets will stick to this tile.
+         */
         bool stickToFloors = false;
-        Point editorPos, oPos, pos;
-        Point oScale = { 100, 100 }, scale = { 100, 100 };
-        std::string oTrackColor = "debb7b", trackColor = "debb7b";
-        std::string oSecondaryTrackColor = "ffffff", secondaryTrackColor = "ffffff";
-        TrackStyle oTrackStyle = TrackStyle::Standard, trackStyle = TrackStyle::Standard;
+        /**
+         * @brief The position of the tile in editor.
+         */
+        Point editorPos;
+        /**
+         * @brief The original position of the tile.
+         */
+        Point oPos;
+        /**
+         * @brief The current position of the tile.
+         */
+        Point pos;
+        /**
+         * @brief The original scale of the tile.
+         */
+        Point oScale = { 100, 100 };
+        /**
+         * @brief The current scale of the tile.
+         */
+        Point scale = { 100, 100 };
+        /**
+         * @brief The tile's original color.
+         */
+        Color oTrackColor = "debb7b";
+        /**
+         * @brief The tile's current color.
+         */
+        Color trackColor = "debb7b";
+        /**
+         * @brief The tile's original secondary color.
+         */
+        Color oSecondaryTrackColor = "ffffff";
+        /**
+         * @brief The tile's current secondary color.
+         */
+        Color secondaryTrackColor = "ffffff";
+        /**
+         * @brief The tile's original style.
+         */
+        TrackStyle oTrackStyle = TrackStyle::Standard;
+        /**
+         * @brief The tile's current style.
+         */
+        TrackStyle trackStyle = TrackStyle::Standard;
+        /**
+         * @brief The event ptrs of the tile.
+         */
         std::vector<Event::Event*> events;
+        /**
+         * @brief Construct a tile.
+         * @param angle The angle of the tile.
+         */
         Tile(double angle)
             : angle(angle)
         {
@@ -81,108 +161,137 @@ namespace AdoCpp
         double beatsAhead = 0;
         TrackAnimation trackDisappearAnimation;
         double beatsBehind = 0;
-        std::string backgroundColor = "000000";
+        Color backgroundColor = "000000";
         bool stickToFloors = false;
     };
 
-
+    /**
+     * @brief Level class.
+     */
     class Level
     {
     public:
+        /**
+         * Create a new empty Level object.
+         * @brief Default constructor.
+         */
         Level();
+        /**
+         * Create a new Level object from json data.
+         * @brief Constructor.
+         */
+        Level(const rapidjson::Document& data);
+        /**
+         * Create a new Level object from a file encoded in UTF-8 BOM.
+         * @brief Constructor.
+         */
+        Level(std::ifstream& ifs);
+        /**
+         * Create a new Level object from a file encoded in UTF-8 BOM.
+         * @brief Constructor.
+         */
+        Level(const std::string& path);
+        
+        /**
+         * @brief Default destructor.
+         */
         ~Level();
 
+        /**
+         * @brief Clear the level class.
+         */
         void clear();
 
+        /**
+         * @brief Generate the default level.
+         * (parsed & updated)
+         */
         void defaultLevel();
 
         /**
-         * @brief 把json数据导入到关卡
-         * @param data json数据
+         * @brief Import json data into the level.
+         * @param data Json data.
          */
         void fromJson(const rapidjson::Document& data);
         /**
-         * @brief 把文件导入到关卡 (以UTF-8 BOM编码)
-         * @param ifs ifstream类型文件流
+         * @brief Import a file into the level (encoded in UTF-8 BOM).
+         * @param ifs ifstream.
          */
         void fromFile(std::ifstream& ifs);
         /**
-         * @brief 把文件导入到关卡 (以UTF-8 BOM编码)
-         * @param path 文件路径
+         * @brief Import a file into the level (encoded in UTF-8 BOM).
+         * @param path The path to the file.
          */
-        void fromFile(std::string path);
+        void fromFile(const std::string& path);
 
         /**
-         * @brief 解析关卡
-         * 解析关卡。
-         * 调用此方法后，才能调用更多方法（如update()）。
+         * @brief Parse the level.
+         * After calling this method, you can call more method
+         * such as update().
          */
         void parse();
 
         /**
-         * @brief 更新关卡
-         * 更新关卡。
+         * @brief Update the level.
          */
         void update();
         /**
-         * @brief 更新关卡
-         * @param beat 拍数
-         * 更新关卡，使关卡变成在指定拍子的样子。
+         * @brief Update the level.
+         * @param beat The beat.
          */
         void update(double beat);
 
         /**
-         * @brief 使相对于index的下标变成绝对下标
-         * @param index 砖块下标
-         * @param relativeIndex 相对于index的下标
-         * 其中，relativeIndex.second必须为"Start"或"End"或"ThisTile"。
-         * @return 绝对下标
-         * @note
-         * 为了应付一些带有相对下标（如startTile, endTile, relativeTo）的事件，
-         * 此方法将相对的下标变成绝对的下标。
+         * @brief Make relativeIndex relative to index an absolute index
+         * @param index The index.
+         * @param relativeIndex The index relative to index.
+         * @return The absolute index.
          */
         size_t rel2absIndex(size_t index, RelativeIndex relativeIndex) const;
 
         /**
-         * @brief 获取两个行星的坐标
-         * @param index 砖块下标
-         * @param beat 拍子
-         * @return 两个行星的坐标
+         * @brief Get the position of the two planets.
+         * @param index The index of the tile.
+         * @param beat The beat.
+         * @return The position of the two planets.
          */
         std::pair<Point, Point> getPlanetsPos(size_t index, double beat);
 
         bool isFirePlanetStatic(size_t index);
 
         /**
-         * @brief 获取在beat拍子时刻行星所在的砖块下标
-         * @param beat 拍数
-         * @return 砖块下标
+         * @brief Get the index of the tile that one of the planets lands on.
+         * @param beat The beat.
+         * @return The index of the tile.
          */
         size_t getTileIndexByBeat(double beat);
 
         /**
-         * @brief 获取在beat拍子时刻的BPM
-         * @param beat 拍数
-         * @return BPM
+         * @brief Get the bpm.
+         * @param beat The beat.
+         * @return The bpm.
          */
         double getBpmByBeat(double beat);
 
         /**
-         * @brief 将beat转换为timer
-         * @param 拍子
-         * @return timer 计时器（以ms为单位）
+         * @brief Convert beat to timer.
+         * @param The beat.
+         * @return The time in ms.
          */
         double beat2timer(double beat);
 
         /**
-         * @brief 将timer转换为beat
-         * @param timer 计时器（以ms为单位）
-         * @return 拍子
+         * @brief Convert timer to beat.
+         * @param timer The time in ms.
+         * @return The beat.
          */
         double timer2beat(double timer);
 
         double getAngle(size_t index);
 
+        /**
+         * @brief CameraInfo struct used for storing the position, rotation and the zoom of the camera.
+         */
         struct CameraInfo
         {
             Point position;
@@ -191,40 +300,50 @@ namespace AdoCpp
         };
 
         /**
-         * @brief 获取在beat拍子时刻摄像机的位置、旋转、缩放信息
-         * @param beat 拍子
-         * @return 摄像机的位置、旋转、缩放信息
+         * @brief Get the info of the camera.
+         * @param beat The beat.
+         * @return The info.
          */
         CameraInfo getCameraInfo(double beat);
 
         /**
-         * @brief 获取 timing
-         * @param index 砖块下标
-         * @param timer 计时器（以ms为单位）
-         * @return timing
+         * @brief Get the timing.
+         * @param index The index of the tile.
+         * @param timer The time in ms.
+         * @return The timing.
          */
         double getTiming(size_t index, double timer);
 
         /**
-         * @brief 获取判定
-         * @param index 砖块下标
-         * @param timer 计时器（以ms为单位）
-         * @param difficulty 难度
-         * @return 判定
+         * @brief Get the hit margin.
+         * @param index The index of the tile.
+         * @param timer The time in ms.
+         * @param difficulty The difficulty.
+         * @return The hit margin.
          */
         HitMargin getHitMargin(size_t index, double timer, Difficulty difficulty);
 
-
-
+        /**
+         * @brief Get whether the level has been parsed.
+         * @return Whether the level has been parsed.
+         */
         bool isParsed() const;
 
+        /**
+         * @brief The level's settings.
+         */
         Settings settings;
+        /**
+         * @brief The level's tiles.
+         */
         std::vector<Tile> tiles;
+        /**
+         * @brief The level's events.
+         */
         std::vector<Event::Event*> events;
     protected:
         /**
-         * @brief 关卡是否解析过
-         * 关卡是否解析过
+         * @brief Whether the level has been parsed.
          */
         bool parsed = false;
     private:

@@ -19,6 +19,21 @@ namespace AdoCpp
     {
     }
 
+    Level::Level(const rapidjson::Document& data)
+    {
+        fromJson(data);
+    }
+
+    Level::Level(std::ifstream& ifs)
+    {
+        fromFile(ifs);
+    }
+
+    Level::Level(const std::string& path)
+    {
+        fromFile(path);
+    }
+
     Level::~Level()
     {
         for (
@@ -84,7 +99,7 @@ namespace AdoCpp
         //settings.trackDisappearAnimation = string2trackAnimation[s["trackDisappearAnimation"].GetString()];
         settings.beatsBehind = s["beatsBehind"].GetDouble();
         settings.backgroundColor = s["backgroundColor"].GetString();
-        settings.stickToFloors = to_bool(s["stickToFloors"]);
+        settings.stickToFloors = toBool(s["stickToFloors"]);
 
         bool angleData = document.HasMember("angleData");
         tiles.push_back(Tile(0));
@@ -150,7 +165,7 @@ namespace AdoCpp
         }
         fromJson(document);
     }
-    void Level::fromFile(std::string path)
+    void Level::fromFile(const std::string& path)
     {
         parsed = false;
         std::ifstream ifs(path, std::ios::binary);

@@ -9,8 +9,6 @@
 
 namespace AdoCpp
 {
-	struct Settings;
-
 	extern std::map<char, double> path2angle;
 
 	enum class TrackColorType
@@ -39,7 +37,7 @@ namespace AdoCpp
 	extern std::map<std::string, TrackStyle> string2trackStyle;
 	
 	enum class TrackAnimation
-	{
+	{ // TODO
 	};
 	extern std::map<TrackAnimation, std::string> trackAnimation2string;
 	extern std::map<std::string, TrackAnimation> string2trackAnimation;
@@ -53,7 +51,9 @@ namespace AdoCpp
 	extern std::map<TrackColorPulse, std::string> trackColorPulse2string;
 	extern std::map<std::string, TrackColorPulse> string2trackColorPulse;
 
-
+	/**
+	 * @brief Event namespace.
+	 */
 	namespace Event
 	{
 		class Event
