@@ -236,7 +236,10 @@ void StateCharting::render()
 		static float rightSettingsTabBtnsWidth, rightSettingsTabContentWidth;
 		rightSettingsTabBtnsWidth = rightWidth / 5,
 			rightSettingsTabContentWidth = rightWidth - rightSettingsTabBtnsWidth;
-		static size_t selectedTab = 0;
+		static size_t selectedTab = 0, tileIndex = -1;
+		if (m_game->activeTileIndex != tileIndex)
+			tileIndex = m_game->activeTileIndex,
+			selectedTab = 0;
 		if (ImGui::BeginChild("##RightSettings/TabBtns", ImVec2(rightSettingsTabBtnsWidth, 0)))
 		{
 			if (ImGui::BeginTable("##RightSettings/TabBtns/Table", 1))

@@ -1,6 +1,6 @@
 include(FetchContent)
 
-message(STATUS "get rapidjson ...")
+message(STATUS "Getting RapidJSON...")
 
 FetchContent_Declare(
   rapidjson

@@ -1,5 +1,7 @@
 include (FetchContent)
 
+message(STATUS "Getting SelbaWard...")
+
 FetchContent_Declare(
     selbaward
     GIT_REPOSITORY https://github.com/Hapaxia/SelbaWard.git

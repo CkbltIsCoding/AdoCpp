@@ -1,6 +1,6 @@
 include(FetchContent)
 
-message(STATUS "get SFML ...")
+message(STATUS "Getting SFML...")
 
 set(SFML_VERSION "3.0.0")
 
