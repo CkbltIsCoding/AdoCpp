@@ -137,7 +137,7 @@ namespace AdoCpp
 
     struct Settings
     {
-        int version;
+        int version = 114514;
         std::string artist;
         std::string song;
         std::string author;
@@ -239,7 +239,7 @@ namespace AdoCpp
          * @brief Update the level.
          * @param beat The beat.
          */
-        void update(double beat);
+        void update(const double& beat);
 
         /**
          * @brief Make relativeIndex relative to index an absolute index
@@ -247,7 +247,7 @@ namespace AdoCpp
          * @param relativeIndex The index relative to index.
          * @return The absolute index.
          */
-        size_t rel2absIndex(size_t index, RelativeIndex relativeIndex) const;
+        size_t rel2absIndex(const size_t& index, const RelativeIndex& relativeIndex) const;
 
         /**
          * @brief Get the position of the two planets.
@@ -255,46 +255,46 @@ namespace AdoCpp
          * @param beat The beat.
          * @return The position of the two planets.
          */
-        std::pair<Point, Point> getPlanetsPos(size_t index, double beat);
+        std::pair<Point, Point> getPlanetsPos(const size_t& index, const double& beat) const;
 
-        bool isFirePlanetStatic(size_t index);
+        bool isFirePlanetStatic(size_t index) const;
 
         /**
          * @brief Get the index of the tile that one of the planets lands on.
          * @param beat The beat.
          * @return The index of the tile.
          */
-        size_t getTileIndexByBeat(double beat);
+        size_t getTileIndexByBeat(const double& beat) const;
 
         /**
          * @brief Get the bpm.
          * @param beat The beat.
          * @return The bpm.
          */
-        double getBpmByBeat(double beat);
+        double getBpmByBeat(const double& beat) const;
 
         /**
          * @brief Get the bpm.
          * @param beat The beat.
          * @return The bpm.
          */
-        double getBpmNotIncludingBeat(double beat);
+        double getBpmNotIncludingBeat(const double& beat) const;
 
         /**
          * @brief Convert beat to timer.
          * @param The beat.
          * @return The time in ms.
          */
-        double beat2timer(double beat);
+        double beat2timer(const double& beat) const;
 
         /**
          * @brief Convert timer to beat.
          * @param timer The time in ms.
          * @return The beat.
          */
-        double timer2beat(double timer);
+        double timer2beat(double timer) const;
 
-        double getAngle(size_t index);
+        double getAngle(const size_t& index) const;
 
         /**
          * @brief CameraInfo struct used for storing the position, rotation and the zoom of the camera.
@@ -311,7 +311,7 @@ namespace AdoCpp
          * @param beat The beat.
          * @return The info.
          */
-        CameraInfo getCameraInfo(double beat);
+        CameraInfo getCameraInfo(const double& beat) const;
 
         /**
          * @brief Get the timing.
@@ -319,7 +319,7 @@ namespace AdoCpp
          * @param timer The time in ms.
          * @return The timing.
          */
-        double getTiming(size_t index, double timer);
+        double getTiming(const size_t& index, const double& timer) const;
 
         /**
          * @brief Get the hit margin.
@@ -328,7 +328,7 @@ namespace AdoCpp
          * @param difficulty The difficulty.
          * @return The hit margin.
          */
-        HitMargin getHitMargin(size_t index, double timer, Difficulty difficulty);
+        HitMargin getHitMargin(const size_t& index, const double& timer, const Difficulty& difficulty) const;
 
         /**
          * @brief Get whether the level has been parsed.
@@ -345,7 +345,7 @@ namespace AdoCpp
          */
         std::vector<Tile> tiles;
         /**
-         * @brief The level's events.
+         * @brief The level's event ptrs.
          */
         std::vector<Event::Event*> events;
     protected:
@@ -359,7 +359,7 @@ namespace AdoCpp
         std::vector<Event::Visual::MoveCamera> m_moveCameras;
         std::vector<Point> m_moveCameraPlayerPosVec;
         std::vector<Point> m_moveCameraPlayerPosVec2;
-        Point f(double beat);
+        Point f(double beat) const;
     };
 }
 

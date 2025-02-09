@@ -354,7 +354,31 @@ namespace AdoCpp
                 m_moveCameras.push_back(*moveCamera);
             }
         }
+
         parsed = true;
+
+        std::string relativeTo = "Player";
+
+        for (auto& moveCamera : m_moveCameras)
+        {
+            if (moveCamera.relativeTo)
+            {
+                if (relativeTo == "Tile" && *moveCamera.relativeTo == "Player")
+                    m_moveCameraPlayerPosVec.push_back(f(moveCamera.beat + moveCamera.duration));
+                else
+                    m_moveCameraPlayerPosVec.push_back(Point(114514, 1919810));
+                if (relativeTo == "Player" && *moveCamera.relativeTo == "Tile")
+                    m_moveCameraPlayerPosVec2.push_back(f(moveCamera.beat));
+                else
+                    m_moveCameraPlayerPosVec2.push_back(Point(114514, 1919810));
+                relativeTo = *moveCamera.relativeTo;
+            }
+            else
+            {
+                m_moveCameraPlayerPosVec.push_back(Point(114514, 1919810));
+                m_moveCameraPlayerPosVec2.push_back(Point(114514, 1919810));
+            }
+        }
     }
     void Level::update()
     {
@@ -370,7 +394,7 @@ namespace AdoCpp
                 tile.trackStyle = tile.oTrackStyle;
         }
     }
-    void Level::update(double beat)
+    void Level::update(const double& beat)
     {
         if (!parsed) throw LevelNotParsedException();
         update();
@@ -423,7 +447,7 @@ namespace AdoCpp
             }
         }
     }
-    size_t Level::rel2absIndex(size_t index, RelativeIndex relativeIndex) const
+    size_t Level::rel2absIndex(const size_t& index, const RelativeIndex& relativeIndex) const
     {
         if (!relativeIndex.second.compare("Start"))
             return relativeIndex.first;
@@ -434,7 +458,7 @@ namespace AdoCpp
         throw std::exception();
     }
 
-    std::pair<Point, Point> Level::getPlanetsPos(size_t index, double beat)
+    std::pair<Point, Point> Level::getPlanetsPos(const size_t& index, const double& beat) const
     {
         if (!parsed) throw LevelNotParsedException();
         Point p1, p2;
@@ -466,11 +490,11 @@ namespace AdoCpp
             return std::make_pair(p2, p1);
         return std::pair<Point, Point>();
     }
-    inline bool Level::isFirePlanetStatic(size_t index)
+    inline bool Level::isFirePlanetStatic(size_t index) const
     {
         return index % 2 == 0;
     }
-    size_t Level::getTileIndexByBeat(double beat)
+    size_t Level::getTileIndexByBeat(const double& beat) const
     {
         if (!parsed) throw LevelNotParsedException();
         return std::upper_bound(
@@ -478,7 +502,7 @@ namespace AdoCpp
             [](const double& val, Tile e) -> bool {return val < e.beat;}
         ) - (tiles.begin() + 1);
     }
-    double Level::getBpmByBeat(double beat)
+    double Level::getBpmByBeat(const double& beat) const
     {
         if (!parsed) throw LevelNotParsedException();
         double bpm = settings.bpm;
@@ -493,7 +517,7 @@ namespace AdoCpp
         }
         return bpm;
     }
-    double Level::getBpmNotIncludingBeat(double beat)
+    double Level::getBpmNotIncludingBeat(const double& beat) const
     {
         if (!parsed) throw LevelNotParsedException();
         double bpm = settings.bpm;
@@ -508,7 +532,7 @@ namespace AdoCpp
         }
         return bpm;
     }
-    double Level::beat2timer(double beat)
+    double Level::beat2timer(const double& beat) const
     {
         if (!parsed) throw LevelNotParsedException();
         double bpm = settings.bpm, b = 0, timer = settings.offset;
@@ -527,7 +551,7 @@ namespace AdoCpp
         return timer;
     }
 
-    double Level::timer2beat(double timer)
+    double Level::timer2beat(double timer) const
     {
         if (!parsed) throw LevelNotParsedException();
         timer -= settings.offset;
@@ -552,7 +576,7 @@ namespace AdoCpp
         return beat;
     }
 
-    double Level::getAngle(size_t i)
+    double Level::getAngle(const size_t& i) const
     {
         if (tiles[i].angle == 999)
             return 0;
@@ -568,7 +592,7 @@ namespace AdoCpp
         return angle;
     }
 
-    Point Level::f(double beat)
+    Point Level::f(double beat) const
     {
         double a, mspb; Point p;
         for (size_t j = 1; j < tiles.size(); j++)
@@ -587,35 +611,9 @@ namespace AdoCpp
         return p;
     }
     
-    Level::CameraInfo Level::getCameraInfo(double beat)  // NEED TO OPTIMIZE
+    Level::CameraInfo Level::getCameraInfo(const double& beat) const  // NEED TO OPTIMIZE
     {
         if (!parsed) throw LevelNotParsedException();
-
-        if (m_moveCameraPlayerPosVec.empty() && !m_moveCameras.empty())
-        {
-            std::string relativeTo = "Player";
-
-            for (auto& moveCamera : m_moveCameras)
-            {
-                if (moveCamera.relativeTo)
-                {
-                    if (relativeTo == "Tile" && *moveCamera.relativeTo == "Player")
-                        m_moveCameraPlayerPosVec.push_back(f(moveCamera.beat + moveCamera.duration));
-                    else
-                        m_moveCameraPlayerPosVec.push_back(Point(114514, 1919810));
-                    if (relativeTo == "Player" && *moveCamera.relativeTo == "Tile")
-                        m_moveCameraPlayerPosVec2.push_back(f(moveCamera.beat));
-                    else
-                        m_moveCameraPlayerPosVec2.push_back(Point(114514, 1919810));
-                    relativeTo = *moveCamera.relativeTo;
-                }
-                else
-                {
-                    m_moveCameraPlayerPosVec.push_back(Point(114514, 1919810));
-                    m_moveCameraPlayerPosVec2.push_back(Point(114514, 1919810));
-                }
-            }
-        }
 
         Point position, posOff; double rotation = 0, zoom = 100;
         double x, y;
@@ -737,12 +735,12 @@ namespace AdoCpp
         return { position, rotation, zoom };
     }
 
-    double Level::getTiming(size_t index, double timer)
+    double Level::getTiming(const size_t& index, const double& timer) const
     {
         return timer - beat2timer(tiles[index].beat);
     }
 
-    HitMargin Level::getHitMargin(size_t index, double timer, Difficulty difficulty)
+    HitMargin Level::getHitMargin(const size_t& index, const double& timer, const Difficulty& difficulty) const
     {
         if (!parsed) throw LevelNotParsedException();
         const double max_bpm = difficulty == Difficulty::Lenient
