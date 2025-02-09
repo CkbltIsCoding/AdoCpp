@@ -353,19 +353,6 @@ namespace AdoCpp
             {
                 m_moveCameras.push_back(*moveCamera);
             }
-            //if (auto mc = dynamic_cast<Event::Visual::MoveCamera*>(event))
-            //{
-            //    CameraPositionOffset cpo;
-            //    cpo.beat = mc->beat, cpo.duration = mc->duration, cpo.ease = mc->ease;
-            //    if (mc->position.first) cpo.positionOffset.first = *mc->position.first;
-            //    if (mc->position.second) cpo.positionOffset.second = *mc->position.second;
-            //    if (cpo.positionOffset.first || cpo.positionOffset.second) m_cpo.push_back(cpo);
-            //    CameraRotationAndZoom craz;
-            //    craz.beat = mc->beat, craz.duration = mc->duration, craz.ease = mc->ease;
-            //    if (mc->rotation) craz.rotation = *mc->rotation;
-            //    if (mc->zoom) craz.zoom = *mc->zoom;
-            //    if (craz.rotation || craz.zoom) m_craz.push_back(craz);
-            //}
         }
         parsed = true;
     }
@@ -495,14 +482,29 @@ namespace AdoCpp
     {
         if (!parsed) throw LevelNotParsedException();
         double bpm = settings.bpm;
-        for (size_t i = 0; i < m_setSpeeds.size(); i++)
+        for (auto& setSpeed : m_setSpeeds)
         {
-            if (beat < m_setSpeeds[i].beat)
+            if (beat < setSpeed.beat)
                 break;
-            if (m_setSpeeds[i].speedType == Event::GamePlay::SetSpeed::SpeedType::Bpm)
-                bpm = m_setSpeeds[i].beatsPerMinute;
+            if (setSpeed.speedType == Event::GamePlay::SetSpeed::SpeedType::Bpm)
+                bpm = setSpeed.beatsPerMinute;
             else
-                bpm *= m_setSpeeds[i].bpmMultiplier;
+                bpm *= setSpeed.bpmMultiplier;
+        }
+        return bpm;
+    }
+    double Level::getBpmNotIncludingBeat(double beat)
+    {
+        if (!parsed) throw LevelNotParsedException();
+        double bpm = settings.bpm;
+        for (auto& setSpeed : m_setSpeeds)
+        {
+            if (beat <= setSpeed.beat)
+                break;
+            if (setSpeed.speedType == Event::GamePlay::SetSpeed::SpeedType::Bpm)
+                bpm = setSpeed.beatsPerMinute;
+            else
+                bpm *= setSpeed.bpmMultiplier;
         }
         return bpm;
     }
@@ -748,7 +750,7 @@ namespace AdoCpp
             : difficulty == Difficulty::Normal
             ? 330
             : 500,
-            ms = bpm2mspb(std::min(max_bpm, getBpmByBeat(timer2beat(timer)))),
+            ms = bpm2mspb(std::min(max_bpm, getBpmNotIncludingBeat(tiles[index].beat))),
             p = ms / 6,
             lep = ms / 4,
             vle = ms / 3,

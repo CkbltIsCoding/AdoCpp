@@ -274,6 +274,13 @@ namespace AdoCpp
         double getBpmByBeat(double beat);
 
         /**
+         * @brief Get the bpm.
+         * @param beat The beat.
+         * @return The bpm.
+         */
+        double getBpmNotIncludingBeat(double beat);
+
+        /**
          * @brief Convert beat to timer.
          * @param The beat.
          * @return The time in ms.
