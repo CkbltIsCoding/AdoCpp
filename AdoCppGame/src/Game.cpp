@@ -8,18 +8,15 @@
 #include <IconsFontAwesome6.h>
 
 Game::Game() :
-	windowSize(800, 600),
 	running(true),
 	FPS(120),
-	//levelPath("Levels/Multi_arm/main.adofai"),
-	//levelPath("Levels/HELLO_BPM_2024/2024.adofai"),
 	tileSystem(level)
 {
 	SetConsoleOutputCP(CP_UTF8);
 	setlocale(LC_ALL, ".UTF-8");
 
 	settings.antiAliasingLevel = 8;
-	window = sf::RenderWindow(sf::VideoMode(windowSize), "A dance of C++", sf::Style::Default, sf::State::Windowed, settings);
+	createWindow();
 	window.setFramerateLimit(120);
 	AssetManager mgr;
 	font = AssetManager::GetFont("SourceHanSansSC.otf");
@@ -122,12 +119,15 @@ void Game::popState()
 
 void Game::handleEvent()
 {
-	while (const std::optional event = window.pollEvent())
+	while (const auto event = window.pollEvent())
 	{
 		if (event->is<sf::Event::Closed>())
 			window.close();
-		if (const auto* resized = event->getIf<sf::Event::Resized>())
+		if (const auto resized = event->getIf<sf::Event::Resized>())
 			windowSize = resized->size;
+		if (const auto keyPressed = event->getIf<sf::Event::KeyPressed>())
+			if (keyPressed->code == sf::Keyboard::Key::F11)
+				fullscreen = !fullscreen, createWindow();
 		ImGui::SFML::ProcessEvent(window, *event);
 		states.back()->handleEvent(*event);
 	}
@@ -144,4 +144,14 @@ void Game::render()
 	window.clear(sf::Color(20, 20, 20));
 	states.back()->render();
 	window.display();
+}
+
+void Game::createWindow()
+{
+	if (fullscreen)
+		windowSize = sf::VideoMode::getFullscreenModes()[0].size,
+		window.create(sf::VideoMode::getFullscreenModes()[0], "A dance of C++", sf::Style::Default, sf::State::Fullscreen, settings);
+	else
+		windowSize = { 800, 600 },
+		window.create(sf::VideoMode(windowSize), "A dance of C++", sf::Style::Default, sf::State::Windowed, settings);
 }

@@ -28,6 +28,8 @@ public:
 	void update();
 	void render();
 
+	void createWindow();
+
 	sf::RenderWindow window;
 	sf::Vector2u windowSize;
 	bool running;
@@ -48,18 +50,19 @@ public:
 	sf::Music music;
 
 	AdoCpp::Level level;
-	AdoCpp::Difficulty difficulty = AdoCpp::Difficulty::Lenient;
+	AdoCpp::Difficulty difficulty = AdoCpp::Difficulty::Strict;
 	std::filesystem::path levelPath, musicPath;
 
 	TileSystem tileSystem;
 
 	using S = sf::Keyboard::Scan;
 	std::vector<sf::Keyboard::Scan> keyLimiter = {
-		S::LControl, S::CapsLock, S::Tab, S::Num1, S::Num2, S::E, S::C, S::Space,
-		S::A, S::Period, S::P, S::Equal, S::Backspace, S::Backslash, S::Enter, S::Down
+		S::LControl, S::CapsLock, S::Tab, S::Q, S::W, S::E, S::Space, S::C,
+		S::Period, S::A, S::P, S::LBracket, S::RBracket, S::Backslash, S::Enter, S::Down
 	};
 
 	std::vector<State*> states;
 	long long activeTileIndex;
 	bool autoplay = false;
+	bool fullscreen = false;
 };

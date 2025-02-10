@@ -11,8 +11,8 @@ endif()
 
 project ("AdoCpp")
 
-add_compile_definitions(_CONSOLE)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+	add_compile_definitions(_CONSOLE)
 	add_compile_definitions(_DEBUG)
 else()
 	add_compile_definitions(NDEBUG)
