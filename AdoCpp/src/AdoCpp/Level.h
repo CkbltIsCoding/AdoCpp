@@ -22,7 +22,27 @@ namespace AdoCpp
         LevelNotParsedException() {}
         const char* what() const throw ()
         {
-            return "LevelNotParsedException: AdoCpp::Level is not parsed";
+            return "AdoCpp::LevelNotParsedException: AdoCpp::Level is not parsed";
+        }
+    };
+
+    class LevelCouldNotOpenFileException : public std::exception
+    {
+    public:
+        LevelCouldNotOpenFileException() {}
+        const char* what() const throw ()
+        {
+            return "LevelCouldNotOpenFileException: could not open file";
+        }
+    };
+
+    class LevelJsonHasParseErrorException : public std::exception
+    {
+    public:
+        LevelJsonHasParseErrorException() {}
+        const char* what() const throw ()
+        {
+            return "LevelJsonHasParseErrorException: document.HasParseError() returns true";
         }
     };
 
@@ -190,7 +210,7 @@ namespace AdoCpp
          * Create a new Level object from a file encoded in UTF-8 BOM.
          * @brief Constructor.
          */
-        Level(const std::string& path);
+        Level(const std::filesystem::path& path);
         
         /**
          * @brief Default destructor.
@@ -222,7 +242,7 @@ namespace AdoCpp
          * @brief Import a file into the level (encoded in UTF-8 BOM).
          * @param path The path to the file.
          */
-        void fromFile(const std::string& path);
+        void fromFile(const std::filesystem::path& path);
 
         /**
          * @brief Parse the level.

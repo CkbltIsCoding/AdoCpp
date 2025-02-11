@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <optional>
+#include <rapidjson/error/en.h>
+#include <filesystem>
 #include "Utils.h"
 
 namespace AdoCpp
@@ -29,30 +31,14 @@ namespace AdoCpp
         fromFile(ifs);
     }
 
-    Level::Level(const std::string& path)
+    Level::Level(const std::filesystem::path& path)
     {
         fromFile(path);
     }
 
     Level::~Level()
     {
-        for (
-            auto i = m_processedBeatEvents.begin();
-            i < m_processedBeatEvents.end();
-            )
-        {
-            if ((*i)->repeat)
-            {
-                delete* i;
-                i = m_processedBeatEvents.erase(i);
-            }
-            else i++;
-        }
-        while (!events.empty())
-        {
-            delete events.back();
-            events.pop_back();
-        }
+        clear();
     }
 
     static inline double deg2rad(double deg)
@@ -64,7 +50,21 @@ namespace AdoCpp
     {
         settings = Settings();
         tiles.clear();
-        events.clear();
+        while (!m_processedBeatEvents.empty())
+        {
+            if (m_processedBeatEvents.back()->repeat)
+                delete m_processedBeatEvents.back();
+            m_processedBeatEvents.pop_back();
+        }
+        while (!events.empty())
+        {
+            delete events.back();
+            events.pop_back();
+        }
+        m_moveCameraPlayerPosVec.clear();
+        m_moveCameraPlayerPosVec2.clear();
+        m_moveCameras.clear();
+        m_setSpeeds.clear();
         parsed = false;
     }
 
@@ -150,26 +150,29 @@ namespace AdoCpp
         parsed = false;
         rapidjson::Document document;
         rapidjson::IStreamWrapper isw(ifs);
-        rapidjson::EncodedInputStream<rapidjson::UTF8<>, rapidjson::IStreamWrapper> eis(isw);
+        rapidjson::AutoUTFInputStream<unsigned, rapidjson::IStreamWrapper> eis(isw);
         document.ParseStream<
             rapidjson::kParseValidateEncodingFlag
             | rapidjson::kParseCommentsFlag
             | rapidjson::kParseTrailingCommasFlag
-            | rapidjson::kParseNanAndInfFlag,
-            //| rapidjson::kParseEscapedApostropheFlag,
-            rapidjson::UTF8<> >(eis);
+            | rapidjson::kParseNanAndInfFlag
+            | rapidjson::kParseFullPrecisionFlag
+            ,
+            rapidjson::AutoUTF<unsigned>
+        >(eis);
         if (document.HasParseError())
         {
-            std::cout << document.GetParseError();
-            exit(114514);
+            //document.GetParseError();
+            std::cout << rapidjson::GetParseError_En(document.GetParseError());
+            throw LevelJsonHasParseErrorException();
         }
         fromJson(document);
     }
-    void Level::fromFile(const std::string& path)
+    void Level::fromFile(const std::filesystem::path& path)
     {
         parsed = false;
-        std::ifstream ifs(path, std::ios::binary);
-        if (!ifs.is_open()) throw std::exception();
+        std::ifstream ifs(path);
+        if (!ifs.is_open()) throw LevelCouldNotOpenFileException();
         fromFile(ifs);
         ifs.close();
     }
@@ -230,7 +233,7 @@ namespace AdoCpp
                 while (angle > 360) angle -= 360;
                 if (i == 1)
                     angle -= 180;
-                beat = angle / 180 + pauses[i],
+                beat = angle / 180 + pauses[i - 1],
                     tiles[i].beat = tiles[i - 1].beat + beat;
             }
 
@@ -411,7 +414,7 @@ namespace AdoCpp
                     y = ease(moveTrack->ease, x);
                 size_t b = rel2absIndex(moveTrack->floor, moveTrack->startTile),
                     e = rel2absIndex(moveTrack->floor, moveTrack->endTile);
-                for (size_t i = b; i <= e; i++)
+                for (size_t i = b; i <= e && i < tiles.size(); i++)
                 {
                     if (moveTrack->positionOffset.first)
                         tiles[i].pos.first += (tiles[i].oPos.first + *moveTrack->positionOffset.first - tiles[i].pos.first) * y;

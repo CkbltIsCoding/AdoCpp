@@ -3,9 +3,9 @@ include(FetchContent)
 message(STATUS "Getting RapidJSON...")
 
 FetchContent_Declare(
-  rapidjson
-  URL https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    rapidjson
+    URL https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 
 FetchContent_GetProperties(rapidjson)
 if(NOT rapidjson_POPULATED)

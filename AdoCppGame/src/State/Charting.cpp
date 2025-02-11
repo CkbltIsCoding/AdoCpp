@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <ImGuiFileDialog.h>
 #include <imgui-SFML.h>
+#include <AudioProcessing.h>
 
 StateCharting StateCharting::m_stateCharting;
 
@@ -150,10 +151,26 @@ void StateCharting::render()
 			{
 				m_game->levelPath = ImGuiFileDialog::Instance()->GetFilePathName();
 				m_game->level.clear();
-				m_game->level.fromFile(m_game->levelPath.string());
+				try
+				{
+					m_game->level.fromFile(m_game->levelPath);
+				}
+				catch (const AdoCpp::LevelJsonHasParseErrorException&)
+				{
+					m_game->levelPath.clear();
+					m_game->level.defaultLevel();
+					ImGui::OpenPopup("Error!##AdoCpp::LevelJsonHasParseErrorException");
+				}
 				newLevel();
 			}
 			ImGuiFileDialog::Instance()->Close();
+		}
+		if (ImGui::BeginPopupModal("Error!##AdoCpp::LevelJsonHasParseErrorException", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Text("Error when parsing json.");
+			if (ImGui::Button("Close"))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
 		}
 	} ImGui::End();
 
@@ -287,12 +304,20 @@ void StateCharting::newLevel()
 	m_game->tileSystem.update();
 	m_game->musicPath = m_game->levelPath.parent_path().append(m_game->level.settings.songFilename);
 	if (!m_game->musicPath.empty())
+	{
+		std::vector<double> vector(m_game->level.tiles.size() - 1);
+		for (size_t i = 1 /* tile[0].beat: -INF */ ; i < m_game->level.tiles.size(); i++)
+		{
+			vector[i - 1] = m_game->level.beat2timer(m_game->level.tiles[i].beat);
+		}
+		m_game->musicPath = addHitsound(m_game->musicPath, vector);
 		if (!m_game->music.openFromFile(m_game->musicPath))
 		{
 			std::cerr << "Warning: failed to load music from file \""
 				<< m_game->musicPath
 				<< "\". Maybe the file does not exist or it is not a music file.";
 		}
+	}
 	m_game->view.setCenter({
 		(float)m_game->level.tiles[0].pos.first,
 		(float)m_game->level.tiles[0].pos.second });

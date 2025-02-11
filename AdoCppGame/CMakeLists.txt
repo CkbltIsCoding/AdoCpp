@@ -40,12 +40,18 @@ add_executable (
 	${IMGUI_SRC}
 	${IMGUI_SFML_SRC}
 	${IGFD_SRC}
-)
+	"src/AudioProcessing.h")
 
+if (CMAKE_VERSION VERSION_GREATER 3.12)
+  set_property(TARGET AdoCppGame PROPERTY CXX_STANDARD 20)
+endif()
+
+# copy assets
 add_custom_target(copy_assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets
 )
 add_dependencies(AdoCppGame copy_assets)
+
 
 target_include_directories(
 	AdoCppGame PRIVATE
@@ -53,10 +59,6 @@ target_include_directories(
 	thirdparty
 	${PROJECT_SOURCE_DIR}/AdoCpp/src
 )
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET AdoCppGame PROPERTY CXX_STANDARD 20)
-endif()
 
 target_link_libraries (AdoCppGame PRIVATE rapidjson::rapidjson)
 
