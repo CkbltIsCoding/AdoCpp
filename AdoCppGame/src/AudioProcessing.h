@@ -1,17 +1,17 @@
 #include <SFML/Audio.hpp>
 
-std::filesystem::path addHitsound(std::filesystem::path path, std::vector<double> vector)
+std::filesystem::path addHitsound(std::filesystem::path path, std::vector<double> vector, bool hardcore = false)
 {
 	sf::SoundBuffer
 		origSb{ path },
 		newSb{},
 		hitsoundSb{ "assets/sound/beat.wav" };
-	auto samples = new int16_t[origSb.getSampleCount()],
-		hitsoundSamples = new int16_t[hitsoundSb.getSampleCount()];
-	for (size_t i = 0; i < origSb.getSampleCount(); i++)
-		samples[i] = origSb.getSamples()[i];
-	for (size_t i = 0; i < hitsoundSb.getSampleCount(); i++)
-		hitsoundSamples[i] = hitsoundSb.getSamples()[i];
+	auto samples = new int16_t[origSb.getSampleCount()];
+	memcpy(
+		samples,
+		origSb.getSamples(),
+		sizeof(int16_t) * origSb.getSampleCount()
+	);
 	static constexpr short MAX = 32767, MIN = -32768;
 	static constexpr float hitsoundVolume = 0.75f / 1.f;
 	for (auto& ms : vector)
@@ -24,11 +24,16 @@ std::filesystem::path addHitsound(std::filesystem::path path, std::vector<double
 			for (size_t j = 0; j < origSb.getChannelCount(); j++)
 			{
 				if (index + j >= origSb.getSampleCount()) break;
-				val = (samples[index + j] + hitsoundSamples[i] * hitsoundVolume) * f;
-				if (val > MAX) f = MAX / val, val = MAX;
-				if (val < MIN) f = MIN / val, val = MIN;
-				if (f < 1) f += (1 - f) / 32;
-				samples[index + j] = (short)val;
+				if (hardcore)
+					samples[index + j] += hitsoundSb.getSamples()[i];
+				else
+				{
+					val = (samples[index + j] + hitsoundSb.getSamples()[i] * hitsoundVolume) * f;
+					if (val > MAX) f = MAX / val, val = MAX;
+					if (val < MIN) f = MIN / val, val = MIN;
+					if (f < 1) f += (1 - f) / 32;
+					samples[index + j] = (short)val;
+				}
 			}
 		}
 	}
