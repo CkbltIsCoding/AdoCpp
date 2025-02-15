@@ -5,6 +5,7 @@
 #include <ImGuiFileDialog.h>
 #include <imgui-SFML.h>
 #include <AudioProcessing.h>
+#include <future>
 
 StateCharting StateCharting::m_stateCharting;
 
@@ -79,27 +80,13 @@ void StateCharting::handleEvent(sf::Event event)
 					}
 				}
 				m_game->activeTileIndex = -1;
-				//m_isDragging = true;
-				//oPos = mbp->position;
 			}
 		}
-	}
-	if (const auto* mm = event.getIf<sf::Event::MouseMoved>())
-	{
-		//if (m_isDragging)
-		//{
-		//	auto a = m_game->window.mapPixelToCoords(oPos),
-		//		b = m_game->window.mapPixelToCoords(mm->position);
-		//	m_game->view.move(a - b);
-		//	oPos = mm->position;
-		//}
 	}
 }
 
 void StateCharting::update()
 {
-	//if (!sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-	//	m_isDragging = false;
 	float w = (float)m_game->windowSize.x, h = (float)m_game->windowSize.y;
 	m_game->view.setSize( { w / (w + h) * 16 * m_game->zoom.x,
 		-h / (w + h) * 16 * m_game->zoom.y });
@@ -123,13 +110,16 @@ void StateCharting::render()
 
 	static const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
 		| ImGuiWindowFlags_NoCollapse;
-
+	
 	static float barWidth;
 	barWidth = ImGui::GetFontSize() * 15;
 	ImGui::SetNextWindowSize(ImVec2(barWidth, 0));
 	ImGui::SetNextWindowPos(ImVec2(m_game->windowSize.x / 2.f - barWidth / 2.f, 0));
 	if (ImGui::Begin("FilenameBar", nullptr, flags))
 	{
+		ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+		static std::future<std::filesystem::path> future;
+		static float progress;
 		std::string filename = m_game->levelPath.filename().string();
 		if (filename.empty()) filename = "Untitled";
 		if (ImGui::TreeNodeEx("FilenameBarTreeNode", ImGuiTreeNodeFlags_SpanAvailWidth, (filename).c_str()))
@@ -142,6 +132,59 @@ void StateCharting::render()
 				config.flags = ImGuiFileDialogFlags_Modal;
 				ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".adofai", ImVec4(0.0f, 1.0f, 0.5f, 0.9f));
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose an ADOFAI file", ".adofai", config);
+			}
+			if (addedHitsound) ImGui::BeginDisabled();
+			if (ImGui::Button("Add hitsound", ImVec2(-1, 0)))
+			{
+				if (!addedHitsound)
+				{
+					std::vector<double> vector(m_game->level.tiles.size() - 1);
+					for (size_t i = 1 /* tile[0].beat: -INF */; i < m_game->level.tiles.size(); i++)
+					{
+						vector[i - 1] = m_game->level.beat2timer(m_game->level.tiles[i].beat);
+					}
+					future = std::async(std::launch::async, addHitsound, m_game->musicPath, vector, &progress, false);
+					ImGui::OpenPopup("Adding hitsound...");
+				}
+			}
+			if (addedHitsound) ImGui::EndDisabled();
+			ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+			if (ImGui::BeginPopupModal("Adding hitsound...", nullptr))
+			{
+				if (m_game->musicPath.empty())
+				{
+					ImGui::Text("AdoCpp cannot add hitsound\n because the music file name is empty.");
+					if (ImGui::Button("Close"))
+						ImGui::CloseCurrentPopup();
+				}
+				else
+				{
+					if (progress == -1)
+						ImGui::Text("Loading...");
+					else if (progress == 2)
+						ImGui::Text("Saving...");
+					else
+						ImGui::Text("Adding hitsound...");
+					ImGui::ProgressBar(std::max(0.f, std::min(1.f, progress)), ImVec2(-1.f, 0.f));
+					if (future.valid() && future._Is_ready())
+					{
+						try
+						{
+							m_game->musicPath = future.get();
+
+							addedHitsound = true;
+							m_game->music.openFromFile(m_game->musicPath);
+							ImGui::CloseCurrentPopup();
+						}
+						catch (const std::exception& ex)
+						{
+							ImGui::Text("An error occurred. %s", ex.what());
+							if (ImGui::Button("Close"))
+								ImGui::CloseCurrentPopup();
+						}
+					}
+				}
+				ImGui::EndPopup();
 			}
 			ImGui::TreePop();
 		}
@@ -165,6 +208,7 @@ void StateCharting::render()
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 		if (ImGui::BeginPopupModal("Error!##AdoCpp::LevelJsonHasParseErrorException", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::Text("Error when parsing json.");
@@ -297,6 +341,7 @@ void StateCharting::render()
 
 void StateCharting::newLevel()
 {
+	addedHitsound = false;
 	m_game->activeTileIndex = -1;
 	m_game->level.parse();
 	m_game->level.update();
@@ -305,12 +350,6 @@ void StateCharting::newLevel()
 	m_game->musicPath = m_game->levelPath.parent_path().append(m_game->level.settings.songFilename);
 	if (!m_game->musicPath.empty())
 	{
-		std::vector<double> vector(m_game->level.tiles.size() - 1);
-		for (size_t i = 1 /* tile[0].beat: -INF */ ; i < m_game->level.tiles.size(); i++)
-		{
-			vector[i - 1] = m_game->level.beat2timer(m_game->level.tiles[i].beat);
-		}
-		m_game->musicPath = addHitsound(m_game->musicPath, vector);
 		if (!m_game->music.openFromFile(m_game->musicPath))
 		{
 			std::cerr << "Warning: failed to load music from file \""
