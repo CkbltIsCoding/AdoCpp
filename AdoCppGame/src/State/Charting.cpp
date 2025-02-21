@@ -6,6 +6,7 @@
 #include <imgui-SFML.h>
 #include <AudioProcessing.h>
 #include <future>
+#include <IconsFontAwesome6.h>
 
 StateCharting StateCharting::m_stateCharting;
 
@@ -130,7 +131,8 @@ void StateCharting::render()
 				config.path = ".";
 				config.countSelectionMax = 1;
 				config.flags = ImGuiFileDialogFlags_Modal;
-				ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".adofai", ImVec4(0.0f, 1.0f, 0.5f, 0.9f));
+				ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(0.8f, 0.8f, 0.8f, 1.f), " " ICON_FA_FOLDER " ");
+				ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".adofai", ImVec4(1.f, 1.f, 1.f, 1.f), " " ICON_FA_FILE " ");
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose an ADOFAI file", ".adofai", config);
 			}
 			if (addedHitsound) ImGui::BeginDisabled();
