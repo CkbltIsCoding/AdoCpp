@@ -30,7 +30,7 @@ add_executable (
 	"src/HitErrorMeter.h"
 	"src/HitText.h"
 	"src/ImGuiFileDialogConfig.h"
-	"src/KeyViewer.h"
+	"src/KeyViewer.h" "src/KeyViewer.cpp"
 	
 	"${selbaward_SOURCE_DIR}/src/SelbaWard/Polygon.cpp"
 	"${selbaward_SOURCE_DIR}/src/SelbaWard/Spline.cpp"

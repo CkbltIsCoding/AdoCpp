@@ -57,8 +57,26 @@ public:
 
 	using S = sf::Keyboard::Scan;
 	std::vector<sf::Keyboard::Scan> keyLimiter = {
-		S::LControl, S::CapsLock, S::Tab, S::Q, S::W, S::E, S::Space, S::C,
-		S::Period, S::A, S::P, S::LBracket, S::RBracket, S::Backslash, S::Enter, S::Down
+		S::LControl, S::CapsLock, S::Tab, S::Num1, S::Num2, S::E, S::Space, S::C,
+		S::Period, S::A, S::P, S::Equal, S::Backspace, S::Backslash, S::Enter, S::Down
+	};
+	std::vector<KeyViewerSystem::Key> kvsKeyLimiter = {
+		{S::LControl, {0, 1}},
+		{S::CapsLock, {1, 1}},
+		{S::Tab, {0, 0}},
+		{S::Num1, {1, 0}},
+		{S::Num2, {2, 0}},
+		{S::E, {3, 0}},
+		{S::C, {2, 1}},
+		{S::Space, {3, 1}},
+		{S::A, {4, 1}},
+		{S::Period, {5, 1}},
+		{S::P, {4, 0}},
+		{S::Equal, {5, 0}},
+		{S::Backspace, {6, 0}},
+		{S::Backslash, {7, 0}},
+		{S::Enter, {6, 1}},
+		{S::Down, {7, 1}},
 	};
 
 	std::vector<State*> states;

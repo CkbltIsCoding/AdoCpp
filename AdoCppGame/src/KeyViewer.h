@@ -6,65 +6,44 @@
 class KeyViewerSystem : public sf::Drawable, public sf::Transformable
 {
 public:
-	KeyViewerSystem() = default;
-	KeyViewerSystem(std::vector<sf::Keyboard::Scan> keyLimiter)
-		: m_keyLimiter(keyLimiter)
+	struct Key
 	{
-		for (auto& key : m_keyLimiter)
-		{
-			m_keyPressed.push_back(std::list<bool>(500));
-		}
-	}
-	void update(double delta)
+		sf::Keyboard::Scan scan;
+		sf::Vector2u pos;
+		sf::Color releasedColor{ 255, 255, 255, 0 };
+		sf::Color pressedColor{ 255, 255, 255, 255 };
+		sf::Color rainColor{ 255, 255, 255, 255 };
+	};
+	struct Stamp
 	{
-		for (size_t i = 0; i < m_keyLimiter.size(); i++)
-		{
-			for (size_t j = 0; j < delta; j++)
-			{
-				m_keyPressed[i].pop_front();
-				m_keyPressed[i].push_back(sf::Keyboard::isKeyPressed(m_keyLimiter[i]));
-			}
-		}
-	}
-private:
-	void draw(sf::RenderTarget& target, sf::RenderStates states) const override
-	{
-		static const sf::Color white = sf::Color::White,
-			lightgray = sf::Color(200, 200, 200);
-		states.transform *= getTransform();
-		states.texture = nullptr;
-		sf::RectangleShape rect{ {10.f, 1.f} };
-		sf::RectangleShape sqrPrs{ {10.f, 10.f} };
-		sf::RectangleShape sqrRls{ {10.f, 10.f} };
-		rect.setFillColor(sf::Color::White);
-		sqrRls.setFillColor(sf::Color::Transparent);
-		for (size_t i = 0; i < m_keyLimiter.size(); i++)
-		{
-			if (i % 2) rect.setFillColor(white), sqrPrs.setFillColor(white);
-			else rect.setFillColor(lightgray), sqrPrs.setFillColor(lightgray);
+		bool press;
+		sf::Time time;
+	};
 
-			if (m_keyPressed[i].back())
-			{
-				sqrPrs.setPosition({ float(i * 10), m_keyPressed[i].size() / 5.f + 2.f });
-				target.draw(sqrPrs, states);
-			}
-			else
-			{
-				sqrRls.setPosition({ float(i * 10), m_keyPressed[i].size() / 5.f + 2.f });
-				target.draw(sqrRls, states);
-			}
-			size_t j = 0;
-			for (auto& k : m_keyPressed[i])
-			{
-				if (k)
-				{
-					rect.setPosition({ float(i * 10), j / 5.f });
-					target.draw(rect, states);
-				}
-				j++;
-			}
-		}
-	}
-	std::vector<sf::Keyboard::Scan> m_keyLimiter;
-	std::vector<std::list<bool>> m_keyPressed;
+	KeyViewerSystem();
+	std::vector<Key> getKeys();
+	void setKeys(std::vector<Key> keyLimiter);
+	void setKeyLimiter(std::vector<sf::Keyboard::Scan> keyLimiter);
+	void press(sf::Keyboard::Scan scan);
+	void release(sf::Keyboard::Scan scan);
+	void setReleasedColor(sf::Color releasedColor);
+	void setPressedColor(sf::Color pressedColor);
+	void setRainColor(sf::Color rainColor);
+	void setRainColorByRow(sf::Color rainColor, unsigned int row);
+	void update();
+
+	Key& operator[] (size_t index);
+	const Key& operator[] (size_t index) const;
+
+private:
+	void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+
+	std::vector<Key> m_keys;
+	std::unordered_map<sf::Keyboard::Scan, std::vector<Stamp>> m_keyPressed;
+	sf::Clock m_clock;
+	sf::Time m_rainSpeed;
+	float m_rainLength;
+	float m_keySize;
+	float m_gapSize;
+	float m_rainKeyGapSize;
 };

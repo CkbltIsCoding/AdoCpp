@@ -18,8 +18,11 @@ void StatePlaying::init(Game* game)
 	hitTextSystem.clear();
 	hitErrorMeterSystem.setScale({ 4.f, 4.f });
 	hitErrorMeterSystem.clear();
-	keyViewerSystem = KeyViewerSystem(game->keyLimiter);
-	keyViewerSystem.setScale({ 4.f, 4.f });
+	keyViewerSystem.setKeys(game->kvsKeyLimiter);
+	keyViewerSystem.setScale({ 6.f, 6.f });
+	keyViewerSystem.setReleasedColor({ 255, 100, 100, 63 });
+	keyViewerSystem.setRainColorByRow({ 255, 100, 100, 255 }, 0);
+	keyViewerSystem.setRainColorByRow({ 255, 255, 255, 191 }, 1);
 
 	keyInputCnt = 0;
 	waiting = true;
@@ -64,19 +67,27 @@ void StatePlaying::resume()
 
 void StatePlaying::handleEvent(sf::Event event)
 {
-	if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>())
+	if (!ImGui::GetIO().WantCaptureKeyboard)
 	{
-		if (keyPressed->code == sf::Keyboard::Key::F12)
-			m_game->autoplay = !m_game->autoplay;
-		else if (keyPressed->code == sf::Keyboard::Key::Escape)
-			m_game->activeTileIndex = playerTileIndex, m_game->popState();
-		for (auto& scan : m_game->keyLimiter)
+		if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>())
 		{
-			if (scan == keyPressed->scancode)
+			if (keyPressed->code == sf::Keyboard::Key::F12)
+				m_game->autoplay = !m_game->autoplay;
+			else if (keyPressed->code == sf::Keyboard::Key::Escape)
+				m_game->activeTileIndex = playerTileIndex, m_game->popState();
+			for (auto& scan : m_game->keyLimiter)
 			{
-				keyInputCnt++;
-				break;
+				if (scan == keyPressed->scancode)
+				{
+					keyInputCnt++;
+					keyViewerSystem.press(scan);
+					break;
+				}
 			}
+		}
+		else if (const auto* keyReleased = event.getIf<sf::Event::KeyReleased>())
+		{
+			keyViewerSystem.release(keyReleased->scancode);
 		}
 	}
 }
@@ -234,7 +245,7 @@ void StatePlaying::update()
 	hitTextSystem.update(timer);
 	hitErrorMeterSystem.update(timer);
 	hitErrorMeterSystem.setPosition({ float(m_game->windowSize.x) / 2.f, float(m_game->windowSize.y) - 100.f });
-	keyViewerSystem.update(m_game->deltaTime);
+	keyViewerSystem.update();
 	keyViewerSystem.setPosition({ 50.f, float(m_game->windowSize.y) - 500.f });
 	///
 
@@ -279,9 +290,8 @@ void StatePlaying::render()
 
 	ImGui::SetNextWindowSize(ImVec2(0, 0));
 	ImGui::SetNextWindowPos(ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
-	if (ImGui::Begin("##Left", nullptr, flags))
+	if (ImGui::Begin("LeftText", nullptr, flags))
 	{
-		std::ostringstream out;
 		ImGui::Text("FPS: %.0f avg, %.0f min, %.0f max", m_game->avgFps, m_game->minFps, m_game->maxFps);
 		ImGui::Text("Progress: %.2f%%", 100.f * playerTileIndex / (m_game->level.tiles.size() - 1));
 		static double bpm, kps;

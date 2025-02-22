@@ -224,7 +224,7 @@ void StateCharting::render()
 	leftWidth = ImGui::GetFontSize() * 15, leftHeight = ImGui::GetFontSize() * 30;
 	ImGui::SetNextWindowSize(ImVec2(leftWidth, leftHeight));
 	ImGui::SetNextWindowPos(ImVec2(0, m_game->windowSize.y / 2.f - leftHeight / 2.f));
-	if (ImGui::Begin("##LeftSettings", nullptr, flags))
+	if (ImGui::Begin("LeftSettings", nullptr, flags))
 	{
 		static float leftSettingsTabContentWidth;
 		leftSettingsTabContentWidth = leftWidth / 5 * 4;
@@ -234,7 +234,7 @@ void StateCharting::render()
 			"Background Settings", "Camera Settings", "Miscellaneous Settings",
 			"Decorations"
 		};
-		if (ImGui::BeginChild("##LeftSettings/TabContent", ImVec2(leftSettingsTabContentWidth, 0)))
+		if (ImGui::BeginChild("LeftSettings/TabContent", ImVec2(leftSettingsTabContentWidth, 0)))
 		{
 			ImGui::SetCursorPosX(leftSettingsTabContentWidth / 2
 				- ImGui::CalcTextSize(titles[selectedTab].c_str()).x / 2);
@@ -243,14 +243,14 @@ void StateCharting::render()
 			{
 			case 0: // Song
 			{
-				ImGuiInputFilename("Song Filename:", "##LeftSettings/TabContent/SongSettings/SongFilename", "No files selected", &m_game->level.settings.songFilename);
-				ImGuiInputDouble("BPM:", "##LeftSettings/TabContent/SongSettings/BPM", &m_game->level.settings.bpm);
-				ImGuiInputDouble("Volume:", "##LeftSettings/TabContent/SongSettings/Volume", &m_game->level.settings.volume);
-				ImGuiInputDouble("Offset:", "##LeftSettings/TabContent/SongSettings/Offset", &m_game->level.settings.offset);
-				ImGuiInputDouble("Pitch:", "##LeftSettings/TabContent/SongSettings/Pitch", &m_game->level.settings.pitch);
+				ImGuiInputFilename("Song Filename:", "LeftSettings/TabContent/SongSettings/SongFilename", "No files selected", &m_game->level.settings.songFilename);
+				ImGuiInputDouble("BPM:", "LeftSettings/TabContent/SongSettings/BPM", &m_game->level.settings.bpm);
+				ImGuiInputDouble("Volume:", "LeftSettings/TabContent/SongSettings/Volume", &m_game->level.settings.volume);
+				ImGuiInputDouble("Offset:", "LeftSettings/TabContent/SongSettings/Offset", &m_game->level.settings.offset);
+				ImGuiInputDouble("Pitch:", "LeftSettings/TabContent/SongSettings/Pitch", &m_game->level.settings.pitch);
 				ImGui::Text("Hitsound:"); // ImGui::SetNextItemWidth(-1);
-				ImGuiInputDouble("Hitsound Volume:", "##LeftSettings/TabContent/SongSettings/HitSoundVolume", &m_game->level.settings.hitsoundVolume);
-				ImGuiInputDouble("Countdown Ticks:", "##LeftSettings/TabContent/SongSettings/CountdownTicks", &m_game->level.settings.countdownTicks);
+				ImGuiInputDouble("Hitsound Volume:", "LeftSettings/TabContent/SongSettings/HitSoundVolume", &m_game->level.settings.hitsoundVolume);
+				ImGuiInputDouble("Countdown Ticks:", "LeftSettings/TabContent/SongSettings/CountdownTicks", &m_game->level.settings.countdownTicks);
 				break;
 			}
 			case 1: // Level
@@ -268,14 +268,14 @@ void StateCharting::render()
 		ImGui::EndChild();
 
 		ImGui::SameLine();
-		if (ImGui::BeginChild("##LeftSettings/TabBtns"))
+		if (ImGui::BeginChild("LeftSettings/TabBtns"))
 		{
-			if (ImGui::BeginTable("##LeftSettings/TabBtns/Table", 1))
+			if (ImGui::BeginTable("LeftSettings/TabBtns/Table", 1))
 			{
 				for (size_t i = 0; i < 7; i++)
 				{
 					ImGui::TableNextRow(), ImGui::TableNextColumn();
-					ImGui::PushID(("##LeftSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
+					ImGui::PushID(("LeftSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
 					if (ImGui::Button(std::to_string(i).c_str(), ImVec2(-1, 0)))
 						selectedTab = i;
 					ImGui::PopID();
@@ -294,7 +294,7 @@ void StateCharting::render()
 	rightWidth = ImGui::GetFontSize() * 15, rightHeight = ImGui::GetFontSize() * 30;
 	ImGui::SetNextWindowSize(ImVec2(rightWidth, rightHeight));
 	ImGui::SetNextWindowPos(ImVec2(m_game->windowSize.x - rightWidth, m_game->windowSize.y / 2.f - rightHeight / 2.f));
-	if (ImGui::Begin("##RightSettings", nullptr, flags))
+	if (ImGui::Begin("RightSettings", nullptr, flags))
 	{
 		static float rightSettingsTabBtnsWidth, rightSettingsTabContentWidth;
 		rightSettingsTabBtnsWidth = rightWidth / 5,
@@ -303,16 +303,16 @@ void StateCharting::render()
 		if (m_game->activeTileIndex != tileIndex)
 			tileIndex = m_game->activeTileIndex,
 			selectedTab = 0;
-		if (ImGui::BeginChild("##RightSettings/TabBtns", ImVec2(rightSettingsTabBtnsWidth, 0)))
+		if (ImGui::BeginChild("RightSettings/TabBtns", ImVec2(rightSettingsTabBtnsWidth, 0)))
 		{
-			if (ImGui::BeginTable("##RightSettings/TabBtns/Table", 1))
+			if (ImGui::BeginTable("RightSettings/TabBtns/Table", 1))
 			{
 				if (tile)
 				{
 					for (size_t i = 0; i < tile->events.size(); i++)
 					{
 						ImGui::TableNextRow(), ImGui::TableNextColumn();
-						ImGui::PushID(("##RightSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
+						ImGui::PushID(("RightSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
 						if (ImGui::Button(std::to_string(i).c_str(), ImVec2(-1, 0)))
 							selectedTab = i;
 						ImGui::PopID();
@@ -323,7 +323,7 @@ void StateCharting::render()
 		}
 		ImGui::EndChild();
 		ImGui::SameLine();
-		if (ImGui::BeginChild("##RightSettings/TabContent"))
+		if (ImGui::BeginChild("RightSettings/TabContent"))
 		{
 			if (tile && !tile->events.empty())
 			{
