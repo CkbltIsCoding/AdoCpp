@@ -100,6 +100,11 @@ namespace AdoCpp
         settings.beatsBehind = s["beatsBehind"].GetDouble();
         settings.backgroundColor = s["backgroundColor"].GetString();
         settings.stickToFloors = toBool(s["stickToFloors"]);
+        settings.unscaledSize = s["unscaledSize"].GetDouble();
+        settings.relativeTo = s["relativeTo"].GetString();
+        settings.position = Point(s["position"][0].GetDouble(), s["position"][1].GetDouble());
+        settings.rotation = s["rotation"].GetDouble();
+        settings.zoom = s["zoom"].GetDouble();
 
         bool angleData = document.HasMember("angleData");
         tiles.push_back(Tile(0));
@@ -618,10 +623,10 @@ namespace AdoCpp
     {
         if (!parsed) throw LevelNotParsedException();
 
-        Point position, posOff; double rotation = 0, zoom = 100;
+        Point position = settings.position, posOff; double rotation = settings.rotation, zoom = settings.zoom;
         double x, y;
         bool turning = false;
-        std::string relativeTo = "Player";
+        std::string relativeTo = settings.relativeTo;
 
         for (size_t i = 0; i < m_moveCameras.size(); i++)
         {

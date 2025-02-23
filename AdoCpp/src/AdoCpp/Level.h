@@ -183,6 +183,11 @@ namespace AdoCpp
         double beatsBehind = 0;
         Color backgroundColor = "000000";
         bool stickToFloors = false;
+        double unscaledSize = 100;
+        std::string relativeTo = "Player";
+        Point position;
+        double rotation = 0;
+        double zoom = 100;
     };
 
     /**
