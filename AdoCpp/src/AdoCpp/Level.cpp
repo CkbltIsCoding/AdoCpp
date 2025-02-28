@@ -95,12 +95,18 @@ namespace AdoCpp
         settings.trackPulseLength = s["trackPulseLength"].GetDouble();
         settings.trackStyle = string2trackStyle[s["trackStyle"].GetString()];
         //settings.trackAnimation = string2trackAnimation[s["trackAnimation"].GetString()];
+        // TODO FIXME
+        settings.trackAnimation = !strcmp(s["trackAnimation"].GetString(), "Fade")
+            ? TrackAnimation::Fade : TrackAnimation::None;
         settings.beatsAhead = s["beatsAhead"].GetDouble();
         //settings.trackDisappearAnimation = string2trackAnimation[s["trackDisappearAnimation"].GetString()];
+        settings.trackDisappearAnimation = !strcmp(s["trackDisappearAnimation"].GetString(), "Fade")
+            ? TrackAnimation::Fade : TrackAnimation::None;
         settings.beatsBehind = s["beatsBehind"].GetDouble();
         settings.backgroundColor = s["backgroundColor"].GetString();
         settings.stickToFloors = toBool(s["stickToFloors"]);
-        settings.unscaledSize = s["unscaledSize"].GetDouble();
+        if (s.HasMember("unscaledSize"))
+            settings.unscaledSize = s["unscaledSize"].GetDouble();
         settings.relativeTo = s["relativeTo"].GetString();
         settings.position = Point(s["position"][0].GetDouble(), s["position"][1].GetDouble());
         settings.rotation = s["rotation"].GetDouble();
@@ -135,6 +141,8 @@ namespace AdoCpp
 
             else if (eventType == "ColorTrack")
                 events.push_back(new Event::Track::ColorTrack(eventData));
+            else if (eventType == "AnimateTrack")
+                events.push_back(new Event::Track::AnimateTrack(eventData));
             else if (eventType == "RecolorTrack")
                 events.push_back(new Event::Track::RecolorTrack(eventData));
             else if (eventType == "PositionTrack")
@@ -194,6 +202,7 @@ namespace AdoCpp
         std::vector<double> pauses(tiles.size());
         std::vector<std::optional<Event::Track::PositionTrack> > positionTracks(tiles.size());
         std::vector<std::optional<Event::Track::ColorTrack> > colorTracks(tiles.size());
+        std::vector<std::optional<Event::Track::AnimateTrack> > animateTracks(tiles.size());
         for (auto& event : events)
         {
             if (typeid(*event) == typeid(Event::GamePlay::Twirl))
@@ -205,6 +214,8 @@ namespace AdoCpp
                 positionTracks[positionTrack->floor] = (std::make_optional<Event::Track::PositionTrack>(*positionTrack));
             else if (auto colorTrack = dynamic_cast<Event::Track::ColorTrack*>(event))
                 colorTracks[colorTrack->floor] = (std::make_optional<Event::Track::ColorTrack>(*colorTrack));
+            else if (auto animateTrack = dynamic_cast<Event::Track::AnimateTrack*>(event))
+                animateTracks[animateTrack->floor] = (std::make_optional<Event::Track::AnimateTrack>(*animateTrack));
         }
         tiles[0].orbit = true,
             tiles[0].beat = 0,
@@ -212,7 +223,11 @@ namespace AdoCpp
             tiles[0].oSecondaryTrackColor = settings.secondaryTrackColor,
             tiles[0].oTrackStyle = settings.trackStyle,
             tiles[0].editorPos = tiles[0].oPos = {0, 0},
-            tiles[0].stickToFloors = settings.stickToFloors;
+            tiles[0].stickToFloors = settings.stickToFloors,
+            tiles[0].trackAnimation = settings.trackAnimation,
+            tiles[0].beatsAhead = settings.beatsAhead,
+            tiles[0].trackDisappearAnimation = settings.trackDisappearAnimation,
+            tiles[0].beatsBehind = settings.beatsBehind;
         for (size_t i = 1; i < tiles.size(); i++)
         {
             // Tile's twirl
@@ -280,6 +295,24 @@ namespace AdoCpp
                 tiles[i].oTrackColor = colorTracks[i]->trackColor,
                     tiles[i].oSecondaryTrackColor = colorTracks[i]->secondaryTrackColor,
                     tiles[i].oTrackStyle = colorTracks[i]->trackStyle;
+            }
+
+            // Tile's animation
+            if (!animateTracks[i])
+            {
+                tiles[i].trackAnimation = tiles[i - 1].trackAnimation;
+                tiles[i].beatsAhead = tiles[i - 1].beatsAhead;
+                tiles[i].trackDisappearAnimation = tiles[i - 1].trackDisappearAnimation;
+                tiles[i].beatsBehind = tiles[i - 1].beatsBehind;
+            }
+            else
+            {
+                if (animateTracks[i]->trackAnimation)
+                    tiles[i].trackAnimation = *animateTracks[i]->trackAnimation;
+                tiles[i].beatsAhead = animateTracks[i]->beatsAhead;
+                if (animateTracks[i]->trackDisappearAnimation)
+                    tiles[i].trackDisappearAnimation = *animateTracks[i]->trackDisappearAnimation;
+                tiles[i].beatsBehind = animateTracks[i]->beatsBehind;
             }
         }
         tiles[0].beat = -INFINITY;
@@ -400,12 +433,62 @@ namespace AdoCpp
             tile.trackColor = tile.oTrackColor,
                 tile.secondaryTrackColor = tile.oSecondaryTrackColor,
                 tile.trackStyle = tile.oTrackStyle;
+            tile.state = Tile::State::Showing;
         }
     }
     void Level::update(const double& beat)
     {
         if (!parsed) throw LevelNotParsedException();
         update();
+        for (size_t i = 0; i < tiles.size(); i++)
+        {
+            if (i != tiles.size() - 1 && beat >= tiles[i + 1].beat + tiles[i].beatsBehind) tiles[i].state = Tile::State::Shown;
+            else if (beat >= tiles[i].beat - tiles[i].beatsAhead) tiles[i].state = Tile::State::Showing;
+            else tiles[i].state = Tile::State::ToShow;
+
+            if (tiles[i].state == Tile::State::ToShow)
+            {
+                switch (tiles[i].trackAnimation)
+                {
+                case TrackAnimation::None:
+                    tiles[i].opacity = 100;
+                    break;
+                case TrackAnimation::Fade:
+                    tiles[i].opacity = 0;
+                    break;
+                default:
+                    break;
+                }
+            }
+            if (tiles[i].state != Tile::State::ToShow)
+            {
+                switch (tiles[i].trackAnimation)
+                {
+                case TrackAnimation::None:
+                    tiles[i].opacity = 100;
+                    break;
+                case TrackAnimation::Fade:
+                    tiles[i].opacity = std::min(100.0, (beat - (tiles[i].beat - tiles[i].beatsAhead)) * 200);
+                    break;
+                default:
+                    break;
+                }
+            }
+            if (tiles[i].state == Tile::State::Shown)
+            {
+                switch (tiles[i].trackDisappearAnimation)
+                {
+                case TrackAnimation::None:
+                    tiles[i].opacity = 100;
+                    break;
+                case TrackAnimation::Fade:
+                    tiles[i].opacity = std::max(0.0, (tiles[i + 1].beat + tiles[i].beatsBehind + 0.5 - beat) * 200);
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
         for (auto& event_ : m_processedBeatEvents)
         {
             if (beat < event_->beat) break;
@@ -670,76 +753,7 @@ namespace AdoCpp
             Point p = f(beat);
             position.first = p.first, position.second = p.second;
         }
-        // TODO: moveCamera relativeTo Tile
         position.first += posOff.first, position.second += posOff.second;
-        //std::cout << position.first << ' ' << position.second << std::endl;
-        //for (size_t i = 0; i < m_moveCameras.size(); i++)
-        //{
-        //    auto& mc = m_moveCameras[i];
-        //    if (beat < mc.beat) break;
-        //    double x, y;
-        //    if (mc.duration == 0)
-        //        x = y = 1;
-        //    else
-        //        x = (beat - mc.beat) / mc.duration, y = ease(mc.ease, x);
-        //    if (mc.position.first) posOff.first = *mc.position.first;
-        //    if (mc.position.second) posOff.second = *mc.position.second;
-        //    if (mc.relativeTo) relativeTo = *mc.relativeTo;
-        //    if (mc.rotation) rotation += (*mc.rotation - rotation) * y;
-        //    if (mc.zoom) zoom += (*mc.zoom - zoom) * y;
-        //    if (relativeTo == "Tile")
-        //        position.first = (tiles[mc.floor].pos.first - position.first) * y,
-        //        position.second = (tiles[mc.floor].pos.second - position.second) * y;
-        //    else if (relativeTo == "Player")
-        //    {
-        //        std::cout << 1;
-
-        //        if (i == m_moveCameras.size() - 1)
-        //        {
-        //            double a;
-        //            for (size_t j = getTileIndexByBeat(beat) + 1; j < tiles.size() - 1; j++)
-        //            {
-        //                if (beat < tiles[j].beat) break;
-        //                a = std::min((beat - tiles[j].beat) / (tiles[j + 1].beat - tiles[j].beat), 1.0) * 0.5;
-        //                position.first += (tiles[j].oPos.first - position.first) * a, position.second += (tiles[j].oPos.second - position.second) * a;
-        //            }
-        //        }
-        //        else
-        //        {
-        //            double a;
-        //            size_t begin = getTileIndexByBeat(beat) + 1,
-        //                end = getTileIndexByBeat(m_moveCameras[i + 1].beat);
-        //            for (size_t j = begin; j < end; j++)
-        //            {
-        //                if (beat < tiles[j].beat) break;
-        //                a = std::min((beat - tiles[j].beat) / (tiles[j + 1].beat - tiles[j].beat), 1.0) * 0.5;
-        //                position.first += (tiles[j].oPos.first - position.first) * a, position.second += (tiles[j].oPos.second - position.second) * a;
-        //            }
-        //        }
-        //    }
-        //}
-        //position.first += posOff.first, position.second += posOff.second;
-         
-        // TODO
-        //Point p;
-        //double timer = beat2timer(beat), diff, this_timer, next_timer = beat2timer(tiles[0].beat), a;
-        //for (size_t i = 0; i < tiles.size(); i++)
-        //{
-        //    this_timer = next_timer;
-        //    if (i == tiles.size() - 1)
-        //        next_timer = this_timer + 1000;
-        //    else
-        //        next_timer = beat2timer(tiles[i + 1].beat);
-        //    if (timer > next_timer)
-        //        diff = next_timer - this_timer;
-        //    else
-        //        diff = timer - this_timer;
-        //    a = std::min(diff / std::min(1000.0, bpm2mspb(get_bpm(tiles[i].beat) / 2)), 1.0);
-        //    p.first += (tiles[i].oPos.first - p.first) * a,
-        //        p.second += (tiles[i].oPos.second - p.second) * a;
-
-        //    if (timer <= next_timer) break;
-        //}
         return { position, rotation, zoom };
     }
 

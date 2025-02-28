@@ -43,6 +43,10 @@ namespace AdoCpp
 		{"Forward", TrackColorPulse::Forward},
 		{"Backward", TrackColorPulse::Backward},
 	};
+	std::map<std::string, TrackAnimation> string2TrackAnimation = {
+		{"None", TrackAnimation::None},
+		{"Fade", TrackAnimation::Fade},
+	};
 
 	static std::vector<std::string> stringSplit(std::string str, const char split)
 	{
@@ -166,6 +170,15 @@ namespace AdoCpp
 			AnimateTrack::AnimateTrack(const rapidjson::Value& data)
 				: Event(data)
 			{
+				// TODO FIXME
+				if (data.HasMember("trackAnimation"))
+					trackAnimation = !strcmp(data["trackAnimation"].GetString(), "Fade")
+						? TrackAnimation::Fade : TrackAnimation::None;
+				beatsAhead = data["beatsAhead"].GetDouble();
+				if (data.HasMember("trackDisappearAnimation"))
+					trackDisappearAnimation = !strcmp(data["trackDisappearAnimation"].GetString(), "Fade")
+						? TrackAnimation::Fade : TrackAnimation::None;
+				beatsBehind = data["beatsBehind"].GetDouble();
 			}
 			RecolorTrack::RecolorTrack(const rapidjson::Value& data)
 				: BeatEvent(data)

@@ -145,6 +145,18 @@ namespace AdoCpp
          * @brief The event ptrs of the tile.
          */
         std::vector<Event::Event*> events;
+
+        enum class State
+        {
+            ToShow, Showing, Shown
+        };
+
+        State state = State::Showing;
+        TrackAnimation trackAnimation = TrackAnimation::None;
+        double beatsAhead = 0;
+        TrackAnimation trackDisappearAnimation = TrackAnimation::None;
+        double beatsBehind = 0;
+
         /**
          * @brief Construct a tile.
          * @param angle The angle of the tile.

@@ -38,7 +38,11 @@ namespace AdoCpp
 	
 	enum class TrackAnimation
 	{ // TODO
+		None,
+		Fade
+		//Scatter_Far
 	};
+
 	extern std::map<TrackAnimation, std::string> trackAnimation2string;
 	extern std::map<std::string, TrackAnimation> string2trackAnimation;
 
@@ -144,9 +148,9 @@ namespace AdoCpp
 				bool stackable() override { return false; }
 				std::string name() override { return "AnimateTrack"; }
 				AnimateTrack* clone() override { return new AnimateTrack(*this); }
-				TrackAnimation trackAnimation;
+				std::optional<TrackAnimation> trackAnimation;
 				double beatsAhead;
-				TrackAnimation trackDisappearAnimation;
+				std::optional<TrackAnimation> trackDisappearAnimation;
 				double beatsBehind;
 			};
 			class RecolorTrack : public BeatEvent
