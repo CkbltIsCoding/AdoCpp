@@ -120,19 +120,19 @@ namespace AdoCpp
         /**
          * @brief The tile's original color.
          */
-        Color oTrackColor = "debb7b";
+        Color oTrackColor = Color("debb7b");
         /**
          * @brief The tile's current color.
          */
-        Color trackColor = "debb7b";
+        Color trackColor = Color("debb7b");
         /**
          * @brief The tile's original secondary color.
          */
-        Color oSecondaryTrackColor = "ffffff";
+        Color oSecondaryTrackColor = Color("ffffff");
         /**
          * @brief The tile's current secondary color.
          */
-        Color secondaryTrackColor = "ffffff";
+        Color secondaryTrackColor = Color("ffffff");
         /**
          * @brief The tile's original style.
          */
@@ -183,8 +183,8 @@ namespace AdoCpp
         double hitsoundVolume = 100;
         double countdownTicks = 0;
         TrackColorType trackColorType = TrackColorType::Single;
-        Color trackColor = "debb7b";
-        Color secondaryTrackColor = "debb7b";
+        Color trackColor = Color("debb7b");
+        Color secondaryTrackColor = Color("debb7b");
         double trackColorAnimDuration = 0;
         TrackColorPulse trackColorPulse = TrackColorPulse::None;
         double trackPulseLength = 1;
@@ -193,7 +193,7 @@ namespace AdoCpp
         double beatsAhead = 0;
         TrackAnimation trackDisappearAnimation;
         double beatsBehind = 0;
-        Color backgroundColor = "000000";
+        Color backgroundColor = Color("000000");
         bool stickToFloors = false;
         double unscaledSize = 100;
         std::string relativeTo = "Player";

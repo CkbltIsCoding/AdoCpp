@@ -6,13 +6,6 @@
 #include <SelbaWard/Spline.hpp>
 #include <map>
 
-static sf::Color string2color(std::string str)
-{
-    if (str[0] == '#') str.erase(0, 1);
-    if (str.size() == 6) str += "ff";
-    return sf::Color(std::stoul(str, nullptr, 16));
-}
-
 class TileShape : public sw::Polygon
 {
 public:
@@ -189,7 +182,7 @@ public:
         m_needToUpdate = true;
         m_twirl = false;
         m_active = false;
-        m_trackColor = "000000";
+        m_trackColor = sf::Color::Black;
         m_trackStyle = AdoCpp::TrackStyle::Standard;
         m_opacity = 100;
         m_shape = TileShape(lastAngleDeg, angleDeg, nextAngleDeg);
@@ -253,11 +246,11 @@ public:
         m_needToUpdate = true;
     }
 
-    std::string getTrackColor() const
+    sf::Color getTrackColor() const
     {
         return m_trackColor;
     }
-    void setTrackColor(std::string trackColor)
+    void setTrackColor(sf::Color trackColor)
     {
         if (m_trackColor == trackColor) return;
         m_trackColor = trackColor;
@@ -295,21 +288,21 @@ public:
         switch (m_trackStyle)
         {
         case AdoCpp::TrackStyle::Standard:
-            m_color = string2color(m_trackColor),
+            m_color = m_trackColor,
                 m_borderColor = m_color * sf::Color(127, 127, 127, 255);
             break;
         case AdoCpp::TrackStyle::Neon:
             m_color = sf::Color::Black,
-                m_borderColor = string2color(m_trackColor);
+                m_borderColor = m_trackColor;
             break;
         case AdoCpp::TrackStyle::NeonLight:
-            m_borderColor = string2color(m_trackColor),
+            m_borderColor = m_trackColor,
                 m_color = m_borderColor * sf::Color(127, 127, 127, 255);
             break;
         case AdoCpp::TrackStyle::Basic:
         case AdoCpp::TrackStyle::Minimal:
         case AdoCpp::TrackStyle::Gems:
-            m_color = string2color(m_trackColor),
+            m_color = m_trackColor,
                 m_borderColor = sf::Color::Transparent;
             break;
         }
@@ -358,7 +351,7 @@ private:
     bool m_twirl;
     bool m_active;
     int m_speed;
-    std::string m_trackColor;
+    sf::Color m_trackColor;
     AdoCpp::TrackStyle m_trackStyle;
     float m_opacity;
     double m_angleDeg;
@@ -419,7 +412,7 @@ public:
             auto& tile = m_level.tiles[i];
             sprite.setPosition({ (float)tile.pos.first, (float)tile.pos.second });
             sprite.setActive(m_activeTileIndex == i);
-            sprite.setTrackColor(tile.trackColor);
+            sprite.setTrackColor(sf::Color(tile.trackColor.toInteger()));
             sprite.setTrackStyle(tile.trackStyle);
             sprite.setScale({ (float)tile.scale.first / 100, (float)tile.scale.second / 100 });
             sprite.setRotation(sf::degrees((float)tile.rotation));

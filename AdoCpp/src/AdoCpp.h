@@ -7,6 +7,7 @@
 #include "AdoCpp/Level.h"
 #include "AdoCpp/Easing.h"
 #include "AdoCpp/Event.h"
+#include "AdoCpp/Color.h"
 
 /**
  * @brief AdoCpp namespace.

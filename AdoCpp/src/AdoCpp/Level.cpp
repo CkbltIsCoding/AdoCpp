@@ -88,8 +88,8 @@ namespace AdoCpp
         settings.songFilename = s["songFilename"].GetString();
         settings.countdownTicks = s["countdownTicks"].GetDouble();
         settings.trackColorType = string2trackColorType[s["trackColorType"].GetString()];
-        settings.trackColor = s["trackColor"].GetString();
-        settings.secondaryTrackColor = s["secondaryTrackColor"].GetString();
+        settings.trackColor = Color(s["trackColor"].GetString());
+        settings.secondaryTrackColor = Color(s["secondaryTrackColor"].GetString());
         settings.trackColorAnimDuration = s["trackColorAnimDuration"].GetDouble();
         settings.trackColorPulse = string2trackColorPulse[s["trackColorPulse"].GetString()];
         settings.trackPulseLength = s["trackPulseLength"].GetDouble();
@@ -103,7 +103,7 @@ namespace AdoCpp
         settings.trackDisappearAnimation = !strcmp(s["trackDisappearAnimation"].GetString(), "Fade")
             ? TrackAnimation::Fade : TrackAnimation::None;
         settings.beatsBehind = s["beatsBehind"].GetDouble();
-        settings.backgroundColor = s["backgroundColor"].GetString();
+        settings.backgroundColor = Color(s["backgroundColor"].GetString());
         settings.stickToFloors = toBool(s["stickToFloors"]);
         if (s.HasMember("unscaledSize"))
             settings.unscaledSize = s["unscaledSize"].GetDouble();

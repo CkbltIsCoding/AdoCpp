@@ -6,6 +6,7 @@
 
 #include "Utils.h"
 #include "Easing.h"
+#include "Color.h"
 
 namespace AdoCpp
 {

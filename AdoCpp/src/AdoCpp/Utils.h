@@ -9,7 +9,6 @@ namespace AdoCpp
 	typedef std::pair<double, double> Point;
 	typedef std::pair<std::optional<double>, std::optional<double>> OptionalPoint;
 	typedef std::pair<long long, std::string> RelativeIndex;
-	typedef std::string Color;
 
 	/**
 	 * @brief Convert json data to bool.

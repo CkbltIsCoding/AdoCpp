@@ -106,8 +106,8 @@ namespace AdoCpp
 			ColorTrack::ColorTrack(const rapidjson::Value& data)
 				: Event(data)
 			{
-				trackColor = data["trackColor"].GetString();
-				secondaryTrackColor = data["secondaryTrackColor"].GetString();
+				trackColor = Color(data["trackColor"].GetString());
+				secondaryTrackColor = Color(data["secondaryTrackColor"].GetString());
 				trackColorAnimDuration = data["trackColorAnimDuration"].GetDouble();
 				trackColorType = string2trackColorType[data["trackColorType"].GetString()];
 				trackStyle = string2trackStyle[data["trackStyle"].GetString()];
@@ -188,8 +188,8 @@ namespace AdoCpp
 				if (data.HasMember("duration"))
 					duration = data["duration"].GetDouble();
 				trackColorType = string2trackColorType[data["trackColorType"].GetString()];
-				trackColor = data["trackColor"].GetString();
-				secondaryTrackColor = data["secondaryTrackColor"].GetString();
+				trackColor = Color(data["trackColor"].GetString());
+				secondaryTrackColor = Color(data["secondaryTrackColor"].GetString());
 				trackColorAnimDuration = data["trackColorAnimDuration"].GetDouble();
 				trackColorPulse = string2trackColorPulse[data["trackColorPulse"].GetString()];
 				trackPulseLength = data["trackPulseLength"].GetDouble();
