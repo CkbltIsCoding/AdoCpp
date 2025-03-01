@@ -61,8 +61,6 @@ namespace AdoCpp
             delete events.back();
             events.pop_back();
         }
-        m_moveCameraPlayerPosVec.clear();
-        m_moveCameraPlayerPosVec2.clear();
         m_moveCameras.clear();
         m_setSpeeds.clear();
         parsed = false;
@@ -382,8 +380,6 @@ namespace AdoCpp
         );
         m_setSpeeds.clear();
         m_moveCameras.clear();
-        m_moveCameraPlayerPosVec.clear();
-        m_moveCameraPlayerPosVec2.clear();
         for (auto& event : m_processedBeatEvents)
         {
             if (auto setSpeed = dynamic_cast<Event::GamePlay::SetSpeed*>(event))
@@ -397,29 +393,6 @@ namespace AdoCpp
         }
 
         parsed = true;
-
-        std::string relativeTo = "Player";
-
-        for (auto& moveCamera : m_moveCameras)
-        {
-            if (moveCamera.relativeTo)
-            {
-                if (relativeTo == "Tile" && *moveCamera.relativeTo == "Player")
-                    m_moveCameraPlayerPosVec.push_back(f(moveCamera.beat + moveCamera.duration));
-                else
-                    m_moveCameraPlayerPosVec.push_back(Point(114514, 1919810));
-                if (relativeTo == "Player" && *moveCamera.relativeTo == "Tile")
-                    m_moveCameraPlayerPosVec2.push_back(f(moveCamera.beat));
-                else
-                    m_moveCameraPlayerPosVec2.push_back(Point(114514, 1919810));
-                relativeTo = *moveCamera.relativeTo;
-            }
-            else
-            {
-                m_moveCameraPlayerPosVec.push_back(Point(114514, 1919810));
-                m_moveCameraPlayerPosVec2.push_back(Point(114514, 1919810));
-            }
-        }
     }
     void Level::update()
     {
@@ -683,32 +656,31 @@ namespace AdoCpp
         return angle;
     }
 
-    Point Level::f(double beat) const
+    Point Level::getCameraPosRelativeToPlayer(const double& beat) const
     {
-        double a, mspb; Point p;
+        double a; Point pos;
         for (size_t j = 1; j < tiles.size(); j++)
         {
             if (beat < tiles[j].beat) break;
             if (j != tiles.size() - 1 && tiles[j + 1].angle == 999) continue;
-            mspb = bpm2mspb(getBpmByBeat(tiles[j].beat));
             if (j == tiles.size() - 1)
-                a = beat2timer(beat) - beat2timer(tiles[j].beat);
+                a = beat - tiles[j].beat;
             else
-                a = beat2timer(std::min(beat, tiles[j + 1].beat)) - beat2timer(tiles[j].beat);
-            a = std::min(a, mspb * 2) / (mspb * 2);
-            p.first += (tiles[j].oPos.first - p.first) * a,
-                p.second += (tiles[j].oPos.second - p.second) * a;
+                a = std::min(beat, tiles[j + 1].beat) - tiles[j].beat;
+            a = std::min(a / 2, 1.0);
+            pos.first += (tiles[j].oPos.first - pos.first) * a,
+                pos.second += (tiles[j].oPos.second - pos.second) * a;
         }
-        return p;
+        return pos;
     }
     
     Level::CameraInfo Level::getCameraInfo(const double& beat) const  // NEED TO OPTIMIZE
     {
         if (!parsed) throw LevelNotParsedException();
 
-        Point position = settings.position, posOff; double rotation = settings.rotation, zoom = settings.zoom;
-        double x, y;
-        bool turning = false;
+        Point position, posOff = settings.position;
+        double rotation = settings.rotation, zoom = settings.zoom,
+            x, y, relativeToPlayer = settings.relativeTo == "Player";
         std::string relativeTo = settings.relativeTo;
 
         for (size_t i = 0; i < m_moveCameras.size(); i++)
@@ -720,38 +692,53 @@ namespace AdoCpp
             else
                 x = (beat - moveCamera.beat) / moveCamera.duration, y = ease(moveCamera.ease, x);
 
+            if (moveCamera.relativeTo)
+            {
+                if (*moveCamera.relativeTo == "Tile" || *moveCamera.relativeTo == "Global")
+                {
+                    auto& tile = tiles[*moveCamera.relativeTo == "Global" ? 0 : moveCamera.floor];
+                    relativeToPlayer += (0 - relativeToPlayer) * y;
+                    if (relativeTo == "Player")
+                        position = tile.oPos;
+                    else
+                        position.first += (tile.oPos.first - position.first) * y,
+                        position.second += (tile.oPos.second - position.second) * y;
+                }
+                else if (*moveCamera.relativeTo == "Player")
+                {
+                    relativeToPlayer += (1 - relativeToPlayer) * y;
+                }
+                else if (*moveCamera.relativeTo == "LastPosition") // NEED TO OPTIMIZE
+                {
+                    Point pos = position;
+                    if (relativeTo == "Player")
+                    {
+                        Point playerPos = getCameraPosRelativeToPlayer(beat);
+                        pos.first = pos.first * (1 - relativeToPlayer) + playerPos.first * relativeToPlayer;
+                        pos.second = pos.second * (1 - relativeToPlayer) + playerPos.second * relativeToPlayer;
+                    }
+                    position.first = position.first * (1 - y) + pos.first * y + posOff.first;
+                    position.second = position.second * (1 - y) + pos.second * y + posOff.first;
+                    relativeToPlayer = 0;
+                }
+                relativeTo = *moveCamera.relativeTo;
+            }
+
             if (moveCamera.position.first)
                 posOff.first += (*moveCamera.position.first - posOff.first) * y;
             if (moveCamera.position.second)
                 posOff.second += (*moveCamera.position.second - posOff.second) * y;
+            
             if (moveCamera.rotation)
                 rotation += (*moveCamera.rotation - rotation) * y;
             if (moveCamera.zoom)
                 zoom += (*moveCamera.zoom - zoom) * y;
-
-            if (moveCamera.relativeTo)
-            {
-                if (*moveCamera.relativeTo == "Tile")
-                {
-                    auto& tile = tiles[moveCamera.floor];
-                    if (relativeTo == "Player")
-                        position = m_moveCameraPlayerPosVec2[i];
-                    position.first += (tile.oPos.first - position.first) * y;
-                    position.second += (tile.oPos.second - position.second) * y;
-                }
-                else if (*moveCamera.relativeTo == "Player" && relativeTo == "Tile")
-                {
-                    position.first += (m_moveCameraPlayerPosVec[i].first - position.first) * y;
-                    position.second += (m_moveCameraPlayerPosVec[i].second - position.second) * y;
-                    turning = (y != 1);
-                }
-                relativeTo = *moveCamera.relativeTo;
-            }
         }
-        if (!turning && relativeTo == "Player")
+        if (relativeToPlayer != 0)
         {
-            Point p = f(beat);
-            position.first = p.first, position.second = p.second;
+            Point playerPos = getCameraPosRelativeToPlayer(beat);
+            position.first = position.first * (1 - relativeToPlayer) + playerPos.first * relativeToPlayer;
+            position.second = position.second * (1 - relativeToPlayer) + playerPos.second * relativeToPlayer;
         }
         position.first += posOff.first, position.second += posOff.second;
         return { position, rotation, zoom };

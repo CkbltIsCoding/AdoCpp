@@ -120,6 +120,7 @@ void StatePlaying::update()
 	{
 		// Start the music/timer
 		waiting = false;
+		keyInputCnt--;
 		if (musicPlayable)
 			m_game->music.play();
 		else

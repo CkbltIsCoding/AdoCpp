@@ -373,6 +373,8 @@ namespace AdoCpp
          */
         bool isParsed() const;
 
+        Point getCameraPosRelativeToPlayer(const double& beat) const;
+
         /**
          * @brief The level's settings.
          */
@@ -394,9 +396,6 @@ namespace AdoCpp
         std::vector<Event::BeatEvent*> m_processedBeatEvents;
         std::vector<Event::GamePlay::SetSpeed> m_setSpeeds;
         std::vector<Event::Visual::MoveCamera> m_moveCameras;
-        std::vector<Point> m_moveCameraPlayerPosVec;
-        std::vector<Point> m_moveCameraPlayerPosVec2;
-        Point f(double beat) const;
     };
 }
 
