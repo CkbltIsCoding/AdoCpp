@@ -1,4 +1,5 @@
 #include "DynamicValue.h"
 
-namespace AdoCpp {
-} // AdoCpp
+namespace AdoCpp
+{
+} // namespace AdoCpp

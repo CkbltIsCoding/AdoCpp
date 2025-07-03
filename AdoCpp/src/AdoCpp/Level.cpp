@@ -24,7 +24,7 @@ namespace AdoCpp
         'U', 'q', 'G', 'Q', 'H', 'W',
         'L', 'x', 'N', 'Z', 'F', 'V',
         'D', 'Y', 'B', 'C', 'M', 'A',
-        '5', '6', '7', '8', '9'
+        '5', '6', '7', '8', '!'
     };
     // clang-format on
     constexpr double path2angle(const char path)
@@ -347,7 +347,7 @@ namespace AdoCpp
             }
         }
 
-        // AnimateTrack
+        // AnimateTrack // FIXME
         for (size_t i = 0; i < tiles.size(); i++)
         {
             const double spb = bpm2crotchet(getBpmByBeat(tiles[tiles[i].trackAnimationFloor].beat)),
@@ -362,16 +362,15 @@ namespace AdoCpp
                 mtHide->floor = mtAppear->floor = i;
                 mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
                     RelativeIndex(0, ThisTile);
-                mtHide->beat = -settings.countdownTicks - 1;
-                mtHide->seconds = mtHide->beat * bpm2crotchet(settings.bpm);
+                mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
                 mtHide->opacity = 0;
                 mtAppear->seconds = tiles[i].seconds - secondsAhead;
                 mtAppear->beat = seconds2beat(mtAppear->seconds);
                 mtAppear->duration = 0.5;
                 mtAppear->opacity = 100;
                 mtHide->generated = mtAppear->generated = true;
-                m_processedDynamicEvents.push_back(mtHide);
-                m_processedDynamicEvents.push_back(mtAppear);
+                m_processedDynamicEvents.push_front(mtHide);
+                m_processedDynamicEvents.push_front(mtAppear);
                 break;
             }
             switch (tiles[i].trackDisappearAnimation)
@@ -390,7 +389,7 @@ namespace AdoCpp
                 mtDisappear->duration = 0.5;
                 mtDisappear->opacity = 0;
                 mtDisappear->generated = true;
-                m_processedDynamicEvents.push_back(mtDisappear);
+                m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
                 break;
             }
         }
@@ -416,7 +415,7 @@ namespace AdoCpp
                                 eventClone->seconds += gap * static_cast<double>(i);
                                 eventClone->beat = seconds2beat(eventClone->seconds);
                                 eventClone->generated = true;
-                                m_processedDynamicEvents.push_back(eventClone);
+                                m_processedDynamicEvents.push_front(eventClone);
                             }
                         }
                         else if (repeatEvents->repeatType == Event::Modifiers::RepeatEvents::RepeatType::Floor)
@@ -430,7 +429,7 @@ namespace AdoCpp
                                 if (repeatEvents->executeOnCurrentFloor)
                                     eventClone->floor += i;
                                 eventClone->generated = true;
-                                m_processedDynamicEvents.push_back(eventClone);
+                                m_processedDynamicEvents.push_front(eventClone);
                             }
                         }
                     }
@@ -438,11 +437,10 @@ namespace AdoCpp
             }
         }
 
-        std::ranges::stable_sort(m_processedDynamicEvents,
-                                 [](const Event::DynamicEvent* a, const Event::DynamicEvent* b)
-                                 { return a->beat < b->beat; });
+        m_processedDynamicEvents.sort([](const Event::DynamicEvent* a, const Event::DynamicEvent* b)
+                                      { return a->beat < b->beat; }); // stable sort
 
-        // MoveTrack
+        // MoveTrack // FIXME
         for (const auto& event : m_processedDynamicEvents)
         {
             const auto mt = dynamic_cast<Event::Track::MoveTrack*>(event);
@@ -526,7 +524,7 @@ namespace AdoCpp
                 }
             }
         }
-        for (auto& tile : tiles)
+        for (auto& tile : tiles) // FIXME
         {
             for (const auto& data : tile.moveTrackDatas)
             {
@@ -891,7 +889,7 @@ namespace AdoCpp
         }
     }
 
-    void Level::updateCamera(const double& seconds, const size_t& floor)
+    void Level::updateCamera(const double& seconds, const size_t& floor) // FIXME
     {
         if (!parsed)
             throw LevelNotParsedException();

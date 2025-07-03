@@ -210,7 +210,7 @@ namespace AdoCpp
     ////////////////////////////////////////////////////////////
     constexpr double operator/(Angle left, Angle right)
     {
-        assert(right.asDegrees() != 0.0 && "Angle::operator/ cannot divide by 0");
+        assert(right.deg() != 0.0 && "Angle::operator/ cannot divide by 0");
         return left.deg() / right.deg();
     }
 
@@ -218,7 +218,7 @@ namespace AdoCpp
     ////////////////////////////////////////////////////////////
     constexpr Angle operator%(Angle left, Angle right)
     {
-        assert(right.asDegrees() != 0.0 && "Angle::operator% cannot modulus by 0");
+        assert(right.deg() != 0.0 && "Angle::operator% cannot modulus by 0");
         return degrees(priv::positiveRemainder(left.deg(), right.deg()));
     }
 
@@ -226,7 +226,7 @@ namespace AdoCpp
     ////////////////////////////////////////////////////////////
     constexpr Angle& operator%=(Angle& left, Angle right)
     {
-        assert(right.asDegrees() != 0.0 && "Angle::operator%= cannot modulus by 0");
+        assert(right.deg() != 0.0 && "Angle::operator%= cannot modulus by 0");
         return left = left % right;
     }
 

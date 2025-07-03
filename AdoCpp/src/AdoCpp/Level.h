@@ -510,7 +510,7 @@ namespace AdoCpp
             Easing ease;
         };
 
-        std::vector<Event::DynamicEvent*> m_processedDynamicEvents;
+        std::list<Event::DynamicEvent*> m_processedDynamicEvents;
         std::vector<Event::GamePlay::SetSpeed*> m_setSpeeds;
         std::vector<MoveCameraData> m_moveCameraDatas;
 

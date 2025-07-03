@@ -34,7 +34,7 @@ public:
 	float fps;
 	unsigned int FPS;
 	float planetRadiusPx = 50;
-	float inputOffset = -90;
+	float inputOffset = -110;
 
 	std::array<float, 60> arrFps;
 	float avgFps, minFps, maxFps;
@@ -54,14 +54,14 @@ public:
 	TileSystem tileSystem;
 
 	using S = sf::Keyboard::Scan;
-	std::vector<sf::Keyboard::Scan> keyLimiter = {
-		S::LControl, S::CapsLock, S::Tab, S::Num1, S::Num2, S::E, S::Space, S::C,
-		S::Period, S::A, S::P, S::Equal, S::Backspace, S::Backslash, S::Enter, S::Down
-	};
 	// std::vector<sf::Keyboard::Scan> keyLimiter = {
-	// 	S::LControl, S::CapsLock, S::Tab, S::Q, S::W, S::E, S::C, S::Space,
-	// 	S::A, S::Period, S::P, S::LBracket, S::RBracket, S::Backslash, S::Enter, S::Down
+	// 	S::LControl, S::CapsLock, S::Tab, S::Num1, S::Num2, S::E, S::C, S::Space,
+	// 	S::A, S::Period, S::P, S::Equal, S::Backspace, S::Backslash, S::Enter, S::Down
 	// };
+	std::vector<sf::Keyboard::Scan> keyLimiter = {
+		S::LControl, S::CapsLock, S::Tab, S::Q, S::W, S::E, S::C, S::Space,
+		S::A, S::Period, S::P, S::LBracket, S::RBracket, S::Backslash, S::Enter, S::Down
+	};
 
 	std::vector<State*> states;
 	std::optional<size_t> activeTileIndex;

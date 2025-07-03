@@ -29,8 +29,4 @@ protected:
 private:
 	static StateCharting m_stateCharting;
 	bool addedHitsound;
-
-	void ImGuiInputFilename(const char* text, const char* id, const char* hint, std::string* pathPtr);
-	void ImGuiInputDouble(const char* text, const char* id, double* doublePtr);
-	void ImGuiInputFloat(const char* text, const char* id, double* floatPtr);
 };

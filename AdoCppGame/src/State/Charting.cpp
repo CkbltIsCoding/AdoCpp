@@ -8,7 +8,52 @@
 #include <future>
 #include <imgui-SFML.h>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <iostream>
+
+static std::map<std::string, char*> buffers;
+void ImGuiInputFilename(const char* text, const char* id, const char* hint, std::string* pathPtr)
+{
+    ImGui::Text(text);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint(id, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
+}
+
+void ImGuiInputStdString(const char*text, const char* id, std::string* strPtr)
+{
+    ImGui::Text(text);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputText(id, strPtr);
+}
+
+void ImGuiInputDouble(const char* text, const char* id, double* doublePtr)
+{
+    ImGui::Text(text);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputDouble(id, doublePtr);
+}
+
+
+void ImGuiInputFloat(const char* text, const char* id, double* floatPtr)
+{
+    if (buffers.find(id) == buffers.end())
+        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+
+    ImGui::Text(text);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputText(id, buffers[id], 1145, ImGuiInputTextFlags_CharsDecimal);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+    {
+        exprtk::expression<double> expression;
+        exprtk::parser<double> parser;
+        parser.compile((std::string)buffers[id], expression);
+        *floatPtr = expression.value();
+        sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+    }
+    if (!ImGui::IsItemActive())
+        sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+}
+
 
 StateCharting StateCharting::m_stateCharting;
 
@@ -133,10 +178,6 @@ void StateCharting::render()
                 IGFD::FileDialogConfig config;
                 config.path = ".";
                 config.flags = ImGuiFileDialogFlags_Modal;
-                // ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(0.8f, 0.8f, 0.8f, 1),
-                //                                           " " ICON_FA_FOLDER " ");
-                // ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".adofai", ImVec4(1, 1, 1, 1),
-                //                                           " " ICON_FA_FILE " ");
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose an ADOFAI file", ".adofai", config);
             }
             if (addedHitsound)
@@ -247,31 +288,36 @@ void StateCharting::render()
             ImGui::SetCursorPosX(leftSettingsTabContentWidth / 2 -
                                  ImGui::CalcTextSize(titles[selectedTab].c_str()).x / 2);
             ImGui::Text(titles[selectedTab].c_str());
+#define AD_PREFIX "LeftSettings/TabContent/SongSettings/"
             switch (selectedTab)
             {
             case 0: // Song
                 {
-                    ImGuiInputFilename("Song Filename:", "LeftSettings/TabContent/SongSettings/SongFilename",
+                    ImGuiInputFilename("Song Filename:", AD_PREFIX "SongFilename",
                                        "No files selected", &m_game->level.settings.songFilename);
-                    ImGuiInputDouble("BPM:", "LeftSettings/TabContent/SongSettings/BPM", &m_game->level.settings.bpm);
-                    ImGuiInputDouble("Volume:", "LeftSettings/TabContent/SongSettings/Volume",
+                    ImGuiInputDouble("BPM:", AD_PREFIX "BPM", &m_game->level.settings.bpm);
+                    ImGuiInputDouble("Volume:", AD_PREFIX "Volume",
                                      &m_game->level.settings.volume);
-                    ImGuiInputDouble("Offset:", "LeftSettings/TabContent/SongSettings/Offset",
+                    ImGuiInputDouble("Offset:", AD_PREFIX "Offset",
                                      &m_game->level.settings.offset);
-                    ImGuiInputDouble("Pitch:", "LeftSettings/TabContent/SongSettings/Pitch",
+                    ImGuiInputDouble("Pitch:", AD_PREFIX "Pitch",
                                      &m_game->level.settings.pitch);
                     ImGui::Text("Hitsound:"); // ImGui::SetNextItemWidth(-1);
-                    ImGuiInputDouble("Hitsound Volume:", "LeftSettings/TabContent/SongSettings/HitSoundVolume",
+                    ImGuiInputDouble("Hitsound Volume:", AD_PREFIX "HitSoundVolume",
                                      &m_game->level.settings.hitsoundVolume);
-                    ImGuiInputDouble("Countdown Ticks:", "LeftSettings/TabContent/SongSettings/CountdownTicks",
+                    ImGuiInputDouble("Countdown Ticks:", AD_PREFIX "CountdownTicks",
                                      &m_game->level.settings.countdownTicks);
                     break;
                 }
             case 1: // Level
                 {
+#define AD_PREFIX "LeftSettings/TabContent/LevelSettings/"
+                    ImGuiInputStdString("Artist:", AD_PREFIX "Artist", &m_game->level.settings.artist);
+                    ImGuiInputStdString("Song:", AD_PREFIX "Song", &m_game->level.settings.song);
+                    ImGuiInputStdString("Author:", AD_PREFIX "Author", &m_game->level.settings.author);
                     break;
                 }
-            case 2:
+            case 2: // Track
                 {
                     break;
                 }
@@ -279,6 +325,7 @@ void StateCharting::render()
                 break;
             }
         }
+#undef AD_PREFIX
         ImGui::EndChild();
         ImGui::SameLine();
         if (ImGui::BeginChild("LeftSettings/TabBtns"))
@@ -393,50 +440,4 @@ void StateCharting::newLevel()
     m_game->view.setCenter({float(m_game->level.tiles[0].pos.c.x), float(m_game->level.tiles[0].pos.c.y)});
     m_game->view.setRotation(sf::degrees(0));
     m_game->zoom = {1.f, 1.f};
-}
-
-static std::map<std::string, char*> buffers;
-void StateCharting::ImGuiInputFilename(const char* text, const char* id, const char* hint, std::string* pathPtr)
-{
-    if (buffers.find(id) == buffers.end())
-        buffers[id] = new char[1145]{};
-
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint(id, hint, buffers[id], 1145, ImGuiInputTextFlags_ElideLeft);
-    if (ImGui::IsItemDeactivatedAfterEdit())
-        *pathPtr = buffers[id];
-    else if (*pathPtr != buffers[id])
-        strcpy_s(buffers[id], 1145, pathPtr->c_str());
-}
-
-void StateCharting::ImGuiInputDouble(const char* text, const char* id, double* doublePtr)
-{
-    if (buffers.find(id) == buffers.end())
-        buffers[id] = new char[1145]{};
-
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputDouble(id, doublePtr);
-}
-
-
-void StateCharting::ImGuiInputFloat(const char* text, const char* id, double* floatPtr)
-{
-    if (buffers.find(id) == buffers.end())
-        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *floatPtr);
-
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputText(id, buffers[id], 1145, ImGuiInputTextFlags_CharsDecimal);
-    if (ImGui::IsItemDeactivatedAfterEdit())
-    {
-        exprtk::expression<double> expression;
-        exprtk::parser<double> parser;
-        parser.compile((std::string)buffers[id], expression);
-        *floatPtr = expression.value();
-        sprintf_s(buffers[id], 1145, "%g", *floatPtr);
-    }
-    if (!ImGui::IsItemActive())
-        sprintf_s(buffers[id], 1145, "%g", *floatPtr);
 }
