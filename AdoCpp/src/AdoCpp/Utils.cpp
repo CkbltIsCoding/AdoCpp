@@ -6,6 +6,14 @@
 
 namespace AdoCpp
 {
+    rapidjson::Value RelativeIndex::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    {
+        rapidjson::Value val;
+        val.SetArray();
+        val.PushBack(index, alloc);
+        val.PushBack(rapidjson::StringRef(relativeToTile2cstr(relativeTo)), alloc);
+        return val;
+    }
     bool toBool(const rapidjson::Value& data)
     {
         if (data.IsBool())
@@ -36,5 +44,18 @@ namespace AdoCpp
         while (getline(iss, token, ' '))
             vec.push_back(token);
         return vec;
+    }
+    void tags2cstr(const std::vector<std::string>& tags, char* dest, const rsize_t sizeInBytes)
+    {
+        bool first = true;
+        std::string str;
+        for (const auto& tag : tags)
+        {
+            if (!first)
+                str += ' ';
+            str += tag;
+            first = false;
+        }
+        strcpy_s(dest, sizeInBytes, str.c_str());
     }
 } // namespace AdoCpp

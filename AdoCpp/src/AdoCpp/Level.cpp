@@ -5,34 +5,143 @@
 #include <iostream>
 #include <optional>
 #include <ranges>
-#include <tuple>
+#include <rapidjson/prettywriter.h>
 
 #include "Utils.h"
+#include "rapidjson/document.h"
 
 namespace AdoCpp
 {
-    // clang-format off
-    constexpr double angles[] = {
-          0,  15,  30,  45,  60,  75,
-         90, 105, 120, 135, 150, 165,
-        180, 195, 210, 225, 240, 255,
-        270, 285, 300, 315, 330, 345,
-        555, 666, 777, 888, 999
-    };
-    constexpr char paths[] = {
-        'R', 'p', 'J', 'E', 'T', 'o',
-        'U', 'q', 'G', 'Q', 'H', 'W',
-        'L', 'x', 'N', 'Z', 'F', 'V',
-        'D', 'Y', 'B', 'C', 'M', 'A',
-        '5', '6', '7', '8', '!'
-    };
-    // clang-format on
-    constexpr double path2angle(const char path)
+    Settings::Settings(const rapidjson::Value& jsonSettings) { *this = fromJson(jsonSettings); }
+    Settings Settings::fromJson(const rapidjson::Value& jsonSettings)
     {
-        for (size_t i = 0; i < std::size(angles); ++i)
-            if (path == paths[i])
-                return angles[i];
-        throw std::invalid_argument("Invalid path");
+        Settings settings;
+
+        settings.artist = jsonSettings["artist"].GetString();
+        settings.song = jsonSettings["song"].GetString();
+        settings.author = jsonSettings["author"].GetString();
+        settings.separateCountdownTime = toBool(jsonSettings["separateCountdownTime"]);
+        settings.songFilename = jsonSettings["songFilename"].GetString();
+        settings.bpm = jsonSettings["bpm"].GetDouble();
+        settings.offset = jsonSettings["offset"].GetDouble();
+        settings.pitch = jsonSettings["pitch"].GetDouble();
+
+        settings.hitsound = cstr2hitsound(jsonSettings["hitsound"].GetString());
+        settings.hitsoundVolume =
+            jsonSettings[jsonSettings.HasMember("hitsoundVolume") ? "hitsoundVolume" : "hitsoundSingle"].GetDouble();
+
+        settings.countdownTicks =
+            jsonSettings.HasMember("countdownTicks") ? jsonSettings["countdownTicks"].GetDouble() : 4;
+
+        settings.trackColorType = cstr2trackColorType(jsonSettings["trackColorType"].GetString());
+        settings.trackColor = Color(jsonSettings["trackColor"].GetString());
+        settings.secondaryTrackColor = Color(jsonSettings["secondaryTrackColor"].GetString());
+        settings.trackColorAnimDuration = jsonSettings["trackColorAnimDuration"].GetDouble();
+        settings.trackColorPulse = cstr2trackColorPulse(jsonSettings["trackColorPulse"].GetString());
+        settings.trackPulseLength = jsonSettings["trackPulseLength"].GetUint();
+        settings.trackStyle = cstr2trackStyle(jsonSettings["trackStyle"].GetString());
+
+        settings.trackAnimation = cstr2trackAnimation(jsonSettings["trackAnimation"].GetString());
+        settings.beatsAhead = jsonSettings["beatsAhead"].GetDouble();
+        settings.trackDisappearAnimation =
+            cstr2trackDisappearAnimation(jsonSettings["trackDisappearAnimation"].GetString());
+        settings.beatsBehind = jsonSettings["beatsBehind"].GetDouble();
+
+        settings.backgroundColor = Color(jsonSettings["backgroundColor"].GetString());
+
+        if (jsonSettings.HasMember("unscaledSize"))
+            settings.unscaledSize = jsonSettings["unscaledSize"].GetDouble();
+
+        settings.relativeTo = cstr2relativeToCamera(jsonSettings["relativeTo"].GetString());
+        settings.position = Vector2lf(jsonSettings["position"][0].GetDouble(), jsonSettings["position"][1].GetDouble());
+        settings.rotation = jsonSettings["rotation"].GetDouble();
+        settings.zoom = jsonSettings["zoom"].GetDouble();
+
+        settings.stickToFloors = toBool(jsonSettings["stickToFloors"]);
+
+        return settings;
+    }
+    rapidjson::Value Settings::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    {
+        rapidjson::Value val(rapidjson::kObjectType);
+        val.AddMember("version", 15, alloc);
+        rapidjson::Value vArtist;
+        vArtist.SetString(artist.c_str(), artist.length(), alloc);
+        val.AddMember("artist", vArtist, alloc);
+        rapidjson::Value vSong;
+        vSong.SetString(artist.c_str(), artist.length(), alloc);
+        val.AddMember("song", vSong, alloc);
+        rapidjson::Value vAuthor;
+        vAuthor.SetString(author.c_str(), author.length(), alloc);
+        val.AddMember("author", vAuthor, alloc);
+        val.AddMember("separateCountdownTime", separateCountdownTime, alloc);
+        val.AddMember("countdownTicks", countdownTicks, alloc);
+        rapidjson::Value vSongFilename;
+        vSongFilename.SetString(songFilename.c_str(), songFilename.length(), alloc);
+        val.AddMember("songFilename", vSongFilename, alloc);
+        val.AddMember("bpm", bpm, alloc);
+        val.AddMember("volume", volume, alloc);
+        val.AddMember("offset", offset, alloc);
+        val.AddMember("pitch", pitch, alloc);
+        val.AddMember("hitsound", rapidjson::StringRef(hitsound2cstr(hitsound)), alloc);
+        val.AddMember("hitsoundVolume", hitsoundVolume, alloc);
+        val.AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
+        rapidjson::Value vTrackColor;
+        std::string sTrackColor = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
+        vTrackColor.SetString(sTrackColor.c_str(), sTrackColor.length(), alloc);
+        val.AddMember("trackColor", vTrackColor, alloc);
+        rapidjson::Value vSSTC;
+        std::string sSSTC = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
+        vSSTC.SetString(sSSTC.c_str(), sSSTC.length(), alloc);
+        val.AddMember("secondaryTrackColor", vSSTC, alloc);
+        val.AddMember("trackColorAnimDuration", trackColorAnimDuration, alloc);
+        val.AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
+        val.AddMember("trackPulseLength", trackPulseLength, alloc);
+        val.AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
+        val.AddMember("trackAnimation", rapidjson::StringRef(trackAnimation2cstr(trackAnimation)), alloc);
+        val.AddMember("beatsAhead", beatsAhead, alloc);
+        val.AddMember("trackDisappearAnimation",
+                      rapidjson::StringRef(trackDisappearAnimation2cstr(trackDisappearAnimation)), alloc);
+        val.AddMember("beatsBehind", beatsBehind, alloc);
+        rapidjson::Value vBGC;
+        std::string sBGC = backgroundColor.toString(false, false, Color::ToStringAlphaMode::Auto);
+        vBGC.SetString(sBGC.c_str(), sBGC.length(), alloc);
+        val.AddMember("backgroundColor", vBGC, alloc);
+        val.AddMember("stickToFloors", stickToFloors, alloc);
+        // val.AddMember("unscaledSize", unscaledSize, alloc);
+        val.AddMember("relativeTo", rapidjson::StringRef(relativeToCamera2cstr(relativeTo)), alloc);
+        rapidjson::Value vPos(rapidjson::kArrayType);
+        vPos.PushBack(position.x, alloc), vPos.PushBack(position.y, alloc);
+        val.AddMember("position", vPos, alloc);
+        val.AddMember("rotation", rotation, alloc);
+        val.AddMember("zoom", zoom, alloc);
+        return val;
+    }
+    rapidjson::Document Settings::intoJson() const
+    {
+        rapidjson::Document doc;
+        doc.CopyFrom(intoJson(doc.GetAllocator()), doc.GetAllocator());
+        return doc;
+    }
+    void Settings::apply(Tile& tile) const
+    {
+        tile.editorPos = tile.pos.o = {0, 0}, tile.stickToFloors = stickToFloors, tile.trackAnimationFloor = 0,
+
+        // clang-format off
+        tile.trackAnimation          = trackAnimation,          tile.beatsAhead  = beatsAhead,
+        tile.trackDisappearAnimation = trackDisappearAnimation, tile.beatsBehind = beatsBehind;
+
+        tile.trackColorType.o         = trackColorType;
+        tile.trackColor.o             = trackColor;
+        tile.secondaryTrackColor.o    = secondaryTrackColor;
+        tile.trackColorAnimDuration.o = trackColorAnimDuration;
+        tile.trackStyle.o             = trackStyle;
+        tile.trackColorPulse.o        = trackColorPulse;
+        tile.trackPulseLength.o       = trackPulseLength;
+
+        tile.midspinHitsound       = tile.hitsound       = hitsound,
+        tile.midspinHitsoundVolume = tile.hitsoundVolume = hitsoundVolume;
+        // clang-format on
     }
 
     Level::Level(const rapidjson::Document& document) { fromJson(document); }
@@ -41,41 +150,29 @@ namespace AdoCpp
 
     Level::Level(const std::filesystem::path& path) { fromFile(path); }
 
-    Level::~Level()
-    {
-        while (!m_processedDynamicEvents.empty())
-        {
-            if (m_processedDynamicEvents.back()->generated)
-                delete m_processedDynamicEvents.back();
-            m_processedDynamicEvents.pop_back();
-        }
-        while (!events.empty())
-        {
-            delete events.back();
-            events.pop_back();
-        }
-    }
+    Level::~Level() { free(); }
 
     static double deg2rad(const double deg) { return deg * 3.141592653589793 / 180; }
 
     void Level::clear()
     {
+        parsed = false;
+        free();
         settings = Settings();
         tiles.clear();
-        while (!m_processedDynamicEvents.empty())
-        {
-            if (m_processedDynamicEvents.back()->generated)
-                delete m_processedDynamicEvents.back();
-            m_processedDynamicEvents.pop_back();
-        }
-        while (!events.empty())
-        {
-            delete events.back();
-            events.pop_back();
-        }
+        events.clear();
+        m_processedDynamicEvents.clear();
         m_moveCameraDatas.clear();
         m_setSpeeds.clear();
-        parsed = false;
+    }
+
+    void Level::free() const
+    {
+        for (const auto& pde : m_processedDynamicEvents)
+            if (pde->generated)
+                delete pde;
+        for (const auto& e : events)
+            delete e;
     }
 
     void Level::defaultLevel()
@@ -88,35 +185,11 @@ namespace AdoCpp
         parse();
         update();
     }
-
     void Level::fromJson(const rapidjson::Document& document)
     {
-        parsed = false;
-        auto s = document["settings"].GetObject();
-        settings.bpm = s["bpm"].GetDouble();
-        settings.offset = s["offset"].GetDouble();
-        settings.songFilename = s["songFilename"].GetString();
-        settings.countdownTicks = s["countdownTicks"].GetDouble();
-        settings.trackColorType = cstr2trackColorType(s["trackColorType"].GetString());
-        settings.trackColor = Color(s["trackColor"].GetString());
-        settings.secondaryTrackColor = Color(s["secondaryTrackColor"].GetString());
-        settings.trackColorAnimDuration = s["trackColorAnimDuration"].GetDouble();
-        settings.trackColorPulse = cstr2trackColorPulse(s["trackColorPulse"].GetString());
-        settings.trackPulseLength = s["trackPulseLength"].GetDouble();
-        settings.trackStyle = cstr2trackStyle(s["trackStyle"].GetString());
-        settings.trackAnimation = cstr2trackAnimation(s["trackAnimation"].GetString());
-        settings.beatsAhead = s["beatsAhead"].GetDouble();
-        settings.trackDisappearAnimation = cstr2trackDisappearAnimation(s["trackDisappearAnimation"].GetString());
-        settings.beatsBehind = s["beatsBehind"].GetDouble();
-        settings.backgroundColor = Color(s["backgroundColor"].GetString());
-        settings.stickToFloors = toBool(s["stickToFloors"]);
-        if (s.HasMember("unscaledSize"))
-            settings.unscaledSize = s["unscaledSize"].GetDouble();
-        settings.relativeTo = cstr2relativeToCamera(s["relativeTo"].GetString());
-        settings.position = Vector2lf(s["position"][0].GetDouble(), s["position"][1].GetDouble());
-        settings.rotation = s["rotation"].GetDouble();
-        settings.zoom = s["zoom"].GetDouble();
-
+        clear();
+        assert(document.IsObject());
+        settings = Settings::fromJson(document["settings"]);
         tiles.emplace_back(0);
         if (document.HasMember("angleData"))
         {
@@ -140,7 +213,6 @@ namespace AdoCpp
 
     void Level::fromFile(std::ifstream& ifs)
     {
-        parsed = false;
         rapidjson::Document document;
         rapidjson::IStreamWrapper isw(ifs);
         rapidjson::AutoUTFInputStream<unsigned, rapidjson::IStreamWrapper> eis(isw);
@@ -150,19 +222,53 @@ namespace AdoCpp
                              ,
                              rapidjson::AutoUTF<unsigned>>(eis);
         if (document.HasParseError())
-        {
             throw LevelJsonException(document.GetParseError());
-        }
         fromJson(document);
     }
+
     void Level::fromFile(const std::filesystem::path& path)
     {
-        parsed = false;
         std::ifstream ifs(path);
         if (!ifs.is_open())
             throw LevelCouldNotOpenFileException();
         fromFile(ifs);
         ifs.close();
+    }
+    rapidjson::Value Level::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    {
+        rapidjson::Value val(rapidjson::kObjectType);
+        {
+            rapidjson::Value angleData(rapidjson::kArrayType);
+            for (const auto& tile : tiles)
+            {
+                if (static_cast<int>(tile.angle.deg()) == tile.angle.deg())
+                    angleData.PushBack(static_cast<int>(tile.angle.deg()), alloc);
+                else
+                    angleData.PushBack(tile.angle.deg(), alloc);
+            }
+            val.AddMember("angleData", angleData, alloc);
+        }
+        {
+            val.AddMember("settings", settings.intoJson(alloc), alloc);
+        }
+        {
+            rapidjson::Value actions(rapidjson::kArrayType);
+            for (const auto& event : events)
+                actions.PushBack(event->intoJson(alloc), alloc);
+
+            val.AddMember("actions", actions, alloc);
+        }
+        {
+            val.AddMember("decorations", rapidjson::Value(rapidjson::kArrayType), alloc);
+        }
+
+        return val;
+    }
+    rapidjson::Document Level::intoJson() const
+    {
+        rapidjson::Document doc;
+        doc.CopyFrom(intoJson(doc.GetAllocator()), doc.GetAllocator());
+        return doc;
     }
 
     void Level::parse()
@@ -175,29 +281,36 @@ namespace AdoCpp
             return;
         }
         parsed = true;
-        std::vector<bool> twirls(tiles.size());
-        std::vector<double> pauses(tiles.size());
-        std::vector<std::optional<Event::Track::PositionTrack>> positionTracks(tiles.size());
-        std::vector<std::optional<Event::Track::ColorTrack>> colorTracks(tiles.size());
-        std::vector<std::optional<Event::Track::AnimateTrack>> animateTracks(tiles.size());
-        std::vector<std::optional<Event::Dlc::Hold>> holds(tiles.size());
+        // clang-format off
+        std::vector<bool>                          twirls(tiles.size());
+        std::vector<double>                        pauses(tiles.size());
+        std::vector<Event::GamePlay::SetHitsound*> setHitsounds(tiles.size());
+        std::vector<Event::Track::PositionTrack*>  positionTracks(tiles.size());
+        std::vector<Event::Track::ColorTrack*>     colorTracks(tiles.size());
+        std::vector<Event::Track::AnimateTrack*>   animateTracks(tiles.size());
+        std::vector<Event::Dlc::Hold*>             holds(tiles.size());
         for (const auto& event : events)
         {
+            if (!event->active)
+                continue;
+
             if (typeid(*event) == typeid(Event::GamePlay::Twirl))
                 twirls[event->floor] = true;
-            else if (const auto pause = dynamic_cast<Event::GamePlay::Pause*>(event))
-                pauses[pause->floor] = pause->duration;
+            else if (const auto pause                = dynamic_cast<Event::GamePlay::Pause*>(event))
+                pauses[pause->floor]                 = pause->duration;
+            else if (const auto setHitsound          = dynamic_cast<Event::GamePlay::SetHitsound*>(event))
+                setHitsounds[setHitsound->floor]     = setHitsound;
 
-            else if (const auto positionTrack = dynamic_cast<Event::Track::PositionTrack*>(event))
-                positionTracks[positionTrack->floor] =
-                    (std::make_optional<Event::Track::PositionTrack>(*positionTrack));
-            else if (const auto colorTrack = dynamic_cast<Event::Track::ColorTrack*>(event))
-                colorTracks[colorTrack->floor] = (std::make_optional<Event::Track::ColorTrack>(*colorTrack));
-            else if (const auto animateTrack = dynamic_cast<Event::Track::AnimateTrack*>(event))
-                animateTracks[animateTrack->floor] = (std::make_optional<Event::Track::AnimateTrack>(*animateTrack));
-            else if (const auto hold = dynamic_cast<Event::Dlc::Hold*>(event))
-                holds[hold->floor] = std::make_optional<Event::Dlc::Hold>(*hold);
+            else if (const auto positionTrack        = dynamic_cast<Event::Track::PositionTrack*>(event))
+                positionTracks[positionTrack->floor] = positionTrack;
+            else if (const auto colorTrack           = dynamic_cast<Event::Track::ColorTrack*>(event))
+                colorTracks[colorTrack->floor]       = colorTrack;
+            else if (const auto animateTrack         = dynamic_cast<Event::Track::AnimateTrack*>(event))
+                animateTracks[animateTrack->floor]   = animateTrack;
+            else if (const auto hold                 = dynamic_cast<Event::Dlc::Hold*>(event))
+                holds[hold->floor]                   = hold;
         }
+        // clang-format on
         tiles[0].orbit = Clockwise, tiles[0].beat = 0, settings.apply(tiles[0]);
         for (size_t i = 0; i < tiles.size(); i++)
         {
@@ -240,65 +353,100 @@ namespace AdoCpp
                 tiles[i].stickToFloors = tiles[i - 1].stickToFloors;
                 tiles[i].pos.o += tiles[i - 1].pos.o, tiles[i].editorPos = tiles[i - 1].editorPos;
                 if ((i + 1 == tiles.size() || tiles[i + 1].angle.deg() != 999) && tiles[i].angle.deg() != 999)
-                    tiles[i].pos.o.x += cos(deg2rad(tiles[i].angle.deg())),
-                        tiles[i].editorPos.x += cos(deg2rad(tiles[i].angle.deg())),
-                        tiles[i].pos.o.y += sin(deg2rad(tiles[i].angle.deg())),
-                        tiles[i].editorPos.y += sin(deg2rad(tiles[i].angle.deg()));
+                {
+                    const double dx = cos(deg2rad(tiles[i].angle.deg())), dy = sin(deg2rad(tiles[i].angle.deg()));
+                    tiles[i].pos.o.x += dx;
+                    tiles[i].editorPos.x += dx;
+                    tiles[i].pos.o.y += dy;
+                    tiles[i].editorPos.y += dy;
+                }
             }
             if (positionTracks[i])
             {
                 tiles[i].editorPos += positionTracks[i]->positionOffset;
                 if (positionTracks[i]->justThisTile && i != tiles.size() - 1)
-                {
                     tiles[i + 1].pos.o -= positionTracks[i]->positionOffset;
-                }
                 if (!positionTracks[i]->editorOnly)
-                {
                     tiles[i].pos.o += positionTracks[i]->positionOffset;
-                }
                 if (positionTracks[i]->stickToFloors)
                     tiles[i].stickToFloors = *positionTracks[i]->stickToFloors;
             }
 
             // Tile's color
+            // clang-format off
             if (i != 0)
             {
-                tiles[i].trackColor.o = tiles[i - 1].trackColor.o,
-                tiles[i].secondaryTrackColor.o = tiles[i - 1].secondaryTrackColor.o,
-                tiles[i].trackStyle.o = tiles[i - 1].trackStyle.o;
+                tiles[i].trackColorType.o         = tiles[i - 1].trackColorType.o;
+                tiles[i].trackColor.o             = tiles[i - 1].trackColor.o;
+                tiles[i].secondaryTrackColor.o    = tiles[i - 1].secondaryTrackColor.o;
+                tiles[i].trackColorAnimDuration.o = tiles[i - 1].trackColorAnimDuration.o;
+                tiles[i].trackStyle.o             = tiles[i - 1].trackStyle.o;
+                tiles[i].trackColorPulse.o        = tiles[i - 1].trackColorPulse.o;
+                tiles[i].trackPulseLength.o       = tiles[i - 1].trackPulseLength.o;
             }
             if (colorTracks[i])
             {
-                tiles[i].trackColor.o = colorTracks[i]->trackColor,
-                tiles[i].secondaryTrackColor.o = colorTracks[i]->secondaryTrackColor,
-                tiles[i].trackStyle.o = colorTracks[i]->trackStyle;
+                tiles[i].trackColorType.o         = colorTracks[i]->trackColorType;
+                tiles[i].trackColor.o             = colorTracks[i]->trackColor;
+                tiles[i].secondaryTrackColor.o    = colorTracks[i]->secondaryTrackColor;
+                tiles[i].trackColorAnimDuration.o = colorTracks[i]->trackColorAnimDuration;
+                tiles[i].trackStyle.o             = colorTracks[i]->trackStyle;
+                // tiles[i].trackColorPulse.o        = colorTracks[i]->trackColorPulse;
+                // tiles[i].trackPulseLength.o       = colorTracks[i]->trackPulseLength;
             }
 
             // Tile's animation
             if (i != 0)
             {
-                tiles[i].trackAnimationFloor = tiles[i - 1].trackAnimationFloor;
-                tiles[i].trackAnimation = tiles[i - 1].trackAnimation;
-                tiles[i].beatsAhead = tiles[i - 1].beatsAhead;
+                tiles[i].trackAnimationFloor     = tiles[i - 1].trackAnimationFloor;
+                tiles[i].trackAnimation          = tiles[i - 1].trackAnimation;
+                tiles[i].beatsAhead              = tiles[i - 1].beatsAhead;
                 tiles[i].trackDisappearAnimation = tiles[i - 1].trackDisappearAnimation;
-                tiles[i].beatsBehind = tiles[i - 1].beatsBehind;
-            }
+                tiles[i].beatsBehind             = tiles[i - 1].beatsBehind;
+            } // clang-format on
             if (animateTracks[i])
             {
                 tiles[i].trackAnimationFloor = animateTracks[i]->floor;
+
                 if (animateTracks[i]->trackAnimation)
                     tiles[i].trackAnimation = *animateTracks[i]->trackAnimation;
                 tiles[i].beatsAhead = animateTracks[i]->beatsAhead;
+
                 if (animateTracks[i]->trackDisappearAnimation)
                     tiles[i].trackDisappearAnimation = *animateTracks[i]->trackDisappearAnimation;
                 tiles[i].beatsBehind = animateTracks[i]->beatsBehind;
             }
 
+            // Tile's hitsound
+            // clang-format off
+            if (i != 0)
+            {
+                tiles[i].hitsound              = tiles[i - 1].hitsound;
+                tiles[i].hitsoundVolume        = tiles[i - 1].hitsoundVolume;
+                tiles[i].midspinHitsound       = tiles[i - 1].midspinHitsound;
+                tiles[i].midspinHitsoundVolume = tiles[i - 1].midspinHitsoundVolume;
+            }
+            if (setHitsounds[i])
+            {
+                switch (setHitsounds[i]->gameSound)
+                {
+                case Event::GamePlay::SetHitsound::GameSound::Hitsound:
+                    tiles[i].hitsound       = setHitsounds[i]->hitsound;
+                    tiles[i].hitsoundVolume = setHitsounds[i]->hitsoundVolume;
+                    break;
+                case Event::GamePlay::SetHitsound::GameSound::Midspin:
+                    tiles[i].midspinHitsound       = setHitsounds[i]->hitsound;
+                    tiles[i].midspinHitsoundVolume = setHitsounds[i]->hitsoundVolume;
+                    break;
+                }
+            }
+            // clang-format on
+
             // Tile's events
             tiles[i].events.clear();
         }
         tiles[0].beat = -settings.countdownTicks;
-        std::vector<AdoCpp::Event::DynamicEvent*> dynamicEvents;
+        std::vector<Event::DynamicEvent*> dynamicEvents;
         m_processedDynamicEvents.clear();
         std::vector<std::vector<Event::GamePlay::SetSpeed*>> vecSetSpeed{tiles.size()};
         std::vector<std::vector<Event::Modifiers::RepeatEvents*>> vecRe{tiles.size()};
@@ -306,14 +454,19 @@ namespace AdoCpp
         for (const auto& event : events)
         {
             if (const auto setSpeed = dynamic_cast<Event::GamePlay::SetSpeed*>(event))
-                setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
-                m_setSpeeds.push_back(setSpeed), vecSetSpeed[setSpeed->floor].push_back(setSpeed);
+                if (event->active)
+                    setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
+                    m_setSpeeds.push_back(setSpeed), vecSetSpeed[setSpeed->floor].push_back(setSpeed);
             tiles[event->floor].events.push_back(event);
         }
         for (auto& tile : tiles)
             tile.seconds = beat2seconds(tile.beat);
+
+        // Dynamic events
         for (const auto& event : events)
         {
+            if (!event->active)
+                continue;
             if (auto dynamicEventPtr = dynamic_cast<Event::DynamicEvent*>(event))
             {
                 if (typeid(dynamicEventPtr) == typeid(Event::GamePlay::SetSpeed))
@@ -325,13 +478,7 @@ namespace AdoCpp
                 }
                 else
                 {
-                    const double bpm = getBpm(
-                                     [&dynamicEventPtr](const Event::GamePlay::SetSpeed& ss)
-                                     {
-                                         return ss.floor < dynamicEventPtr->floor ||
-                                             (ss.floor == dynamicEventPtr->floor &&
-                                              ss.angleOffset <= dynamicEventPtr->angleOffset);
-                                     }),
+                    const double bpm = getBpmForDynamicEvent(dynamicEventPtr->floor, dynamicEventPtr->angleOffset),
                                  spb = bpm2crotchet(bpm);
                     dynamicEventPtr->seconds =
                         tiles[dynamicEventPtr->floor].seconds + dynamicEventPtr->angleOffset / 180 * spb;
@@ -352,45 +499,86 @@ namespace AdoCpp
         {
             const double spb = bpm2crotchet(getBpmByBeat(tiles[tiles[i].trackAnimationFloor].beat)),
                          secondsAhead = tiles[i].beatsAhead * spb, secondsBehind = tiles[i].beatsBehind * spb;
-            switch (tiles[i].trackAnimation)
+            if (i != 0)
             {
-            case TrackAnimation::None:
-                break;
-            case TrackAnimation::Fade:
-            default:
-                const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
-                mtHide->floor = mtAppear->floor = i;
-                mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
-                    RelativeIndex(0, ThisTile);
-                mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
-                mtHide->opacity = 0;
-                mtAppear->seconds = tiles[i].seconds - secondsAhead;
-                mtAppear->beat = seconds2beat(mtAppear->seconds);
-                mtAppear->duration = 0.5;
-                mtAppear->opacity = 100;
-                mtHide->generated = mtAppear->generated = true;
-                m_processedDynamicEvents.push_front(mtHide);
-                m_processedDynamicEvents.push_front(mtAppear);
-                break;
-            }
-            switch (tiles[i].trackDisappearAnimation)
-            {
-            case TrackDisappearAnimation::None:
-                break;
-            case TrackDisappearAnimation::Fade:
-            default:
-                if (i == tiles.size() - 1)
+                switch (tiles[i].trackAnimation)
+                {
+                case TrackAnimation::None:
                     break;
-                const auto mtDisappear = new Event::Track::MoveTrack();
-                mtDisappear->floor = i;
-                mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
-                mtDisappear->seconds = tiles[i + 1].seconds - secondsBehind;
-                mtDisappear->beat = seconds2beat(mtDisappear->seconds);
-                mtDisappear->duration = 0.5;
-                mtDisappear->opacity = 0;
-                mtDisappear->generated = true;
-                m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
-                break;
+                case TrackAnimation::Fade:
+                default:
+                    {
+                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
+                        mtHide->floor = mtAppear->floor = i;
+                        mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
+                            RelativeIndex(0, ThisTile);
+                        mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
+                        mtHide->opacity = 0;
+                        mtAppear->seconds = tiles[i].seconds - secondsAhead;
+                        mtAppear->beat = seconds2beat(mtAppear->seconds);
+                        mtAppear->duration = 0.5;
+                        mtAppear->opacity = 100;
+                        mtHide->generated = mtAppear->generated = true;
+                        m_processedDynamicEvents.push_front(mtHide);
+                        m_processedDynamicEvents.push_front(mtAppear);
+                        break;
+                    }
+                case TrackAnimation::Grow_Spin:
+                    {
+                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
+                        mtHide->floor = mtAppear->floor = i;
+                        mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
+                            RelativeIndex(0, ThisTile);
+                        mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
+                        mtHide->rotationOffset = -180;
+                        mtHide->scale = OptionalPoint(std::make_optional(0.0), std::make_optional(0.0));
+                        mtAppear->seconds = tiles[i].seconds - secondsAhead;
+                        mtAppear->beat = seconds2beat(mtAppear->seconds);
+                        mtAppear->duration = 0.5;
+                        mtAppear->rotationOffset = 0;
+                        mtAppear->scale = OptionalPoint(std::make_optional(100.0), std::make_optional(100.0));
+                        mtHide->generated = mtAppear->generated = true;
+                        m_processedDynamicEvents.push_front(mtHide);
+                        m_processedDynamicEvents.push_front(mtAppear);
+                        break;
+                    }
+                }
+            }
+            if (i != tiles.size() - 1)
+            {
+                switch (tiles[i].trackDisappearAnimation)
+                {
+                case TrackDisappearAnimation::None:
+                    break;
+                case TrackDisappearAnimation::Fade:
+                default:
+                    {
+                        const auto mtDisappear = new Event::Track::MoveTrack();
+                        mtDisappear->floor = i;
+                        mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
+                        mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
+                        mtDisappear->beat = seconds2beat(mtDisappear->seconds);
+                        mtDisappear->duration = 0.5;
+                        mtDisappear->opacity = 0;
+                        mtDisappear->generated = true;
+                        m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
+                        break;
+                    }
+                case TrackDisappearAnimation::Shrink_Spin:
+                    {
+                        const auto mtDisappear = new Event::Track::MoveTrack();
+                        mtDisappear->floor = i;
+                        mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
+                        mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
+                        mtDisappear->beat = seconds2beat(mtDisappear->seconds);
+                        mtDisappear->duration = 0.5;
+                        mtDisappear->rotationOffset = 180;
+                        mtDisappear->scale = OptionalPoint(std::make_optional(0.0), std::make_optional(0.0));
+                        mtDisappear->generated = true;
+                        m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
+                        break;
+                    }
+                }
             }
         }
 
@@ -451,9 +639,9 @@ namespace AdoCpp
             for (size_t i = b; i <= e; i++)
             {
                 auto& d = tiles[i].moveTrackDatas;
-                d.emplace_back(mt->floor, mt->beat, mt->seconds, mt->startTile, mt->endTile, mt->duration,
-                               mt->positionOffset, 114514, 114514, mt->rotationOffset, 114514, mt->scale, 114514,
-                               114514, mt->opacity, 114514, mt->ease);
+                d.emplace_back(mt->floor, mt->angleOffset, mt->beat, mt->seconds, mt->startTile, mt->endTile,
+                               mt->duration, mt->positionOffset, 114514, 114514, mt->rotationOffset, 114514, mt->scale,
+                               114514, 114514, mt->opacity, 114514, mt->ease);
             }
         }
         for (auto& tile : tiles)
@@ -461,6 +649,7 @@ namespace AdoCpp
             double xEndSec, yEndSec, rotEndSec, scXEndSec, scYEndSec,
                 opEndSec = xEndSec = yEndSec = rotEndSec = scXEndSec = scYEndSec =
                     std::numeric_limits<double>::infinity();
+            // if (!tile.moveTrackDatas.empty())
             for (auto& moveTrackData : std::ranges::reverse_view(tile.moveTrackDatas))
             {
                 moveTrackData.xEndSec = xEndSec;
@@ -488,18 +677,19 @@ namespace AdoCpp
     }
     void Level::update()
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         for (auto& tile : tiles)
         {
             tile.pos.o2c(), tile.scale.o2c(), tile.rotation.o2c(), tile.opacity = 100;
-            tile.trackColor.o2c(), tile.secondaryTrackColor.o2c(), tile.trackStyle.o2c();
+            tile.trackColorType.o2c(), tile.trackColor.o2c(), tile.secondaryTrackColor.o2c(),
+                tile.trackColorAnimDuration.o2c(), tile.trackStyle.o2c(), tile.trackColorPulse.o2c(),
+                tile.trackPulseLength.o2c();
+            tile.color = tile.trackColor.o;
         }
     }
-    void Level::update(const double& seconds)
+    void Level::update(const double seconds)
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         update();
         for (const auto& dynamicEvent : m_processedDynamicEvents)
         {
@@ -520,17 +710,80 @@ namespace AdoCpp
                 {
                     tiles[i].trackColor.c = recolorTrack->trackColor;
                     tiles[i].secondaryTrackColor.c = recolorTrack->secondaryTrackColor;
+                    tiles[i].trackColorType.c = recolorTrack->trackColorType;
                     tiles[i].trackStyle.c = recolorTrack->trackStyle;
+                    tiles[i].trackColorPulse.c = recolorTrack->trackColorPulse;
+                    tiles[i].trackPulseLength.c = recolorTrack->trackPulseLength;
+                    tiles[i].trackColorAnimDuration.c = recolorTrack->trackColorAnimDuration;
                 }
             }
         }
-        for (auto& tile : tiles) // FIXME
+
+        for (size_t i = 0; i < tiles.size(); i++)
         {
-            for (const auto& data : tile.moveTrackDatas)
+            auto& tile = tiles[i];
+
+            // Color
             {
-                const double bpm = getBpm([&data](const Event::GamePlay::SetSpeed& ss)
-                                          { return data.beat >= ss.beat && data.floor >= ss.floor; }),
-                             spb = bpm2crotchet(bpm);
+                double x = seconds;
+                if (const double y = tile.trackColorAnimDuration.c; y == 0)
+                {
+                    x = 0;
+                }
+                else
+                {
+                    x /= y;
+                    if (tile.trackColorPulse.c == TrackColorPulse::Forward)
+                        x -= i * 1.0 / tile.trackPulseLength.c;
+                    else if (tile.trackColorPulse.c == TrackColorPulse::Backward)
+                        x += i * 1.0 / tile.trackPulseLength.c;
+                    while (x < 0)
+                        x += 1;
+                    while (x >= 1)
+                        x -= 1;
+                }
+
+                switch (tile.trackColorType.c)
+                {
+                case TrackColorType::Single:
+                    tile.color = tile.trackColor.c;
+                    break;
+                case TrackColorType::Stripes:
+                    tile.color = (i % 2 == 0) ? tile.trackColor.c : tile.secondaryTrackColor.c;
+                    break;
+                case TrackColorType::Glow:
+                    {
+                        if (x > 0.5)
+                            x = 1 - x;
+                        const uint8_t res = (x > 0.5 ? 1 - x : x) * 2 * 255;
+                        tile.color = tile.trackColor.c * Color(res, res, res, 255) +
+                            tile.secondaryTrackColor.c * Color(res, res, res, 255);
+                        break;
+                    }
+
+                case TrackColorType::Blink:
+                    {
+                        const uint8_t res = x * 255;
+                        tile.color = tile.trackColor.c * Color(res, res, res, 255) +
+                            tile.secondaryTrackColor.c * Color(res, res, res, 255);
+                        break;
+                    }
+                case TrackColorType::Switch:
+                    {
+                        tile.color = x > 0.5 ? tile.secondaryTrackColor.c : tile.trackColor.c;
+                        break;
+                    }
+                case TrackColorType::Rainbow:
+                case TrackColorType::Volume:
+                default:
+                    tile.color = tile.trackColor.c;
+                }
+            }
+
+            // Move
+            for (const auto& data : tile.moveTrackDatas) // FIXME
+            {
+                const double bpm = getBpmForDynamicEvent(data.floor, data.angleOffset), spb = bpm2crotchet(bpm);
                 auto calcX = [&seconds, &data, &spb](const double endSec)
                 {
                     return data.duration != 0.0 ? (std::min(seconds, endSec) - data.seconds) / spb / data.duration
@@ -637,10 +890,76 @@ namespace AdoCpp
             // cameraPosition += posOff;
         }
     }
-    size_t Level::rel2absIndex(const size_t& baseIndex, const RelativeIndex& relativeIndex) const
+    void Level::insertTile(const size_t floor, const Tile& tile)
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        parsed = false;
+        tiles.insert(tiles.begin() + floor, tile);
+    }
+    void Level::insertTile(const size_t floor, double angle)
+    {
+        parsed = false;
+        tiles.emplace(tiles.begin() + floor, angle);
+    }
+    auto Level::changeTileAngle(const size_t floor, double angle) -> void
+    {
+        parsed = false;
+        tiles[floor].angle = degrees(angle);
+    }
+    void Level::eraseTile(const size_t pos, const size_t n)
+    {
+        parsed = false;
+        tiles.erase(tiles.begin() + pos, tiles.begin() + std::min(n, tiles.size()));
+    }
+    void Level::pushBackTile(const Tile& tile)
+    {
+        parsed = false;
+        tiles.push_back(tile);
+    }
+    void Level::pushBackTile(double angle)
+    {
+        parsed = false;
+        tiles.emplace_back(angle);
+    }
+    void Level::popBackTile()
+    {
+        parsed = false;
+        tiles.pop_back();
+    }
+    void Level::addEvent(const Event::Event* event, const size_t index)
+    {
+        parsed = false;
+        Event::Event* e = event->clone();
+        delete event;
+        const size_t begin = std::ranges::upper_bound(events, e, [](const Event::Event* e_, const Event::Event* event_)
+                                                      { return e_->floor <= event_->floor; }) -
+            events.begin(),
+                     end = std::ranges::upper_bound(events, e, [](const Event::Event* e_, const Event::Event* event_)
+                                                    { return e_->floor < event_->floor; }) -
+            events.begin(),
+                     i = std::min(begin + index, end);
+        events.insert(events.begin() + i, e);
+    }
+    bool Level::removeEvent(const size_t floor, const size_t index)
+    {
+        parsed = false;
+        const size_t begin = std::upper_bound(events.begin(), events.end(), floor,
+                                              [](const size_t floor_, const Event::Event* event_)
+                                              { return floor_ <= event_->floor; }) -
+            events.begin(),
+                     end = std::upper_bound(events.begin(), events.end(), floor,
+                                            [](const size_t floor_, const Event::Event* event_)
+                                            { return floor_ < event_->floor; }) -
+            events.begin(),
+                     i = begin + index;
+        if (i >= end)
+            return false;
+        events.erase(events.begin() + i);
+        return true;
+    }
+
+    size_t Level::rel2absIndex(const size_t baseIndex, const RelativeIndex relativeIndex) const
+    {
+        assert(parsed && "AdoCpp::Level class is not parsed");
         const bool positive = relativeIndex.index > 0ll;
         const size_t maxIdx = tiles.size() - 1ull, absRelIdx = static_cast<size_t>(std::abs(relativeIndex.index));
         switch (relativeIndex.relativeTo)
@@ -653,67 +972,61 @@ namespace AdoCpp
                                         : 0ull;
         case End:
             return positive ? maxIdx : maxIdx > absRelIdx ? maxIdx - absRelIdx : 0ull;
-        default:
-            unreachable();
         }
+        unreachable();
     }
-    double Level::getPlanetsDir(const size_t& index, const double& seconds) const
+    double Level::getPlanetsDir(const size_t floor, const double seconds) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
-        const double bpm = getBpm([&index, &seconds](const Event::GamePlay::SetSpeed& ss)
-                                  { return ss.floor <= index && ss.seconds <= seconds; }),
+        assert(parsed && "AdoCpp::Level class is not parsed");
+        const double bpm = getBpm([&floor, &seconds](const Event::GamePlay::SetSpeed& ss)
+                                  { return ss.floor <= floor && ss.seconds <= seconds; }),
                      spb = bpm2crotchet(bpm);
         double angle;
-        if (index == 0)
+        if (floor == 0)
         {
             angle = -seconds / spb * 180;
         }
         else
         {
-            if (tiles[index].angle.deg() == 999)
-                angle = tiles[index - 1].angle.deg();
+            if (tiles[floor].angle.deg() == 999)
+                angle = tiles[floor - 1].angle.deg();
             else
-                angle = tiles[index].angle.deg() - 180;
-            if (tiles[index].orbit == Clockwise)
-                angle -= ((seconds - tiles[index].seconds) / spb) * 180;
+                angle = tiles[floor].angle.deg() - 180;
+            if (tiles[floor].orbit == Clockwise)
+                angle -= ((seconds - tiles[floor].seconds) / spb) * 180;
             else
-                angle += ((seconds - tiles[index].seconds) / spb) * 180;
+                angle += ((seconds - tiles[floor].seconds) / spb) * 180;
         }
         return angle;
     }
-    std::pair<Vector2lf, Vector2lf> Level::getPlanetsPos(const size_t& index, const double& seconds) const
+    std::pair<Vector2lf, Vector2lf> Level::getPlanetsPos(const size_t floor, const double seconds) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
-        Vector2lf p2, p1 = p2 = tiles[index].stickToFloors ? tiles[index].pos.c : tiles[index].pos.o;
-        const double angle = getPlanetsDir(index, seconds);
+        assert(parsed && "AdoCpp::Level class is not parsed");
+        Vector2lf p2, p1 = p2 = tiles[floor].stickToFloors ? tiles[floor].pos.c : tiles[floor].pos.o;
+        const double angle = getPlanetsDir(floor, seconds);
         p2.x += cos(deg2rad(angle)), p2.y += sin(deg2rad(angle));
-        if (isFirePlanetStatic(index))
+        if (isFirePlanetStatic(floor))
             return std::make_pair(p1, p2);
         return std::make_pair(p2, p1);
     }
-    inline bool Level::isFirePlanetStatic(const size_t index) { return index % 2 == 0; }
-    size_t Level::getTileIndexByBeat(const double& beat) const
+    inline bool Level::isFirePlanetStatic(const size_t floor) { return floor % 2 == 0; }
+    size_t Level::getTileIndexByBeat(const double beat) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         return std::upper_bound(tiles.begin() + 1, tiles.end(), beat,
                                 [](const double& val, const Tile& e) -> bool { return val < e.beat; }) -
             (tiles.begin() + 1);
     }
-    size_t Level::getTileIndexBySeconds(const double& seconds) const
+    size_t Level::getTileIndexBySeconds(const double seconds) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         return std::upper_bound(tiles.begin() + 1, tiles.end(), seconds,
                                 [](const double& val, const Tile& e) -> bool { return val < e.seconds; }) -
             (tiles.begin() + 1);
     }
     double Level::getBpm(const std::function<bool(const Event::GamePlay::SetSpeed&)>& func) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         double bpm = settings.bpm;
         for (const auto& setSpeed : m_setSpeeds)
         {
@@ -726,22 +1039,26 @@ namespace AdoCpp
         }
         return bpm;
     }
-    double Level::getBpmByBeat(const double& beat) const
+    double Level::getBpmByBeat(const double beat) const
     {
         return getBpm([&](const Event::GamePlay::SetSpeed& ss) { return beat >= ss.beat; });
     }
-    double Level::getBpmBySeconds(const double& seconds) const
+    double Level::getBpmBySeconds(const double seconds) const
     {
         return getBpm([&](const Event::GamePlay::SetSpeed& ss) { return seconds >= ss.seconds; });
     }
-    double Level::getBpmExcludingBeat(const double& beat) const
+    double Level::getBpmExcludingBeat(const double beat) const
     {
         return getBpm([&](const Event::GamePlay::SetSpeed& ss) { return beat > ss.beat; });
     }
-    double Level::beat2seconds(const double& beat) const
+    double Level::getBpmForDynamicEvent(const size_t floor, const double angleOffset) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        return getBpm([&](const Event::GamePlay::SetSpeed& ss)
+                      { return floor > ss.floor || (floor == ss.floor && angleOffset >= ss.angleOffset); });
+    }
+    double Level::beat2seconds(const double beat) const
+    {
+        assert(parsed && "AdoCpp::Level class is not parsed");
         double bpm = settings.bpm, b = 0, seconds = settings.offset / 1000;
         for (const auto& setSpeed : m_setSpeeds)
         {
@@ -760,8 +1077,7 @@ namespace AdoCpp
 
     double Level::seconds2beat(double seconds) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         seconds -= settings.offset / 1000;
         double bpm = settings.bpm, last_beat = 0, beat = 0;
         for (const auto& setSpeed : m_setSpeeds)
@@ -785,18 +1101,17 @@ namespace AdoCpp
         return beat;
     }
 
-    double Level::getAngle(const size_t& i) const
+    double Level::getAngle(const size_t floor) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
-        if (tiles[i].angle.deg() == 999)
+        assert(parsed && "AdoCpp::Level class is not parsed");
+        if (tiles[floor].angle.deg() == 999)
             return 0;
         double angle;
-        if (tiles[i - 1].angle.deg() == 999)
-            angle = tiles[i - 2].angle.deg() - tiles[i].angle.deg();
+        if (tiles[floor - 1].angle.deg() == 999)
+            angle = tiles[floor - 2].angle.deg() - tiles[floor].angle.deg();
         else
-            angle = tiles[i - 1].angle.deg() - 180 - tiles[i].angle.deg();
-        if (tiles[i - 1].orbit == CounterClockwise)
+            angle = tiles[floor - 1].angle.deg() - 180 - tiles[floor].angle.deg();
+        if (tiles[floor - 1].orbit == CounterClockwise)
             angle *= -1;
         while (angle <= 0)
             angle += 360;
@@ -844,26 +1159,29 @@ namespace AdoCpp
 
     void Level::initCamera()
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         m_camera = Camera();
         m_moveCameraDatas.clear();
         double rotEndSec, zoomEndSec, xEndSec, yEndSec,
             relEndSec = xEndSec = yEndSec = rotEndSec = zoomEndSec = std::numeric_limits<double>::infinity();
-        m_moveCameraDatas.emplace_back(0, -settings.countdownTicks,
+        m_moveCameraDatas.emplace_back(0, 0, -settings.countdownTicks,
                                        -settings.countdownTicks * bpm2crotchet(settings.bpm), 0.0, settings.relativeTo,
-                                       false, relEndSec, OptionalPoint(), xEndSec, yEndSec, settings.rotation,
-                                       rotEndSec, settings.zoom, zoomEndSec, Easing::Linear);
+                                       false, relEndSec, Vector2lf(), OptionalPoint(), xEndSec, yEndSec,
+                                       settings.rotation, rotEndSec, settings.zoom, zoomEndSec, Easing::Linear);
         for (const auto& m_processedDynamicEvent : std::ranges::reverse_view(m_processedDynamicEvents))
         {
             const auto mc = dynamic_cast<Event::Visual::MoveCamera*>(m_processedDynamicEvent);
             if (mc == nullptr)
                 continue;
-            m_moveCameraDatas.emplace(m_moveCameraDatas.begin() + 1, mc->floor, mc->beat, mc->seconds, mc->duration,
-                                      mc->relativeTo, false, 114514, mc->position, xEndSec, yEndSec, mc->rotation,
-                                      rotEndSec, mc->zoom, zoomEndSec, mc->ease);
+            m_moveCameraDatas.emplace(m_moveCameraDatas.begin() + 1, mc->floor, mc->angleOffset, mc->beat, mc->seconds,
+                                      mc->duration, mc->relativeTo, false, 114514, Vector2lf(), mc->position, xEndSec,
+                                      yEndSec, mc->rotation, rotEndSec, mc->zoom, zoomEndSec, mc->ease);
             if (mc->relativeTo)
+            {
                 relEndSec = mc->seconds;
+                if (*mc->relativeTo == RelativeToCamera::LastPosition)
+                    xEndSec = yEndSec = mc->seconds;
+            }
             if (mc->position.first)
                 xEndSec = mc->seconds;
             if (mc->position.second)
@@ -878,7 +1196,7 @@ namespace AdoCpp
         {
             it->duplicatedRelPlayer =
                 lastRel == RelativeToCamera::Player && (!it->relativeTo.has_value() || *it->relativeTo == lastRel);
-            if (!it->duplicatedRelPlayer)
+            if (!it->duplicatedRelPlayer && it->relativeTo.has_value())
                 lastRel = *it->relativeTo;
         }
         for (auto& m_moveCameraData : std::ranges::reverse_view(m_moveCameraDatas))
@@ -889,17 +1207,14 @@ namespace AdoCpp
         }
     }
 
-    void Level::updateCamera(const double& seconds, const size_t& floor) // FIXME
+    void Level::updateCamera(const double seconds, const size_t floor) // FIXME
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         Vector2lf pos, posOff;
         double rot{}, zoom{};
-        for (const auto& data : m_moveCameraDatas)
+        for (auto& data : m_moveCameraDatas)
         {
-            const double bpm = getBpm([&data](const Event::GamePlay::SetSpeed& ss)
-                                      { return data.beat >= ss.beat && data.floor >= ss.floor; }),
-                         spb = bpm2crotchet(bpm);
+            const double bpm = getBpmForDynamicEvent(data.floor, data.angleOffset), spb = bpm2crotchet(bpm);
             if (seconds < data.seconds)
                 break;
 
@@ -909,12 +1224,16 @@ namespace AdoCpp
             if (data.relativeTo && !data.duplicatedRelPlayer)
             {
                 const double x = calcX(data.relEndSec), y = ease(data.ease, x);
+                using enum RelativeToCamera;
                 switch (*data.relativeTo)
                 {
-                case RelativeToCamera::Player:
+                case Player:
                     {
                         if (seconds > data.relEndSec)
+                        {
+                            pos = data.playerLastPos;
                             break;
+                        }
 
                         const double delta = std::isinf(m_camera.lastSeconds) ? 0 : seconds - m_camera.lastSeconds;
                         if (!std::isnormal(delta) && delta != 0)
@@ -935,27 +1254,27 @@ namespace AdoCpp
                         }
 
                         pos += (m_camera.player - pos) * y;
+                        data.playerLastPos = pos;
                         break;
                     }
-                case RelativeToCamera::Tile:
+                case Tile:
                     pos += (tiles[data.floor].pos.o - pos) * y;
                     if (seconds <= data.relEndSec)
                         m_camera.player = pos;
                     break;
-                case RelativeToCamera::Global:
+                case Global:
                     // pos += (Vector2lf(0, 0) - pos) * y;
-                    pos += -pos * y;
+                    // pos += -pos * y;
+                    pos *= (1 - y);
                     if (seconds <= data.relEndSec)
                         m_camera.player = pos;
                     break;
-                case RelativeToCamera::LastPosition:
+                case LastPosition:
                     pos += posOff;
                     posOff = Vector2lf(0, 0);
                     if (seconds <= data.relEndSec)
                         m_camera.player = pos;
                     break;
-                default:
-                    unreachable();
                 }
             }
 
@@ -986,21 +1305,19 @@ namespace AdoCpp
         m_camera.lastSeconds = seconds;
     }
 
-    double Level::getTiming(const size_t& index, const double& seconds) const
+    double Level::getTiming(const size_t floor, const double seconds) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
-        return seconds - tiles[index].seconds;
+        assert(parsed && "AdoCpp::Level class is not parsed");
+        return seconds - tiles[floor].seconds;
     }
 
-    Level::TimingBoundary Level::getTimingBoundary(const size_t& index, const Difficulty& difficulty) const
+    Level::TimingBoundary Level::getTimingBoundary(const size_t floor, const Difficulty difficulty) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         double bpm = settings.bpm, k = 1;
         for (const auto& setSpeed : m_setSpeeds)
         {
-            if (tiles[index].beat <= setSpeed->beat)
+            if (tiles[floor].beat <= setSpeed->beat)
                 break;
             if (setSpeed->speedType == Event::GamePlay::SetSpeed::SpeedType::Bpm)
                 bpm = setSpeed->beatsPerMinute, k = 1;
@@ -1008,21 +1325,21 @@ namespace AdoCpp
                 bpm *= setSpeed->bpmMultiplier, k *= setSpeed->bpmMultiplier;
         }
         k = 1;
+        using enum Difficulty;
         const double seconds = std::max(bpm2crotchet(bpm),
-                                        difficulty == Difficulty::Lenient      ? 91.0 * 3 / 1000
-                                            : difficulty == Difficulty::Normal ? 65.0 * 3 / 1000
-                                                                               : 40.0 * 3 / 1000),
+                                        difficulty == Lenient      ? 91.0 * 3 / 1000
+                                            : difficulty == Normal ? 65.0 * 3 / 1000
+                                                                   : 40.0 * 3 / 1000),
                      p = std::max(25.0 / 1000, seconds / 6 / k), lep = std::max(25.0 / 1000, seconds / 4 / k),
                      vle = std::max(25.0 / 1000, seconds / 3 / k);
         return {p, lep, vle};
     }
 
-    HitMargin Level::getHitMargin(const size_t& index, const double& seconds, const Difficulty& difficulty) const
+    HitMargin Level::getHitMargin(const size_t floor, const double seconds, const Difficulty difficulty) const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
-        const auto [p, lep, vle] = getTimingBoundary(index, difficulty);
-        const double timing = getTiming(index, seconds);
+        assert(parsed && "AdoCpp::Level class is not parsed");
+        const auto [p, lep, vle] = getTimingBoundary(floor, difficulty);
+        const double timing = getTiming(floor, seconds);
         if (timing > vle)
             return HitMargin::TooLate;
         if (timing > lep)
@@ -1037,12 +1354,16 @@ namespace AdoCpp
             return HitMargin::VeryEarly;
         return HitMargin::TooEarly;
     }
-    bool Level::isParsed() const { return parsed; }
+    bool Level::isParsed() const noexcept { return parsed; }
 
     Level::CameraValue Level::cameraValue() const
     {
-        if (!parsed)
-            throw LevelNotParsedException();
+        assert(parsed && "AdoCpp::Level class is not parsed");
         return {m_camera.position, m_camera.rotation, m_camera.zoom};
     }
+
+    Settings& Level::getSettings() { return settings; }
+    const Settings& Level::getSettings() const { return settings; }
+    const std::vector<Tile>& Level::getTiles() const { return tiles; }
+    const std::vector<Event::Event*>& Level::getEvents() const { return events; }
 } // namespace AdoCpp

@@ -10,9 +10,10 @@ namespace AdoCpp::Event::Visual
     public:
         MoveCamera() = default;
         explicit MoveCamera(const rapidjson::Value& data);
-        bool stackable() override { return true; }
-        std::string name() override { return "MoveCamera"; }
-        MoveCamera* clone() override { return new MoveCamera(*this); }
+        [[nodiscard]] constexpr bool stackable() const noexcept override { return true; }
+        [[nodiscard]] constexpr const char* name() const noexcept override { return "MoveCamera"; }
+        [[nodiscard]] constexpr MoveCamera* clone() const override { return new MoveCamera(*this); }
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         double duration = 1;
         std::optional<RelativeToCamera> relativeTo;
         OptionalPoint position;

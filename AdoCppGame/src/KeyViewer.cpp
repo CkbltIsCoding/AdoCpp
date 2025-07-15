@@ -1,5 +1,50 @@
 #include "KeyViewer.h"
 
+constexpr std::array<sf::Vector2u, 10> posArray10 = {{
+    {0, 0},
+    {1, 0},
+    {2, 0},
+    {3, 0},
+    {3, 1},
+    {4, 1},
+    {4, 0},
+    {5, 0},
+    {6, 0},
+    {7, 0},
+}};
+constexpr std::array<sf::Vector2u, 12> posArray12 = {{
+    {0, 0},
+    {1, 0},
+    {2, 0},
+    {3, 0},
+    {2, 1},
+    {3, 1},
+    {4, 1},
+    {5, 1},
+    {4, 0},
+    {5, 0},
+    {6, 0},
+    {7, 0},
+}};
+constexpr std::array<sf::Vector2u, 16> posArray16 = {{
+    {0, 1},
+    {1, 1},
+    {0, 0},
+    {1, 0},
+    {2, 0},
+    {3, 0},
+    {2, 1},
+    {3, 1},
+    {4, 1},
+    {5, 1},
+    {4, 0},
+    {5, 0},
+    {6, 0},
+    {7, 0},
+    {6, 1},
+    {7, 1},
+}};
+
 KeyViewerSystem::KeyViewerSystem()
 {
     m_clock.restart();
@@ -29,56 +74,27 @@ void KeyViewerSystem::setKeyLimiter(const std::vector<sf::Keyboard::Scan>& keyLi
         m_keyPressed.try_emplace(keyLimiter[i], std::vector<Stamp>());
     }
 }
-void KeyViewerSystem::setKeyLimiter12(const std::vector<sf::Keyboard::Scan>& keyLimiter)
+void KeyViewerSystem::setKeyLimiterAuto(const std::vector<sf::Keyboard::Scan>& keyLimiter)
 {
-    assert(keyLimiter.size() == 12);
-    m_keys.clear();
     for (size_t i = 0; i < keyLimiter.size(); i++)
     {
-        constexpr std::array<sf::Vector2u, 12> posArray = {{
-            {0, 0},
-            {1, 0},
-            {2, 0},
-            {3, 0},
-            {2, 1},
-            {3, 1},
-            {4, 1},
-            {5, 1},
-            {4, 0},
-            {5, 0},
-            {6, 0},
-            {7, 0},
-        }};
-        m_keys.push_back({keyLimiter[i], posArray[i]});
-        m_keyPressed.try_emplace(keyLimiter[i], std::vector<Stamp>());
-    }
-}
-
-void KeyViewerSystem::setKeyLimiter16(const std::vector<sf::Keyboard::Scan>& keyLimiter)
-{
-    assert(keyLimiter.size() == 16);
-    m_keys.clear();
-    for (size_t i = 0; i < keyLimiter.size(); i++)
-    {
-        constexpr std::array<sf::Vector2u, 16> posArray = {{
-            {0, 1},
-            {1, 1},
-            {0, 0},
-            {1, 0},
-            {2, 0},
-            {3, 0},
-            {2, 1},
-            {3, 1},
-            {4, 1},
-            {5, 1},
-            {4, 0},
-            {5, 0},
-            {6, 0},
-            {7, 0},
-            {6, 1},
-            {7, 1},
-        }};
-        m_keys.push_back({keyLimiter[i], posArray[i]});
+        sf::Vector2u pos;
+        switch (keyLimiter.size())
+        {
+        case 10:
+            pos = posArray10[i];
+            break;
+        case 12:
+            pos = posArray12[i];
+            break;
+        case 16:
+            pos = posArray16[i];
+            break;
+        default:
+            pos = sf::Vector2u(i, 0);
+            break;
+        }
+        m_keys.push_back({keyLimiter[i], pos});
         m_keyPressed.try_emplace(keyLimiter[i], std::vector<Stamp>());
     }
 }
@@ -143,8 +159,10 @@ void KeyViewerSystem::draw(sf::RenderTarget& target, sf::RenderStates states) co
         sqrPrs.setFillColor(pressedColor);
         sqrRls.setFillColor(releasedColor);
 
+        // ReSharper disable CppFunctionalStyleCast
         const sf::Vector2f sqrPos{float(pos.x) * (m_keySize + m_gapSize),
                                   m_rainLength + m_rainKeyGapSize + float(pos.y) * (m_keySize + m_gapSize)};
+        // ReSharper restore CppFunctionalStyleCast
         std::vector<Stamp> stamps = m_keyPressed.at(scan);
         if (!stamps.empty() && stamps.back().press)
         {
@@ -174,6 +192,7 @@ void KeyViewerSystem::draw(sf::RenderTarget& target, sf::RenderStates states) co
                     begin = 0;
                 sf::RectangleShape rect{{m_keySize, end - begin}};
                 rect.setFillColor(rainColor);
+                // ReSharper disable once CppFunctionalStyleCast
                 rect.setPosition({float(pos.x) * (m_keySize + m_gapSize), begin});
                 target.draw(rect, states);
             }

@@ -2,14 +2,13 @@
 #include "Playing.h"
 
 #include <AudioProcessing.h>
-#include <IconsFontAwesome6.h>
 #include <ImGuiFileDialog.h>
 #include <exprtk.hpp>
 #include <future>
 #include <imgui-SFML.h>
 #include <imgui.h>
-#include <misc/cpp/imgui_stdlib.h>
 #include <iostream>
+#include <misc/cpp/imgui_stdlib.h>
 
 static std::map<std::string, char*> buffers;
 void ImGuiInputFilename(const char* text, const char* id, const char* hint, std::string* pathPtr)
@@ -19,7 +18,7 @@ void ImGuiInputFilename(const char* text, const char* id, const char* hint, std:
     ImGui::InputTextWithHint(id, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
 }
 
-void ImGuiInputStdString(const char*text, const char* id, std::string* strPtr)
+void ImGuiInputStdString(const char* text, const char* id, std::string* strPtr)
 {
     ImGui::Text(text);
     ImGui::SetNextItemWidth(-1);
@@ -28,16 +27,8 @@ void ImGuiInputStdString(const char*text, const char* id, std::string* strPtr)
 
 void ImGuiInputDouble(const char* text, const char* id, double* doublePtr)
 {
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputDouble(id, doublePtr);
-}
-
-
-void ImGuiInputFloat(const char* text, const char* id, double* floatPtr)
-{
-    if (buffers.find(id) == buffers.end())
-        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+    if (!buffers.contains(id))
+        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *doublePtr);
 
     ImGui::Text(text);
     ImGui::SetNextItemWidth(-1);
@@ -46,6 +37,27 @@ void ImGuiInputFloat(const char* text, const char* id, double* floatPtr)
     {
         exprtk::expression<double> expression;
         exprtk::parser<double> parser;
+        parser.compile((std::string)buffers[id], expression);
+        *doublePtr = expression.value();
+        sprintf_s(buffers[id], 1145, "%g", *doublePtr);
+    }
+    if (!ImGui::IsItemActive())
+        sprintf_s(buffers[id], 1145, "%g", *doublePtr);
+}
+
+
+void ImGuiInputFloat(const char* text, const char* id, double* floatPtr)
+{
+    if (!buffers.contains(id))
+        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+
+    ImGui::Text(text);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputText(id, buffers[id], 1145, ImGuiInputTextFlags_CharsDecimal);
+    if (ImGui::IsItemDeactivatedAfterEdit())
+    {
+        exprtk::expression<float> expression;
+        exprtk::parser<float> parser;
         parser.compile((std::string)buffers[id], expression);
         *floatPtr = expression.value();
         sprintf_s(buffers[id], 1145, "%g", *floatPtr);
@@ -57,9 +69,9 @@ void ImGuiInputFloat(const char* text, const char* id, double* floatPtr)
 
 StateCharting StateCharting::m_stateCharting;
 
-void StateCharting::init(Game* game)
+void StateCharting::init(Game* l_game)
 {
-    m_game = game;
+    game = l_game;
     newLevel();
 }
 
@@ -69,10 +81,10 @@ void StateCharting::pause() {}
 
 void StateCharting::resume()
 {
-    m_game->activeTileIndex = std::nullopt;
-    m_game->level.update();
-    m_game->tileSystem.update();
-    m_game->view.setRotation(sf::degrees(0));
+    game->activeTileIndex = std::nullopt;
+    game->level.update();
+    game->tileSystem.update();
+    game->view.setRotation(sf::degrees(0));
 }
 
 void StateCharting::handleEvent(sf::Event event)
@@ -82,9 +94,9 @@ void StateCharting::handleEvent(sf::Event event)
         if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>())
         {
             if (keyPressed->code == sf::Keyboard::Key::F12)
-                m_game->autoplay = !m_game->autoplay;
+                game->autoplay = !game->autoplay;
             else if (keyPressed->code == sf::Keyboard::Key::Space)
-                m_game->level.initCamera(), m_game->pushState(StatePlaying::instance());
+                game->level.initCamera(), game->pushState(StatePlaying::instance());
         }
     }
     if (!ImGui::GetIO().WantCaptureMouse)
@@ -93,42 +105,42 @@ void StateCharting::handleEvent(sf::Event event)
         {
             static sf::Vector2f d;
             if (mws->wheel == sf::Mouse::Wheel::Vertical)
-                d = {0, mws->delta * m_game->zoom.y};
+                d = {0, mws->delta * game->zoom.y};
             else
-                d = {-mws->delta * m_game->zoom.y, 0};
+                d = {-mws->delta * game->zoom.y, 0};
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl) ||
                 sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RControl))
             {
                 if (d.x > 0 || d.y > 0)
-                    m_game->zoom /= 1.5f;
+                    game->zoom /= 1.5f;
                 else
-                    m_game->zoom *= 1.5f;
+                    game->zoom *= 1.5f;
             }
             else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift) ||
                      sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift))
             {
-                m_game->view.move({-d.y, -d.x});
+                game->view.move({-d.y, -d.x});
             }
             else
             {
-                m_game->view.move(d);
+                game->view.move(d);
             }
         }
         if (const auto* mbp = event.getIf<sf::Event::MouseButtonPressed>())
         {
             if (mbp->button == sf::Mouse::Button::Left)
             {
-                for (size_t i = 0; i < m_game->level.tiles.size(); i++)
+                for (size_t i = 0; i < game->level.getTiles().size(); i++)
                 {
-                    m_game->window.setView(m_game->view);
-                    auto mouseCoords = m_game->window.mapPixelToCoords(mbp->position);
-                    if (m_game->tileSystem[i].isPointInside(mouseCoords))
+                    game->window.setView(game->view);
+                    auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
+                    if (game->tileSystem[i].isPointInside(mouseCoords))
                     {
-                        m_game->activeTileIndex = i;
+                        game->activeTileIndex = i;
                         return;
                     }
                 }
-                m_game->activeTileIndex = std::nullopt;
+                game->activeTileIndex = std::nullopt;
             }
         }
     }
@@ -136,23 +148,25 @@ void StateCharting::handleEvent(sf::Event event)
 
 void StateCharting::update()
 {
-    const auto w = static_cast<float>(m_game->windowSize.x), h = static_cast<float>(m_game->windowSize.y);
-    m_game->view.setSize({w / (w + h) * 16 * m_game->zoom.x, -h / (w + h) * 16 * m_game->zoom.y});
-    m_game->tileSystem.setActiveTileIndex(m_game->activeTileIndex);
-    m_game->tileSystem.update();
+    const auto w = static_cast<float>(game->windowSize.x), h = static_cast<float>(game->windowSize.y);
+    game->view.setSize({w / (w + h) * 16 * game->zoom.x, -h / (w + h) * 16 * game->zoom.y});
+    game->tileSystem.setActiveTileIndex(game->activeTileIndex);
+    game->tileSystem.update();
 }
 
 void StateCharting::render()
 {
+    auto& tiles = game->level.getTiles();
+
     // render the world
-    m_game->window.setView(m_game->view);
-    m_game->window.draw(m_game->tileSystem);
+    game->window.setView(game->view);
+    game->window.draw(game->tileSystem);
 
     // render the GUI
-    sf::View defaultView = m_game->window.getDefaultView();
-    defaultView.setSize(sf::Vector2f(m_game->windowSize));
-    defaultView.setCenter(sf::Vector2f(m_game->windowSize) / 2.f);
-    m_game->window.setView(defaultView);
+    sf::View defaultView = game->window.getDefaultView();
+    defaultView.setSize(sf::Vector2f(game->windowSize));
+    defaultView.setCenter(sf::Vector2f(game->windowSize) / 2.f);
+    game->window.setView(defaultView);
 
     ImGui::ShowDemoWindow();
 
@@ -162,13 +176,13 @@ void StateCharting::render()
     static float barWidth;
     barWidth = ImGui::GetFontSize() * 15;
     ImGui::SetNextWindowSize(ImVec2(barWidth, 0));
-    ImGui::SetNextWindowPos(ImVec2(m_game->windowSize.x / 2.f - barWidth / 2.f, 0));
+    ImGui::SetNextWindowPos(ImVec2(game->windowSize.x / 2.f - barWidth / 2.f, 0));
     if (ImGui::Begin("FilenameBar", nullptr, flags))
     {
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
         static std::future<std::filesystem::path> future;
         static float progress;
-        std::string filename = m_game->levelPath.filename().string();
+        std::string filename = game->levelPath.filename().string();
         if (filename.empty())
             filename = "Untitled";
         if (ImGui::TreeNodeEx("FilenameBarTreeNode", ImGuiTreeNodeFlags_SpanAvailWidth, (filename).c_str()))
@@ -186,12 +200,7 @@ void StateCharting::render()
             {
                 if (!addedHitsound)
                 {
-                    std::vector<double> vector(m_game->level.tiles.size() - 1);
-                    for (size_t i = 1 /* tile[0].beat: -INF */; i < m_game->level.tiles.size(); i++)
-                    {
-                        vector[i - 1] = m_game->level.tiles[i].seconds;
-                    }
-                    future = std::async(std::launch::async, addHitsound, m_game->musicPath, vector, &progress, false);
+                    future = std::async(std::launch::async, addHitsound, game->musicPath, tiles, &progress, false);
                     ImGui::OpenPopup("Adding hitsound...");
                 }
             }
@@ -200,7 +209,7 @@ void StateCharting::render()
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             if (ImGui::BeginPopupModal("Adding hitsound...", nullptr))
             {
-                if (m_game->musicPath.empty())
+                if (game->musicPath.empty())
                 {
                     ImGui::Text("AdoCpp cannot add hitsound\n because the music file name is empty.");
                     if (ImGui::Button("Close"))
@@ -219,10 +228,10 @@ void StateCharting::render()
                     {
                         try
                         {
-                            m_game->musicPath = future.get();
+                            game->musicPath = future.get();
 
                             addedHitsound = true;
-                            if (!m_game->music.openFromFile(m_game->musicPath))
+                            if (!game->music.openFromFile(game->musicPath))
                             {
                             }
                             ImGui::CloseCurrentPopup();
@@ -243,16 +252,15 @@ void StateCharting::render()
         {
             if (ImGuiFileDialog::Instance()->IsOk())
             {
-                m_game->levelPath = ImGuiFileDialog::Instance()->GetFilePathName();
-                m_game->level.clear();
+                game->levelPath = ImGuiFileDialog::Instance()->GetFilePathName();
                 try
                 {
-                    m_game->level.fromFile(m_game->levelPath);
+                    game->level.fromFile(game->levelPath);
                 }
                 catch (const AdoCpp::LevelJsonException&)
                 {
-                    m_game->levelPath.clear();
-                    m_game->level.defaultLevel();
+                    game->levelPath.clear();
+                    game->level.defaultLevel();
                     ImGui::OpenPopup("Error!##AdoCpp::LevelJsonHasParseErrorException");
                 }
                 newLevel();
@@ -274,9 +282,10 @@ void StateCharting::render()
     static float leftWidth, leftHeight;
     leftWidth = ImGui::GetFontSize() * 15, leftHeight = ImGui::GetFontSize() * 30;
     ImGui::SetNextWindowSize(ImVec2(leftWidth, leftHeight));
-    ImGui::SetNextWindowPos(ImVec2(0, m_game->windowSize.y / 2.f - leftHeight / 2.f));
+    ImGui::SetNextWindowPos(ImVec2(0, game->windowSize.y / 2.f - leftHeight / 2.f));
     if (ImGui::Begin("LeftSettings", nullptr, flags))
     {
+        auto& settings = game->level.getSettings();
         static float leftSettingsTabContentWidth;
         leftSettingsTabContentWidth = leftWidth / 5 * 4;
         static size_t selectedTab = 0;
@@ -293,32 +302,30 @@ void StateCharting::render()
             {
             case 0: // Song
                 {
-                    ImGuiInputFilename("Song Filename:", AD_PREFIX "SongFilename",
-                                       "No files selected", &m_game->level.settings.songFilename);
-                    ImGuiInputDouble("BPM:", AD_PREFIX "BPM", &m_game->level.settings.bpm);
-                    ImGuiInputDouble("Volume:", AD_PREFIX "Volume",
-                                     &m_game->level.settings.volume);
-                    ImGuiInputDouble("Offset:", AD_PREFIX "Offset",
-                                     &m_game->level.settings.offset);
-                    ImGuiInputDouble("Pitch:", AD_PREFIX "Pitch",
-                                     &m_game->level.settings.pitch);
+                    ImGuiInputFilename("Song Filename:", AD_PREFIX "SongFilename", "No files selected",
+                                       &settings.songFilename);
+                    ImGuiInputDouble("BPM:", AD_PREFIX "BPM", &settings.bpm);
+                    ImGuiInputDouble("Volume:", AD_PREFIX "Volume", &settings.volume);
+                    ImGuiInputDouble("Offset:", AD_PREFIX "Offset", &settings.offset);
+                    ImGuiInputDouble("Pitch:", AD_PREFIX "Pitch", &settings.pitch);
                     ImGui::Text("Hitsound:"); // ImGui::SetNextItemWidth(-1);
-                    ImGuiInputDouble("Hitsound Volume:", AD_PREFIX "HitSoundVolume",
-                                     &m_game->level.settings.hitsoundVolume);
-                    ImGuiInputDouble("Countdown Ticks:", AD_PREFIX "CountdownTicks",
-                                     &m_game->level.settings.countdownTicks);
+                    ImGuiInputDouble("Hitsound Volume:", AD_PREFIX "HitSoundVolume", &settings.hitsoundVolume);
+                    ImGuiInputDouble("Countdown Ticks:", AD_PREFIX "CountdownTicks", &settings.countdownTicks);
                     break;
                 }
             case 1: // Level
                 {
+#undef AD_PREFIX
 #define AD_PREFIX "LeftSettings/TabContent/LevelSettings/"
-                    ImGuiInputStdString("Artist:", AD_PREFIX "Artist", &m_game->level.settings.artist);
-                    ImGuiInputStdString("Song:", AD_PREFIX "Song", &m_game->level.settings.song);
-                    ImGuiInputStdString("Author:", AD_PREFIX "Author", &m_game->level.settings.author);
+                    ImGuiInputStdString("Artist:", AD_PREFIX "Artist", &settings.artist);
+                    ImGuiInputStdString("Song:", AD_PREFIX "Song", &settings.song);
+                    ImGuiInputStdString("Author:", AD_PREFIX "Author", &settings.author);
                     break;
                 }
             case 2: // Track
                 {
+#undef AD_PREFIX
+#define AD_PREFIX "LeftSettings/TabContent/TrackSettings/"
                     break;
                 }
             default:
@@ -347,16 +354,16 @@ void StateCharting::render()
     }
     ImGui::End();
 
-    const auto tile = m_game->activeTileIndex.has_value() ? &m_game->level.tiles[*m_game->activeTileIndex] : nullptr;
+    const auto tile = game->activeTileIndex.has_value() ? &tiles[*game->activeTileIndex] : nullptr;
     static bool rightSettingsOpen;
-    rightSettingsOpen = m_game->activeTileIndex.has_value();
+    rightSettingsOpen = game->activeTileIndex.has_value();
     static float rightWidth, rightHeight;
     rightWidth = ImGui::GetFontSize() * 15, rightHeight = ImGui::GetFontSize() * 30;
     if (rightSettingsOpen)
     {
         ImGui::SetNextWindowSize(ImVec2(rightWidth, rightHeight));
         ImGui::SetNextWindowPos(
-            ImVec2(m_game->windowSize.x - rightWidth, m_game->windowSize.y / 2.f - rightHeight / 2.f));
+            ImVec2(game->windowSize.x - rightWidth, game->windowSize.y / 2.f - rightHeight / 2.f));
         if (ImGui::Begin("RightSettings", nullptr, flags))
         {
             static float rightSettingsTabBtnsWidth, rightSettingsTabContentWidth;
@@ -364,8 +371,8 @@ void StateCharting::render()
             rightSettingsTabContentWidth = rightWidth - rightSettingsTabBtnsWidth;
             static std::optional<size_t> tileIndex;
             static size_t selectedTab = 0;
-            if (m_game->activeTileIndex != tileIndex)
-                tileIndex = m_game->activeTileIndex, selectedTab = 0;
+            if (game->activeTileIndex != tileIndex)
+                tileIndex = game->activeTileIndex, selectedTab = 0;
             if (ImGui::BeginChild("RightSettings/TabBtns", ImVec2(rightSettingsTabBtnsWidth, 0)))
             {
                 if (ImGui::BeginTable("RightSettings/TabBtns/Table", 1))
@@ -376,7 +383,7 @@ void StateCharting::render()
                         {
                             ImGui::TableNextRow(), ImGui::TableNextColumn();
                             ImGui::PushID(("RightSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
-                            if (ImGui::Button(tile->events[i]->name().c_str(), ImVec2(-1, 0)))
+                            if (ImGui::Button(tile->events[i]->name(), ImVec2(-1, 0)))
                                 selectedTab = i;
                             ImGui::PopID();
                         }
@@ -406,16 +413,16 @@ void StateCharting::render()
         {
             using AdoCpp::Difficulty;
 
-            if (ImGui::Selectable("Lenient", m_game->difficulty == Difficulty::Lenient))
-                m_game->difficulty = Difficulty::Lenient;
-            if (ImGui::Selectable("Normal", m_game->difficulty == Difficulty::Normal))
-                m_game->difficulty = Difficulty::Normal;
-            if (ImGui::Selectable("Strict", m_game->difficulty == Difficulty::Strict))
-                m_game->difficulty = Difficulty::Strict;
+            if (ImGui::Selectable("Lenient", game->difficulty == Difficulty::Lenient))
+                game->difficulty = Difficulty::Lenient;
+            if (ImGui::Selectable("Normal", game->difficulty == Difficulty::Normal))
+                game->difficulty = Difficulty::Normal;
+            if (ImGui::Selectable("Strict", game->difficulty == Difficulty::Strict))
+                game->difficulty = Difficulty::Strict;
 
             ImGui::TreePop();
         }
-        ImGui::SliderFloat("InputOffsetSlider", &m_game->inputOffset, -250, 250, "%.0f");
+        ImGui::SliderFloat("InputOffsetSlider", &game->inputOffset, -250, 250, "%.0f");
     }
     ImGui::End();
 }
@@ -423,21 +430,21 @@ void StateCharting::render()
 void StateCharting::newLevel()
 {
     addedHitsound = false;
-    m_game->activeTileIndex = std::nullopt;
-    m_game->level.parse();
-    m_game->level.update();
-    m_game->tileSystem.parse();
-    m_game->tileSystem.update();
-    m_game->musicPath = m_game->levelPath.parent_path().append(m_game->level.settings.songFilename);
-    if (!m_game->musicPath.empty())
+    game->activeTileIndex = std::nullopt;
+    game->level.parse();
+    game->level.update();
+    game->tileSystem.parse();
+    game->tileSystem.update();
+    game->musicPath = game->levelPath.parent_path().append(game->level.getSettings().songFilename);
+    if (!game->musicPath.empty())
     {
-        if (!m_game->music.openFromFile(m_game->musicPath))
+        if (!game->music.openFromFile(game->musicPath))
         {
-            std::cerr << "Warning: failed to load music from file \"" << m_game->musicPath
+            std::cerr << "Warning: failed to load music from file \"" << game->musicPath
                       << "\". Maybe the file does not exist or it is not a music file.";
         }
     }
-    m_game->view.setCenter({float(m_game->level.tiles[0].pos.c.x), float(m_game->level.tiles[0].pos.c.y)});
-    m_game->view.setRotation(sf::degrees(0));
-    m_game->zoom = {1.f, 1.f};
+    game->view.setCenter({0.f, 0.f});
+    game->view.setRotation(sf::degrees(0));
+    game->zoom = {1.f, 1.f};
 }

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <functional>
 #include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 #include <rapidjson/istreamwrapper.h>
 #include <vector>
 
@@ -11,23 +12,9 @@
 #include "Event.h"
 #include "Math/Vector2.h"
 #include "Utils.h"
-#include "rapidjson/error/en.h"
 
 namespace AdoCpp
 {
-    /**
-     * @brief An exception.
-     */
-    class LevelNotParsedException final : public std::exception
-    {
-    public:
-        LevelNotParsedException() = default;
-        [[nodiscard]] const char* what() const noexcept override
-        {
-            return "AdoCpp::LevelNotParsedException: AdoCpp::Level is not parsed";
-        }
-    };
-
     class LevelCouldNotOpenFileException final : public std::exception
     {
     public:
@@ -136,6 +123,10 @@ namespace AdoCpp
         DynamicValue<double> rotation{};
 
         /**
+         *
+         */
+        DynamicValue<TrackColorType> trackColorType;
+        /**
          * @brief The tile's color.
          */
         DynamicValue<Color> trackColor{Color(0xdebb7b)};
@@ -144,9 +135,26 @@ namespace AdoCpp
          */
         DynamicValue<Color> secondaryTrackColor{Color(0xffffff)};
         /**
+         *
+         */
+        DynamicValue<double> trackColorAnimDuration;
+        /**
          * @brief The tile's style.
          */
         DynamicValue<TrackStyle> trackStyle{TrackStyle::Standard};
+        /**
+         *
+         */
+        DynamicValue<TrackColorPulse> trackColorPulse{TrackColorPulse::None};
+        /**
+         *
+         */
+        DynamicValue<uint32_t> trackPulseLength{10};
+        /**
+         *
+         */
+        Color color;
+
         /**
          * @brief The event ptrs of the tile.
          */
@@ -158,9 +166,15 @@ namespace AdoCpp
         TrackDisappearAnimation trackDisappearAnimation = TrackDisappearAnimation::None;
         double beatsBehind = 0;
 
+        Hitsound hitsound = Hitsound::Kick;
+        double hitsoundVolume = 100;
+        Hitsound midspinHitsound = Hitsound::Kick;
+        double midspinHitsoundVolume = 100;
+
         struct MoveTrackData
         {
             size_t floor;
+            double angleOffset;
             double beat;
             double seconds;
             RelativeIndex startTile;
@@ -202,7 +216,7 @@ namespace AdoCpp
         double volume = 100;
         double offset = 0;
         double pitch = 100;
-        std::string hitsound;
+        Hitsound hitsound = Hitsound::Kick;
         double hitsoundVolume = 100;
         double countdownTicks = 0;
         TrackColorType trackColorType = TrackColorType::Single;
@@ -210,11 +224,11 @@ namespace AdoCpp
         Color secondaryTrackColor = Color("debb7b");
         double trackColorAnimDuration = 0;
         TrackColorPulse trackColorPulse = TrackColorPulse::None;
-        double trackPulseLength = 1;
+        uint32_t trackPulseLength = 10;
         TrackStyle trackStyle = TrackStyle::Standard;
-        TrackAnimation trackAnimation;
+        TrackAnimation trackAnimation = TrackAnimation::None;
         double beatsAhead = 0;
-        TrackDisappearAnimation trackDisappearAnimation;
+        TrackDisappearAnimation trackDisappearAnimation = TrackDisappearAnimation::None;
         double beatsBehind = 0;
         Color backgroundColor = Color("000000");
         bool stickToFloors = false;
@@ -224,17 +238,18 @@ namespace AdoCpp
         double rotation = 0;
         double zoom = 100;
 
+        Settings() = default;
+        explicit Settings(const rapidjson::Value& jsonSettings);
+
+        [[nodiscard]] static Settings fromJson(const rapidjson::Value& jsonSettings);
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const;
+        [[nodiscard]] rapidjson::Document intoJson() const;
+
         /**
          * Apply the settings to the tile.
          * @param tile The tile.
          */
-        void apply(Tile& tile) const
-        {
-            tile.trackColor.o = trackColor, tile.secondaryTrackColor.o = secondaryTrackColor,
-            tile.trackStyle.o = trackStyle, tile.editorPos = tile.pos.o = {0, 0}, tile.stickToFloors = stickToFloors,
-            tile.trackAnimationFloor = 0, tile.trackAnimation = trackAnimation, tile.beatsAhead = beatsAhead,
-            tile.trackDisappearAnimation = trackDisappearAnimation, tile.beatsBehind = beatsBehind;
-        }
+        void apply(Tile& tile) const;
     };
 
     /**
@@ -284,6 +299,8 @@ namespace AdoCpp
          */
         explicit Level(const std::filesystem::path& path);
 
+        Level(const Level&) = delete;
+
         /**
          * @brief Default destructor.
          */
@@ -293,6 +310,8 @@ namespace AdoCpp
          * @brief Clear the level class.
          */
         void clear();
+
+        void free() const;
 
         /**
          * @brief Generate the default level.
@@ -305,9 +324,10 @@ namespace AdoCpp
          * @param document Json data.
          */
         void fromJson(const rapidjson::Document& document);
+
         /**
          * @brief Import a file into the level (encoded in UTF-8 BOM).
-         * @param ifs ifstream.
+         * @param ifs The input file stream.
          */
         void fromFile(std::ifstream& ifs);
         /**
@@ -315,6 +335,9 @@ namespace AdoCpp
          * @param path The path to the file.
          */
         void fromFile(const std::filesystem::path& path);
+
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const;
+        [[nodiscard]] rapidjson::Document intoJson() const;
 
         /**
          * @brief Parse the level.
@@ -329,7 +352,63 @@ namespace AdoCpp
          * @brief Update the level.
          * @param seconds The seconds.
          */
-        void update(const double& seconds);
+        void update(double seconds);
+
+        /**
+         * @brief Insert the tile.
+         * @param floor The index.
+         * @param tile The tile.
+         */
+        void insertTile(size_t floor, const Tile& tile);
+        /**
+         * @brief Insert the tile.
+         * @param floor The index.
+         * @param angle The angle.
+         */
+        void insertTile(size_t floor, double angle);
+        /**
+         * Change the tile's angle into a new one.
+         * @param floor The floor.
+         * @param angle The new angle.
+         */
+        void changeTileAngle(size_t floor, double angle);
+
+        /**
+         * @brief Erase the tiles.
+         * @param pos The position.
+         * @param n The number.
+         */
+        void eraseTile(size_t pos, size_t n = -1ull);
+
+        /**
+         * @brief Push back the tile.
+         * @param tile The tile.
+         */
+        void pushBackTile(const Tile& tile);
+        /**
+         * @brief Push back the tile.
+         * @param angle The angle.
+         */
+        void pushBackTile(double angle);
+
+        /**
+         * @brief Pop back the tile.
+         */
+        void popBackTile();
+
+        /**
+         * @brief Add the event.
+         * @param event The event.
+         * @param index The index.
+         */
+        void addEvent(const Event::Event* event, size_t index);
+        /**
+         * @brief Remove the event.
+         * @param floor The floor.
+         * @param index The index.
+         * @return Whether it is success.
+         */
+        bool removeEvent(size_t floor, size_t index);
 
         /**
          * @brief Convert baseIndex + relativeIndex into absolute index.
@@ -337,39 +416,39 @@ namespace AdoCpp
          * @param relativeIndex The index relative to the base index.
          * @return The absolute index.
          */
-        [[nodiscard]] size_t rel2absIndex(const size_t& baseIndex, const RelativeIndex& relativeIndex) const;
+        [[nodiscard]] size_t rel2absIndex(size_t baseIndex, RelativeIndex relativeIndex) const;
 
         /**
          * @brief Get the included angle between the two planets.
-         * @param index The index of the tile.
+         * @param floor The index of the tile.
          * @param seconds The seconds.
          * @return The position of the two planets.
          */
-        [[nodiscard]] double getPlanetsDir(const size_t& index, const double& seconds) const;
+        [[nodiscard]] double getPlanetsDir(size_t floor, double seconds) const;
 
         /**
          * @brief Get the position of the two planets.
-         * @param index The index of the tile.
+         * @param floor The index of the tile.
          * @param seconds The seconds.
          * @return The position of the two planets.
          */
-        [[nodiscard]] std::pair<Vector2lf, Vector2lf> getPlanetsPos(const size_t& index, const double& seconds) const;
+        [[nodiscard]] std::pair<Vector2lf, Vector2lf> getPlanetsPos(size_t floor, double seconds) const;
 
-        [[nodiscard]] static bool isFirePlanetStatic(size_t index);
+        [[nodiscard]] static bool isFirePlanetStatic(size_t floor);
 
         /**
          * @brief Get the index of the tile that one of the planets lands on.
          * @param beat The beat.
          * @return The index of the tile.
          */
-        [[nodiscard]] size_t getTileIndexByBeat(const double& beat) const;
+        [[nodiscard]] size_t getTileIndexByBeat(double beat) const;
 
         /**
          * @brief Get the index of the tile that one of the planets lands on.
          * @param seconds The seconds.
          * @return The index of the tile.
          */
-        [[nodiscard]] size_t getTileIndexBySeconds(const double& seconds) const;
+        [[nodiscard]] size_t getTileIndexBySeconds(double seconds) const;
 
         /**
          * @brief Get the bpm.
@@ -383,27 +462,35 @@ namespace AdoCpp
          * @param beat The beat.
          * @return The bpm.
          */
-        [[nodiscard]] double getBpmByBeat(const double& beat) const;
+        [[nodiscard]] double getBpmByBeat(double beat) const;
         /**
          * @brief Get the bpm.
-         * @param beat The beat.
+         * @param seconds The seconds.
          * @return The bpm.
          */
-        [[nodiscard]] double getBpmBySeconds(const double& seconds) const;
+        [[nodiscard]] double getBpmBySeconds(double seconds) const;
 
         /**
          * @brief Get the bpm.
          * @param beat The beat.
          * @return The bpm.
          */
-        [[nodiscard]] double getBpmExcludingBeat(const double& beat) const;
+        [[nodiscard]] double getBpmExcludingBeat(double beat) const;
+
+        /**
+         * @brief Get the bpm.
+         * @param floor The floor.
+         * @param angleOffset The angle offset.
+         * @return The bpm.
+         */
+        [[nodiscard]] double getBpmForDynamicEvent(size_t floor, double angleOffset) const;
 
         /**
          * @brief Convert beat to seconds.
          * @param beat The beat.
          * @return The time in seconds.
          */
-        [[nodiscard]] double beat2seconds(const double& beat) const;
+        [[nodiscard]] double beat2seconds(double beat) const;
 
         /**
          * @brief Convert seconds to beat.
@@ -412,15 +499,15 @@ namespace AdoCpp
          */
         [[nodiscard]] double seconds2beat(double seconds) const;
 
-        [[nodiscard]] double getAngle(const size_t& index) const;
+        [[nodiscard]] double getAngle(size_t floor) const;
 
         /**
          * @brief Get the timing.
-         * @param index The index of the tile.
+         * @param floor The index of the tile.
          * @param seconds The time in seconds.
          * @return The timing.
          */
-        [[nodiscard]] double getTiming(const size_t& index, const double& seconds) const;
+        [[nodiscard]] double getTiming(size_t floor, double seconds) const;
 
         struct TimingBoundary
         {
@@ -429,23 +516,22 @@ namespace AdoCpp
             double veryLateEarly;
         };
 
-        [[nodiscard]] TimingBoundary getTimingBoundary(const size_t& index, const Difficulty& difficulty) const;
+        [[nodiscard]] TimingBoundary getTimingBoundary(size_t floor, Difficulty difficulty) const;
 
         /**
          * @brief Get the hit margin.
-         * @param index The index of the tile.
+         * @param floor The index of the tile.
          * @param seconds The time in seconds.
          * @param difficulty The difficulty.
          * @return The hit margin.
          */
-        [[nodiscard]] HitMargin getHitMargin(const size_t& index, const double& seconds,
-                                             const Difficulty& difficulty) const;
+        [[nodiscard]] HitMargin getHitMargin(size_t floor, double seconds, Difficulty difficulty) const;
 
         /**
          * @brief Get whether the level has been parsed.
          * @return Whether the level has been parsed.
          */
-        [[nodiscard]] bool isParsed() const;
+        [[nodiscard]] bool isParsed() const noexcept;
 
         struct CameraValue
         {
@@ -469,20 +555,12 @@ namespace AdoCpp
          * @param seconds The seconds.
          * @param floor The floor planet land on.
          */
-        void updateCamera(const double& seconds, const size_t& floor);
+        void updateCamera(double seconds, size_t floor);
 
-        /**
-         * @brief The level's settings.
-         */
-        Settings settings;
-        /**
-         * @brief The level's tiles.
-         */
-        std::vector<Tile> tiles;
-        /**
-         * @brief The level's event pointers.
-         */
-        std::vector<Event::Event*> events;
+        [[nodiscard]] Settings& getSettings();
+        [[nodiscard]] const Settings& getSettings() const;
+        [[nodiscard]] const std::vector<Tile>& getTiles() const;
+        [[nodiscard]] const std::vector<Event::Event*>& getEvents() const;
 
     protected:
         /**
@@ -490,16 +568,33 @@ namespace AdoCpp
          */
         bool parsed = false;
 
+        /**
+         * @brief The level's settings.
+         */
+        Settings settings;
+
+        /**
+         * @brief The level's tiles.
+         */
+        std::vector<Tile> tiles;
+
+        /**
+         * @brief The level's event pointers.
+         */
+        std::vector<Event::Event*> events;
+
     private:
         struct MoveCameraData
         {
             size_t floor;
+            double angleOffset;
             double beat;
             double seconds;
             double duration;
             std::optional<RelativeToCamera> relativeTo;
             bool duplicatedRelPlayer;
             double relEndSec;
+            Vector2lf playerLastPos;
             OptionalPoint position;
             double xEndSec;
             double yEndSec;

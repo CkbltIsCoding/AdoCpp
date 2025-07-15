@@ -58,10 +58,14 @@ public:
 	// 	S::LControl, S::CapsLock, S::Tab, S::Num1, S::Num2, S::E, S::C, S::Space,
 	// 	S::A, S::Period, S::P, S::Equal, S::Backspace, S::Backslash, S::Enter, S::Down
 	// };
-	std::vector<sf::Keyboard::Scan> keyLimiter = {
-		S::LControl, S::CapsLock, S::Tab, S::Q, S::W, S::E, S::C, S::Space,
-		S::A, S::Period, S::P, S::LBracket, S::RBracket, S::Backslash, S::Enter, S::Down
-	};
+	// std::vector<sf::Keyboard::Scan> keyLimiter = {
+	// 	S::LControl, S::CapsLock, S::Tab, S::Q, S::W, S::E, S::C, S::Space,
+	// 	S::A, S::Period, S::P, S::LBracket, S::RBracket, S::Backslash, S::Enter, S::Down
+	// };
+    std::vector<sf::Keyboard::Scan> keyLimiter = {
+         S::Tab, S::Q, S::W, S::E, S::C, S::Space,
+        S::A, S::Period, S::P, S::LBracket, S::RBracket, S::Backslash
+    };
 
 	std::vector<State*> states;
 	std::optional<size_t> activeTileIndex;

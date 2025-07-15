@@ -6,34 +6,36 @@ namespace AdoCpp
 {
     Event::Event* Event::newEvent(const rapidjson::Value& json)
     {
-        const std::string eventType = json["eventType"].GetString();
-        if (eventType == "SetSpeed")
+        const char* eventType = json["eventType"].GetString();
+        if (strcmp(eventType, "SetSpeed") == 0)
             return new GamePlay::SetSpeed(json);
-        if (eventType == "Twirl")
+        if (strcmp(eventType, "Twirl") == 0)
             return new GamePlay::Twirl(json);
-        if (eventType == "Pause")
+        if (strcmp(eventType, "Pause") == 0)
             return new GamePlay::Pause(json);
-        if (eventType == "SetPlanetRotation")
+        if (strcmp(eventType, "SetHitsound") == 0)
+            return new GamePlay::SetHitsound(json);
+        if (strcmp(eventType, "SetPlanetRotation") == 0)
             return new GamePlay::SetPlanetRotation(json);
 
-        if (eventType == "ColorTrack")
+        if (strcmp(eventType, "ColorTrack") == 0)
             return new Track::ColorTrack(json);
-        if (eventType == "AnimateTrack")
+        if (strcmp(eventType, "AnimateTrack") == 0)
             return new Track::AnimateTrack(json);
-        if (eventType == "RecolorTrack")
+        if (strcmp(eventType, "RecolorTrack") == 0)
             return new Track::RecolorTrack(json);
-        if (eventType == "PositionTrack")
+        if (strcmp(eventType, "PositionTrack") == 0)
             return new Track::PositionTrack(json);
-        if (eventType == "MoveTrack")
+        if (strcmp(eventType, "MoveTrack") == 0)
             return new Track::MoveTrack(json);
 
-        if (eventType == "MoveCamera")
+        if (strcmp(eventType, "MoveCamera") == 0)
             return new Visual::MoveCamera(json);
 
-        if (eventType == "RepeatEvents")
+        if (strcmp(eventType, "RepeatEvents") == 0)
             return new Modifiers::RepeatEvents(json);
 
-        if (eventType == "Hold")
+        if (strcmp(eventType, "Hold") == 0)
             return new Dlc::Hold(json);
 
         return nullptr;

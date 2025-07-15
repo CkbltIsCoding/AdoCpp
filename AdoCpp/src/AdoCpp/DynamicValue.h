@@ -1,7 +1,7 @@
 #pragma once
 namespace AdoCpp
 {
-    template<typename T>
+    template <typename T>
     struct DynamicValue
     {
         /**
@@ -16,6 +16,9 @@ namespace AdoCpp
         DynamicValue(T o, T c) : o(o), c(c) {}
         explicit DynamicValue(T oc) : o(oc), c(oc) {}
 
+        /**
+         * @brief c = o;
+         */
         void o2c()
         {
             c = o;

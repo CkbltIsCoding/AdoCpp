@@ -5,23 +5,22 @@
 #include <SelbaWard/Polygon.hpp>
 #include <SelbaWard/Spline.hpp>
 #include <cmath>
-#include <map>
 
 class TileShape final : public sw::Polygon
 {
     static constexpr float pi = 3.14159265f;
     static constexpr float w = 0.273f, l = 0.5f;
 
-    static inline float L(float a, float b, float t) { return a + t * (b - a); }
-    static inline float q(float x)
-    {
-        return x <= 5 ? 1
-            : x <= 30 ? L(1, 0.83f, std::sqrt((x - 5) / 25))
-            : x <= 45 ? L(0.83f, 0.77f, (x - 30) / 15)
-            : x <= 90 ? L(0.77f, 0.15f, std::pow((x - 45) / 45, 0.7f))
-                      : L(0.15f, 0, std::sqrt((x - 90) / 45));
-    }
-    static inline float f(float x) { return x <= pi / 36 ? 0 : -(L(0, w, q(x * 180 / pi)) - w) / std::sin(x / 2); }
+    // static float L(float a, float b, float t) { return a + t * (b - a); }
+    // static float q(float x)
+    // {
+    //     return x <= 5 ? 1
+    //         : x <= 30 ? L(1, 0.83f, std::sqrt((x - 5) / 25))
+    //         : x <= 45 ? L(0.83f, 0.77f, (x - 30) / 15)
+    //         : x <= 90 ? L(0.77f, 0.15f, std::pow((x - 45) / 45, 0.7f))
+    //                   : L(0.15f, 0, std::sqrt((x - 90) / 45));
+    // }
+    // static float f(float x) { return x <= pi / 36 ? 0 : -(L(0, w, q(x * 180 / pi)) - w) / std::sin(x / 2); }
 
 public:
     TileShape()
@@ -29,19 +28,19 @@ public:
         m_lastAngle = m_angle = m_nextAngle = 0;
         m_interpolationLevel = 16;
     }
-    TileShape(double l_lastAngle, double l_angle, double l_nextAngle)
+    TileShape(const double l_lastAngle, const double l_angle, const double l_nextAngle)
     {
         m_lastAngle = l_lastAngle, m_angle = l_angle, m_nextAngle = l_nextAngle;
         m_interpolationLevel = 16;
     }
-    ~TileShape() {}
-    void update2()
-    {
-        const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
-        const float a1 = (float)m_angle2, a2 = (float)m_nextAngle;
-        const float alpha = pi / 180 * std::min(fmod(a1 - a2, 360), fmod(a2 - a1, 360));
-        // const float
-    }
+    ~TileShape() override {}
+    // void update2()
+    // {
+    //     // const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
+    //     // const float a1 = (float)m_angle2, a2 = (float)m_nextAngle;
+    //     // const float alpha = pi / 180 * std::min(fmod(a1 - a2, 360), fmod(a2 - a1, 360));
+    //     // const float
+    // }
     void update()
     {
         const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
@@ -288,14 +287,14 @@ public:
             m_shape.setColor(m_color), m_shape.update();
         if (m_outline.getColor() != m_borderColor)
             m_outline.setColor(m_borderColor), m_outline.update();
-        std::uint8_t alpha = std::uint8_t(m_opacity / 100 * 255);
+        const std::uint8_t alpha = std::uint8_t(m_opacity / 100 * 255);
         m_twirlShape.setOutlineColor(sf::Color::Magenta * sf::Color(255, 255, 255, alpha));
         if (m_speed)
             m_speedShape.setFillColor((m_speed == 1 ? sf::Color::Red : sf::Color::Blue) *
                                       sf::Color(255, 255, 255, alpha));
     }
 
-    bool isPointInside(sf::Vector2f point)
+    bool isPointInside(const sf::Vector2f point) const
     {
         return m_shape.isPointInside(getInverseTransform().transformPoint(point));
     }
@@ -339,24 +338,27 @@ public:
     {
         double lastAngle, nextAngle;
         m_tileSprites.clear();
-        for (size_t i = 0; i < m_level.tiles.size(); i++)
+        auto& tiles = m_level.getTiles();
+        const auto& settings = m_level.getSettings();
+        auto& events = m_level.getEvents();
+        for (size_t i = 0; i < tiles.size(); i++)
         {
-            const double angle = m_level.tiles[i].angle.deg();
+            const double angle = tiles[i].angle.deg();
 
-            if (i == m_level.tiles.size() - 1)
+            if (i == tiles.size() - 1)
                 nextAngle = angle;
             else
-                nextAngle = m_level.tiles[i + 1].angle.deg();
+                nextAngle = tiles[i + 1].angle.deg();
 
             if (i == 0)
                 lastAngle = 0;
             else
-                lastAngle = m_level.tiles[i - 1].angle.deg();
+                lastAngle = tiles[i - 1].angle.deg();
 
             m_tileSprites.push_back(TileSprite(lastAngle, angle, nextAngle));
         }
-        double oBpm = m_level.settings.bpm, bpm = oBpm;
-        for (const auto& event : m_level.events)
+        double oBpm = settings.bpm, bpm = oBpm;
+        for (const auto& event : events)
         {
             if (const auto twirl = dynamic_cast<AdoCpp::Event::GamePlay::Twirl*>(event))
             {
@@ -377,15 +379,16 @@ public:
     void setActiveTileIndex(const std::optional<size_t> i) { m_activeTileIndex = i; }
     void update()
     {
+        auto& tiles = m_level.getTiles();
         for (size_t i = 0; i < m_tileSprites.size(); i++)
         {
             // ReSharper disable CppCStyleCast
             auto& sprite = m_tileSprites[i];
-            auto& tile = m_level.tiles[i];
+            auto& tile = tiles[i];
 
             sprite.setPosition({(float)tile.pos.c.x, (float)tile.pos.c.y});
             sprite.setActive(m_activeTileIndex ? m_activeTileIndex == i : false);
-            sprite.setTrackColor(sf::Color(tile.trackColor.c.toInteger()));
+            sprite.setTrackColor(sf::Color(tile.color.toInteger()));
             sprite.setTrackStyle(tile.trackStyle.c);
             sprite.setScale({(float)tile.scale.c.x / 100, (float)tile.scale.c.y / 100});
             sprite.setRotation(sf::degrees((float)tile.rotation.c));
@@ -405,14 +408,15 @@ private:
         viewSize.x = viewSize.y = (std::max)(viewSize.x, viewSize.y) * 1.5f;
         const sf::FloatRect currentViewRect(viewCenter - viewSize / 2.f, viewSize);
         bool flag = false;
-        for (size_t i = m_level.tiles.size() - 1;; i--)
+        for (size_t i = m_tileSprites.size() - 1;; i--)
         {
             if (flag)
                 break;
             if (i == 0)
                 flag = true;
 
-            if (currentViewRect.findIntersection(m_tileSprites[i].getGlobalBoundsFaster()))
+            if (currentViewRect.findIntersection(m_tileSprites[i].getGlobalBoundsFaster())
+                && m_level.getTiles()[i].scale.c.x != 0 && m_level.getTiles()[i].scale.c.y != 0)
                 target.draw(m_tileSprites[i]);
         }
     }

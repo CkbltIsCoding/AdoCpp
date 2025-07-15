@@ -1,6 +1,7 @@
 #pragma once
 #include "AdoCpp/Color.h"
 #include "AdoCpp/Easing.h"
+#include "AdoCpp/Math/Vector2.h"
 #include "AdoCpp/Tile.h"
 #include "AdoCpp/Utils.h"
 #include "Base.h"
@@ -12,13 +13,16 @@ namespace AdoCpp::Event::Track
     public:
         ColorTrack() = default;
         explicit ColorTrack(const rapidjson::Value& data);
-        bool stackable() override { return false; }
-        std::string name() override { return "ColorTrack"; }
-        ColorTrack* clone() override { return new ColorTrack(*this); }
+        [[nodiscard]] constexpr bool stackable() const noexcept override { return false; }
+        [[nodiscard]] constexpr const char* name() const noexcept override { return "ColorTrack"; }
+        [[nodiscard]] constexpr ColorTrack* clone() const override { return new ColorTrack(*this); }
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         TrackColorType trackColorType;
         Color trackColor;
         Color secondaryTrackColor;
         double trackColorAnimDuration;
+        TrackColorPulse trackColorPulse{TrackColorPulse::None};
+        uint32_t trackPulseLength = 10;
         TrackStyle trackStyle;
         std::string trackTexture;
         double trackGlowIntensity;
@@ -28,9 +32,10 @@ namespace AdoCpp::Event::Track
     public:
         AnimateTrack() = default;
         explicit AnimateTrack(const rapidjson::Value& data);
-        bool stackable() override { return false; }
-        std::string name() override { return "AnimateTrack"; }
-        AnimateTrack* clone() override { return new AnimateTrack(*this); }
+        [[nodiscard]] constexpr bool stackable() const noexcept override { return false; }
+        [[nodiscard]] constexpr const char* name() const noexcept override { return "AnimateTrack"; }
+        [[nodiscard]] constexpr AnimateTrack* clone() const override { return new AnimateTrack(*this); }
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         std::optional<TrackAnimation> trackAnimation;
         double beatsAhead;
         std::optional<TrackDisappearAnimation> trackDisappearAnimation;
@@ -41,9 +46,10 @@ namespace AdoCpp::Event::Track
     public:
         RecolorTrack() = default;
         explicit RecolorTrack(const rapidjson::Value& data);
-        bool stackable() override { return true; }
-        std::string name() override { return "RecolorTrack"; }
-        RecolorTrack* clone() override { return new RecolorTrack(*this); }
+        [[nodiscard]] constexpr bool stackable() const noexcept override { return true; }
+        [[nodiscard]] constexpr const char* name() const noexcept override { return "RecolorTrack"; }
+        [[nodiscard]] constexpr RecolorTrack* clone() const override { return new RecolorTrack(*this); }
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         RelativeIndex startTile;
         RelativeIndex endTile;
         double gapLength;
@@ -53,7 +59,7 @@ namespace AdoCpp::Event::Track
         Color secondaryTrackColor;
         double trackColorAnimDuration;
         TrackColorPulse trackColorPulse;
-        double trackPulseLength;
+        uint32_t trackPulseLength = 10;
         TrackStyle trackStyle;
         double trackGlowIntensity;
         Easing ease;
@@ -63,9 +69,10 @@ namespace AdoCpp::Event::Track
     public:
         PositionTrack() = default;
         explicit PositionTrack(const rapidjson::Value& data);
-        bool stackable() override { return false; }
-        std::string name() override { return "PositionTrack"; }
-        PositionTrack* clone() override { return new PositionTrack(*this); }
+        [[nodiscard]] constexpr bool stackable() const noexcept override { return false; }
+        [[nodiscard]] constexpr const char* name() const noexcept override { return "PositionTrack"; }
+        [[nodiscard]] constexpr PositionTrack* clone() const override { return new PositionTrack(*this); }
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         Vector2lf positionOffset;
         RelativeIndex relativeTo;
         double rotation;
@@ -80,9 +87,10 @@ namespace AdoCpp::Event::Track
     public:
         MoveTrack() = default;
         explicit MoveTrack(const rapidjson::Value& data);
-        bool stackable() override { return true; }
-        std::string name() override { return "MoveTrack"; }
-        MoveTrack* clone() override { return new MoveTrack(*this); }
+        [[nodiscard]] constexpr bool stackable() const noexcept override { return true; }
+        [[nodiscard]] constexpr const char* name() const noexcept override { return "MoveTrack"; }
+        [[nodiscard]] constexpr MoveTrack* clone() const override { return new MoveTrack(*this); }
+        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         RelativeIndex startTile;
         RelativeIndex endTile;
         double duration = 0;

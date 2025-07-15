@@ -15,9 +15,9 @@ public:
     virtual void update() = 0;
     virtual void render() = 0;
 
-    void changeState(State* state) { m_game->changeState(state); }
+    void changeState(State* state) { game->changeState(state); }
 
 protected:
-    State() { m_game = nullptr; }
-    Game* m_game;
+    State() { game = nullptr; }
+    Game* game;
 };

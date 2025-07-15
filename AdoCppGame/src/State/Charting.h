@@ -6,7 +6,7 @@
 class StateCharting : public State
 {
 public:
-	void init(Game* game);
+	void init(Game* l_game);
 	void cleanup();
 
 	void pause();

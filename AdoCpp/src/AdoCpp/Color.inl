@@ -37,7 +37,7 @@ namespace AdoCpp
         return static_cast<std::uint32_t>((r << 24) | (g << 16) | (b << 8) | a);
     }
 
-    constexpr std::string Color::toString(const bool hash, const bool uppercase, const bool ignoreAlpha) const
+    constexpr std::string Color::toString(const bool hash, const bool uppercase, const ToStringAlphaMode alphaMode) const
     {
         std::string str;
         if (hash)
@@ -49,7 +49,9 @@ namespace AdoCpp
         str.push_back(digit16ToChar(r / 16)), str.push_back(digit16ToChar(r % 16));
         str.push_back(digit16ToChar(g / 16)), str.push_back(digit16ToChar(g % 16));
         str.push_back(digit16ToChar(b / 16)), str.push_back(digit16ToChar(b % 16));
-        if (!ignoreAlpha)
+
+        using enum ToStringAlphaMode;
+        if (alphaMode != Ignore && (alphaMode == Show || alphaMode == Auto && a != 255))
             str.push_back(digit16ToChar(a / 16)), str.push_back(digit16ToChar(a % 16));
         return str;
     }

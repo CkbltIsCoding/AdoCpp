@@ -15,7 +15,15 @@ namespace AdoCpp
         constexpr explicit Color(const std::string& color);
 
         [[nodiscard]] constexpr std::uint32_t toInteger() const;
-        [[nodiscard]] constexpr std::string toString(bool hash, bool uppercase, bool ignoreAlpha) const;
+
+        enum class ToStringAlphaMode
+        {
+            Ignore,
+            Auto,
+            Show
+        };
+
+        [[nodiscard]] constexpr std::string toString(bool hash, bool uppercase, ToStringAlphaMode alphaMode) const;
 
         std::uint8_t r{};
         std::uint8_t g{};

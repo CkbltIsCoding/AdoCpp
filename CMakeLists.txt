@@ -7,3 +7,4 @@ include(${PROJECT_SOURCE_DIR}/GetRapidJSON.cmake)
 
 add_subdirectory(AdoCpp)
 add_subdirectory(AdoCppGame)
+add_subdirectory(test)

@@ -9,7 +9,7 @@
 class StatePlaying : public State
 {
 public:
-	void init(Game* game);
+	void init(Game* _game);
 	void cleanup();
 
 	void pause();
@@ -29,7 +29,7 @@ protected:
 
 	bool musicPlayable()
 	{
-		return m_game->music.getDuration().asMilliseconds() != 0;
+		return game->music.getDuration().asMilliseconds() != 0;
 	}
 
 private:

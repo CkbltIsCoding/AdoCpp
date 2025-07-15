@@ -1,8 +1,8 @@
 #pragma once
 #include <string>
 #include <vector>
-
-#include "rapidjson/document.h"
+#include <rapidjson/document.h>
+#include "AdoCpp/Utils.h"
 
 namespace AdoCpp::Event
 {
@@ -16,8 +16,9 @@ namespace AdoCpp::Event
         virtual ~Event() = default;
         explicit Event(const rapidjson::Value& data);
         size_t floor = 0;
-        virtual bool stackable() = 0;
-        virtual std::string name() = 0;
+        bool active;
+        [[nodiscard]] constexpr virtual bool stackable() const noexcept = 0;
+        [[nodiscard]] constexpr virtual const char* name() const noexcept = 0;
         /**
          * @brief Clone the event.
          *
@@ -27,7 +28,9 @@ namespace AdoCpp::Event
          * so that it does not need to figure out the type of the event.
          * @return The cloned event.
          */
-        virtual Event* clone() = 0;
+        [[nodiscard]] constexpr virtual Event* clone() const = 0;
+        [[nodiscard]] virtual rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const = 0;
+        [[nodiscard]] rapidjson::Document intoJson() const;
     };
 
     /**
@@ -50,7 +53,7 @@ namespace AdoCpp::Event
         DynamicEvent() = default;
         ~DynamicEvent() override = default;
         explicit DynamicEvent(const rapidjson::Value& data);
-        DynamicEvent* clone() override = 0;
+        [[nodiscard]] constexpr DynamicEvent* clone() const override = 0;
         double angleOffset = 0;
         double beat = 0;
         double seconds = 0;
