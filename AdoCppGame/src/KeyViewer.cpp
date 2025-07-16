@@ -140,9 +140,9 @@ void KeyViewerSystem::setRainColorByRow(const sf::Color rainColor, unsigned int 
 
 void KeyViewerSystem::update() {}
 
-KeyViewerSystem::Key& KeyViewerSystem::operator[](size_t index) { return m_keys[index]; }
+KeyViewerSystem::Key& KeyViewerSystem::operator[](const size_t index) { return m_keys[index]; }
 
-const KeyViewerSystem::Key& KeyViewerSystem::operator[](size_t index) const { return m_keys[index]; }
+const KeyViewerSystem::Key& KeyViewerSystem::operator[](const size_t index) const { return m_keys[index]; }
 
 void KeyViewerSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {

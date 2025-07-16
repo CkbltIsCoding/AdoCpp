@@ -33,7 +33,7 @@ public:
         m_lastAngle = l_lastAngle, m_angle = l_angle, m_nextAngle = l_nextAngle;
         m_interpolationLevel = 16;
     }
-    ~TileShape() override {}
+    ~TileShape() override = default;
     // void update2()
     // {
     //     // const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
@@ -44,7 +44,7 @@ public:
     void update()
     {
         const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
-        const sf::Angle angle = sf::degrees((float)m_angle2), nextAngle = sf::degrees((float)m_nextAngle);
+        const sf::Angle angle = sf::degrees(float(m_angle2)), nextAngle = sf::degrees(float(m_nextAngle));
         const double includedAngle = AdoCpp::includedAngle(m_angle2, m_nextAngle);
         if (m_nextAngle == 999)
         {
@@ -69,10 +69,10 @@ public:
 
             for (size_t i = 0; i <= m_interpolationLevel / 2; i++)
             {
-                float a = i * 2 * pi / m_interpolationLevel - angle.asRadians(), x = std::sin(a) * 0.25f,
+                const float a = i * 2 * pi / m_interpolationLevel - angle.asRadians(), x = std::sin(a) * 0.25f,
                       y = std::cos(a) * 0.25f;
 
-                vec.push_back(sf::Vector2f(x, y));
+                vec.emplace_back(x, y);
             }
             vec.push_back(sf::Vector2f({-0.25, -0.25}).rotatedBy(angle));
             vec.push_back(sf::Vector2f({-0.25, 0.25}).rotatedBy(angle));
@@ -287,7 +287,7 @@ public:
             m_shape.setColor(m_color), m_shape.update();
         if (m_outline.getColor() != m_borderColor)
             m_outline.setColor(m_borderColor), m_outline.update();
-        const std::uint8_t alpha = std::uint8_t(m_opacity / 100 * 255);
+        const auto alpha = std::uint8_t(m_opacity / 100 * 255);
         m_twirlShape.setOutlineColor(sf::Color::Magenta * sf::Color(255, 255, 255, alpha));
         if (m_speed)
             m_speedShape.setFillColor((m_speed == 1 ? sf::Color::Red : sf::Color::Blue) *
@@ -355,7 +355,7 @@ public:
             else
                 lastAngle = tiles[i - 1].angle.deg();
 
-            m_tileSprites.push_back(TileSprite(lastAngle, angle, nextAngle));
+            m_tileSprites.emplace_back(lastAngle, angle, nextAngle);
         }
         double oBpm = settings.bpm, bpm = oBpm;
         for (const auto& event : events)
@@ -388,8 +388,8 @@ public:
 
             sprite.setPosition({(float)tile.pos.c.x, (float)tile.pos.c.y});
             sprite.setActive(m_activeTileIndex ? m_activeTileIndex == i : false);
-            sprite.setTrackColor(sf::Color(tile.color.toInteger()));
-            sprite.setTrackStyle(tile.trackStyle.c);
+            // sprite.setTrackColor(sf::Color(tile.color.toInteger()));
+            // sprite.setTrackStyle(tile.trackStyle.c);
             sprite.setScale({(float)tile.scale.c.x / 100, (float)tile.scale.c.y / 100});
             sprite.setRotation(sf::degrees((float)tile.rotation.c));
             sprite.setOpacity((float)tile.opacity);
@@ -415,12 +415,17 @@ private:
             if (i == 0)
                 flag = true;
 
+
             if (currentViewRect.findIntersection(m_tileSprites[i].getGlobalBoundsFaster())
                 && m_level.getTiles()[i].scale.c.x != 0 && m_level.getTiles()[i].scale.c.y != 0)
+            {
+                m_tileSprites[i].setTrackColor(sf::Color(m_level.getTiles()[i].color.toInteger()));
+                m_tileSprites[i].setTrackStyle(m_level.getTiles()[i].trackStyle.c);
                 target.draw(m_tileSprites[i]);
+            }
         }
     }
     AdoCpp::Level& m_level;
     std::optional<size_t> m_activeTileIndex;
-    std::vector<TileSprite> m_tileSprites;
+    mutable std::vector<TileSprite> m_tileSprites;
 };

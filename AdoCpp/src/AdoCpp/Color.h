@@ -14,6 +14,10 @@ namespace AdoCpp
         constexpr explicit Color(std::uint32_t color);
         constexpr explicit Color(const std::string& color);
 
+        constexpr static Color fromHSV(double h, double s, double v);
+
+        [[nodiscard]] constexpr std::tuple<double, double, double> toHSV() const;
+
         [[nodiscard]] constexpr std::uint32_t toInteger() const;
 
         enum class ToStringAlphaMode

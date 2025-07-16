@@ -37,7 +37,7 @@ namespace AdoCpp
         inline constexpr double pi  = 3.141592654f;
         inline constexpr double tau = pi * 2.0;
 
-        constexpr double positiveRemainder(double a, double b)
+        constexpr double positiveRemainder(const double a, const double b)
         {
             assert(b > 0.0 && "Cannot calculate remainder with non-positive divisor");
             const double val = a - static_cast<double>(static_cast<int>(a / b)) * b;

@@ -342,7 +342,7 @@ namespace AdoCpp
         /**
          * @brief Parse the level.
          */
-        void parse();
+        void parse(bool force = false);
 
         /**
          * @brief Update the level.
@@ -584,6 +584,19 @@ namespace AdoCpp
         std::vector<Event::Event*> events;
 
     private:
+        void parseTiles();
+        void parseTileEventsAndSetSpeed();
+        void parseDynamicEvents(std::vector<Event::DynamicEvent*>& dynamicEvents,
+                                std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe);
+        void parseAnimateTrack();
+        void parseRepeatEvents(const std::vector<Event::DynamicEvent*>& dynamicEvents,
+                               const std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe);
+        void parseMoveTrackData();
+
+        void updateTileColorInfo(const Event::Track::RecolorTrack* recolorTrack);
+        void updateTileColor(double seconds, size_t i);
+        void updateTilePos(double seconds, size_t i);
+
         struct MoveCameraData
         {
             size_t floor;

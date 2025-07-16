@@ -1,8 +1,20 @@
 #pragma once
+#include <cassert>
+
 #include "Color.h"
 
 namespace AdoCpp
 {
+    namespace priv
+    {
+        constexpr double positiveRemainder_(const double a, const double b)
+        {
+            assert(b > 0.0 && "Cannot calculate remainder with non-positive divisor");
+            const double val = a - static_cast<double>(static_cast<int>(a / b)) * b;
+            return val >= 0.0 ? val : val + b;
+        }
+    }
+
     // Most of the code is copied from "SFML/Graphics/Color.inl".
     constexpr Color::Color(const std::uint8_t red, const std::uint8_t green, const std::uint8_t blue,
                            const std::uint8_t alpha) : r(red), g(green), b(blue), a(alpha)
@@ -31,13 +43,61 @@ namespace AdoCpp
         if (color.size() == hash + 8)
             a = charToDigit16(color[hash + 6]) * 16 + charToDigit16(color[hash + 7]);
     }
+    constexpr Color Color::fromHSV(const double h, const double s, const double v)
+    {
+        auto _abs = [](const double d)
+        {
+            return d > 0.0 ? d : -d;
+        };
+        const double c = v * s, x = c * (1 - _abs(priv::positiveRemainder_(h / 60, 2) - 1)), m = v - c;
+        auto [r1, g1, b1] = [&]() -> std::tuple<double, double, double>
+        {
+            if (h < 60)
+                return {c, x, 0};
+            if (h < 120)
+                return {x, c, 0};
+            if (h < 180)
+                return {0, c, x};
+            if (h < 240)
+                return {0, x, c};
+            if (h < 300)
+                return {x, 0, c};
+            return {c, 0, x};
+        }();
+        return Color((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255);
+    }
+    constexpr std::tuple<double, double, double> Color::toHSV() const
+    {
+        const double r1 = r / 255.0, g1 = g / 255.0, b1 = b / 255.0;
+        const double cMax = std::max(r1, std::max(g1, b1)), cMin = std::min(r1, std::min(g1, b1)), delta = cMax - cMin;
+        auto H = [&]() -> double
+        {
+            if (delta == 0)
+                return 0;
+            if (cMax == r1)
+                return 60 * priv::positiveRemainder_((g1 - b1) / delta, 6);
+            if (cMax == g1)
+                return 60 * ((b1 - r1) / delta + 2);
+            if (cMax == b1)
+                return 60 * ((r1 - g1) / delta + 4);
+        };
+        auto S = [&]() -> double
+        {
+            if (cMax == 0)
+                return 0;
+            return delta / cMax;
+        };
+        auto V = [&]() -> double { return cMax; };
+        return {H(), S(), V()};
+    }
 
     constexpr std::uint32_t Color::toInteger() const
     {
         return static_cast<std::uint32_t>((r << 24) | (g << 16) | (b << 8) | a);
     }
 
-    constexpr std::string Color::toString(const bool hash, const bool uppercase, const ToStringAlphaMode alphaMode) const
+    constexpr std::string Color::toString(const bool hash, const bool uppercase,
+                                          const ToStringAlphaMode alphaMode) const
     {
         std::string str;
         if (hash)

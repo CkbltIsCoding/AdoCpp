@@ -10,6 +10,14 @@
 #include "Utils.h"
 #include "rapidjson/document.h"
 
+
+constexpr double positiveRemainder(const double a, const double b)
+{
+    assert(b > 0.0 && "Cannot calculate remainder with non-positive divisor");
+    const double val = a - static_cast<double>(static_cast<int>(a / b)) * b;
+    return val >= 0.0 ? val : val + b;
+}
+
 namespace AdoCpp
 {
     Settings::Settings(const rapidjson::Value& jsonSettings) { *this = fromJson(jsonSettings); }
@@ -128,8 +136,8 @@ namespace AdoCpp
         tile.editorPos = tile.pos.o = {0, 0}, tile.stickToFloors = stickToFloors, tile.trackAnimationFloor = 0,
 
         // clang-format off
-        tile.trackAnimation          = trackAnimation,          tile.beatsAhead  = beatsAhead,
-        tile.trackDisappearAnimation = trackDisappearAnimation, tile.beatsBehind = beatsBehind;
+        tile.trackAnimation           = trackAnimation,          tile.beatsAhead  = beatsAhead,
+        tile.trackDisappearAnimation  = trackDisappearAnimation, tile.beatsBehind = beatsBehind;
 
         tile.trackColorType.o         = trackColorType;
         tile.trackColor.o             = trackColor;
@@ -139,8 +147,8 @@ namespace AdoCpp
         tile.trackColorPulse.o        = trackColorPulse;
         tile.trackPulseLength.o       = trackPulseLength;
 
-        tile.midspinHitsound       = tile.hitsound       = hitsound,
-        tile.midspinHitsoundVolume = tile.hitsoundVolume = hitsoundVolume;
+        tile.midspinHitsound          = tile.hitsound       = hitsound,
+        tile.midspinHitsoundVolume    = tile.hitsoundVolume = hitsoundVolume;
         // clang-format on
     }
 
@@ -271,407 +279,22 @@ namespace AdoCpp
         return doc;
     }
 
-    void Level::parse()
+    void Level::parse(const bool force)
     {
-        if (parsed)
+        if (parsed && !force)
             return;
-        if (tiles.size() <= 1)
-        {
-            parsed = false;
-            return;
-        }
+        assert(tiles.size() >= 2 && "AdoCpp::Level class must have at least two tiles to parse");
         parsed = true;
-        // clang-format off
-        std::vector<bool>                          twirls(tiles.size());
-        std::vector<double>                        pauses(tiles.size());
-        std::vector<Event::GamePlay::SetHitsound*> setHitsounds(tiles.size());
-        std::vector<Event::Track::PositionTrack*>  positionTracks(tiles.size());
-        std::vector<Event::Track::ColorTrack*>     colorTracks(tiles.size());
-        std::vector<Event::Track::AnimateTrack*>   animateTracks(tiles.size());
-        std::vector<Event::Dlc::Hold*>             holds(tiles.size());
-        for (const auto& event : events)
-        {
-            if (!event->active)
-                continue;
-
-            if (typeid(*event) == typeid(Event::GamePlay::Twirl))
-                twirls[event->floor] = true;
-            else if (const auto pause                = dynamic_cast<Event::GamePlay::Pause*>(event))
-                pauses[pause->floor]                 = pause->duration;
-            else if (const auto setHitsound          = dynamic_cast<Event::GamePlay::SetHitsound*>(event))
-                setHitsounds[setHitsound->floor]     = setHitsound;
-
-            else if (const auto positionTrack        = dynamic_cast<Event::Track::PositionTrack*>(event))
-                positionTracks[positionTrack->floor] = positionTrack;
-            else if (const auto colorTrack           = dynamic_cast<Event::Track::ColorTrack*>(event))
-                colorTracks[colorTrack->floor]       = colorTrack;
-            else if (const auto animateTrack         = dynamic_cast<Event::Track::AnimateTrack*>(event))
-                animateTracks[animateTrack->floor]   = animateTrack;
-            else if (const auto hold                 = dynamic_cast<Event::Dlc::Hold*>(event))
-                holds[hold->floor]                   = hold;
-        }
-        // clang-format on
-        tiles[0].orbit = Clockwise, tiles[0].beat = 0, settings.apply(tiles[0]);
-        for (size_t i = 0; i < tiles.size(); i++)
-        {
-            // Tile's twirl
-            if (i != 0)
-                tiles[i].orbit = tiles[i - 1].orbit;
-            if (twirls[i])
-                tiles[i].orbit = !tiles[i].orbit;
-
-            // Tile's beat
-            if (i != 0)
-            {
-                if (tiles[i].angle.deg() == 999)
-                {
-                    tiles[i].beat = tiles[i - 1].beat;
-                }
-                else
-                {
-                    double angle, beat;
-                    if (tiles[i - 1].angle.deg() == 999)
-                        angle = tiles[i - 2].angle.deg() - tiles[i].angle.deg();
-                    else
-                        angle = tiles[i - 1].angle.deg() - 180 - tiles[i].angle.deg();
-                    if (tiles[i - 1].orbit == CounterClockwise)
-                        angle *= -1;
-                    while (angle <= 0)
-                        angle += 360;
-                    while (angle > 360)
-                        angle -= 360;
-                    if (i == 1)
-                        angle -= 180;
-                    beat = angle / 180 + pauses[i - 1] + (holds[i - 1] ? holds[i - 1]->duration * 2 : 0);
-                    tiles[i].beat = tiles[i - 1].beat + beat;
-                }
-            }
-
-            // Tile's position
-            if (i != 0)
-            {
-                tiles[i].stickToFloors = tiles[i - 1].stickToFloors;
-                tiles[i].pos.o += tiles[i - 1].pos.o, tiles[i].editorPos = tiles[i - 1].editorPos;
-                if ((i + 1 == tiles.size() || tiles[i + 1].angle.deg() != 999) && tiles[i].angle.deg() != 999)
-                {
-                    const double dx = cos(deg2rad(tiles[i].angle.deg())), dy = sin(deg2rad(tiles[i].angle.deg()));
-                    tiles[i].pos.o.x += dx;
-                    tiles[i].editorPos.x += dx;
-                    tiles[i].pos.o.y += dy;
-                    tiles[i].editorPos.y += dy;
-                }
-            }
-            if (positionTracks[i])
-            {
-                tiles[i].editorPos += positionTracks[i]->positionOffset;
-                if (positionTracks[i]->justThisTile && i != tiles.size() - 1)
-                    tiles[i + 1].pos.o -= positionTracks[i]->positionOffset;
-                if (!positionTracks[i]->editorOnly)
-                    tiles[i].pos.o += positionTracks[i]->positionOffset;
-                if (positionTracks[i]->stickToFloors)
-                    tiles[i].stickToFloors = *positionTracks[i]->stickToFloors;
-            }
-
-            // Tile's color
-            // clang-format off
-            if (i != 0)
-            {
-                tiles[i].trackColorType.o         = tiles[i - 1].trackColorType.o;
-                tiles[i].trackColor.o             = tiles[i - 1].trackColor.o;
-                tiles[i].secondaryTrackColor.o    = tiles[i - 1].secondaryTrackColor.o;
-                tiles[i].trackColorAnimDuration.o = tiles[i - 1].trackColorAnimDuration.o;
-                tiles[i].trackStyle.o             = tiles[i - 1].trackStyle.o;
-                tiles[i].trackColorPulse.o        = tiles[i - 1].trackColorPulse.o;
-                tiles[i].trackPulseLength.o       = tiles[i - 1].trackPulseLength.o;
-            }
-            if (colorTracks[i])
-            {
-                tiles[i].trackColorType.o         = colorTracks[i]->trackColorType;
-                tiles[i].trackColor.o             = colorTracks[i]->trackColor;
-                tiles[i].secondaryTrackColor.o    = colorTracks[i]->secondaryTrackColor;
-                tiles[i].trackColorAnimDuration.o = colorTracks[i]->trackColorAnimDuration;
-                tiles[i].trackStyle.o             = colorTracks[i]->trackStyle;
-                // tiles[i].trackColorPulse.o        = colorTracks[i]->trackColorPulse;
-                // tiles[i].trackPulseLength.o       = colorTracks[i]->trackPulseLength;
-            }
-
-            // Tile's animation
-            if (i != 0)
-            {
-                tiles[i].trackAnimationFloor     = tiles[i - 1].trackAnimationFloor;
-                tiles[i].trackAnimation          = tiles[i - 1].trackAnimation;
-                tiles[i].beatsAhead              = tiles[i - 1].beatsAhead;
-                tiles[i].trackDisappearAnimation = tiles[i - 1].trackDisappearAnimation;
-                tiles[i].beatsBehind             = tiles[i - 1].beatsBehind;
-            } // clang-format on
-            if (animateTracks[i])
-            {
-                tiles[i].trackAnimationFloor = animateTracks[i]->floor;
-
-                if (animateTracks[i]->trackAnimation)
-                    tiles[i].trackAnimation = *animateTracks[i]->trackAnimation;
-                tiles[i].beatsAhead = animateTracks[i]->beatsAhead;
-
-                if (animateTracks[i]->trackDisappearAnimation)
-                    tiles[i].trackDisappearAnimation = *animateTracks[i]->trackDisappearAnimation;
-                tiles[i].beatsBehind = animateTracks[i]->beatsBehind;
-            }
-
-            // Tile's hitsound
-            // clang-format off
-            if (i != 0)
-            {
-                tiles[i].hitsound              = tiles[i - 1].hitsound;
-                tiles[i].hitsoundVolume        = tiles[i - 1].hitsoundVolume;
-                tiles[i].midspinHitsound       = tiles[i - 1].midspinHitsound;
-                tiles[i].midspinHitsoundVolume = tiles[i - 1].midspinHitsoundVolume;
-            }
-            if (setHitsounds[i])
-            {
-                switch (setHitsounds[i]->gameSound)
-                {
-                case Event::GamePlay::SetHitsound::GameSound::Hitsound:
-                    tiles[i].hitsound       = setHitsounds[i]->hitsound;
-                    tiles[i].hitsoundVolume = setHitsounds[i]->hitsoundVolume;
-                    break;
-                case Event::GamePlay::SetHitsound::GameSound::Midspin:
-                    tiles[i].midspinHitsound       = setHitsounds[i]->hitsound;
-                    tiles[i].midspinHitsoundVolume = setHitsounds[i]->hitsoundVolume;
-                    break;
-                }
-            }
-            // clang-format on
-
-            // Tile's events
-            tiles[i].events.clear();
-        }
-        tiles[0].beat = -settings.countdownTicks;
+        parseTiles();
+        parseTileEventsAndSetSpeed();
         std::vector<Event::DynamicEvent*> dynamicEvents;
-        m_processedDynamicEvents.clear();
-        std::vector<std::vector<Event::GamePlay::SetSpeed*>> vecSetSpeed{tiles.size()};
         std::vector<std::vector<Event::Modifiers::RepeatEvents*>> vecRe{tiles.size()};
-        m_setSpeeds.clear();
-        for (const auto& event : events)
-        {
-            if (const auto setSpeed = dynamic_cast<Event::GamePlay::SetSpeed*>(event))
-                if (event->active)
-                    setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
-                    m_setSpeeds.push_back(setSpeed), vecSetSpeed[setSpeed->floor].push_back(setSpeed);
-            tiles[event->floor].events.push_back(event);
-        }
-        for (auto& tile : tiles)
-            tile.seconds = beat2seconds(tile.beat);
-
-        // Dynamic events
-        for (const auto& event : events)
-        {
-            if (!event->active)
-                continue;
-            if (auto dynamicEventPtr = dynamic_cast<Event::DynamicEvent*>(event))
-            {
-                if (typeid(dynamicEventPtr) == typeid(Event::GamePlay::SetSpeed))
-                    continue;
-                if (dynamicEventPtr->angleOffset == 0)
-                {
-                    dynamicEventPtr->seconds = tiles[dynamicEventPtr->floor].seconds;
-                    dynamicEventPtr->beat = tiles[dynamicEventPtr->floor].beat;
-                }
-                else
-                {
-                    const double bpm = getBpmForDynamicEvent(dynamicEventPtr->floor, dynamicEventPtr->angleOffset),
-                                 spb = bpm2crotchet(bpm);
-                    dynamicEventPtr->seconds =
-                        tiles[dynamicEventPtr->floor].seconds + dynamicEventPtr->angleOffset / 180 * spb;
-                    dynamicEventPtr->beat = seconds2beat(dynamicEventPtr->seconds);
-                }
-
-                dynamicEvents.push_back(dynamicEventPtr);
-                m_processedDynamicEvents.push_back(dynamicEventPtr);
-            }
-            if (auto repeatEvents = dynamic_cast<Event::Modifiers::RepeatEvents*>(event))
-            {
-                vecRe[repeatEvents->floor].push_back(repeatEvents);
-            }
-        }
-
-        // AnimateTrack // FIXME
-        for (size_t i = 0; i < tiles.size(); i++)
-        {
-            const double spb = bpm2crotchet(getBpmByBeat(tiles[tiles[i].trackAnimationFloor].beat)),
-                         secondsAhead = tiles[i].beatsAhead * spb, secondsBehind = tiles[i].beatsBehind * spb;
-            if (i != 0)
-            {
-                switch (tiles[i].trackAnimation)
-                {
-                case TrackAnimation::None:
-                    break;
-                case TrackAnimation::Fade:
-                default:
-                    {
-                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
-                        mtHide->floor = mtAppear->floor = i;
-                        mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
-                            RelativeIndex(0, ThisTile);
-                        mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
-                        mtHide->opacity = 0;
-                        mtAppear->seconds = tiles[i].seconds - secondsAhead;
-                        mtAppear->beat = seconds2beat(mtAppear->seconds);
-                        mtAppear->duration = 0.5;
-                        mtAppear->opacity = 100;
-                        mtHide->generated = mtAppear->generated = true;
-                        m_processedDynamicEvents.push_front(mtHide);
-                        m_processedDynamicEvents.push_front(mtAppear);
-                        break;
-                    }
-                case TrackAnimation::Grow_Spin:
-                    {
-                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
-                        mtHide->floor = mtAppear->floor = i;
-                        mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
-                            RelativeIndex(0, ThisTile);
-                        mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
-                        mtHide->rotationOffset = -180;
-                        mtHide->scale = OptionalPoint(std::make_optional(0.0), std::make_optional(0.0));
-                        mtAppear->seconds = tiles[i].seconds - secondsAhead;
-                        mtAppear->beat = seconds2beat(mtAppear->seconds);
-                        mtAppear->duration = 0.5;
-                        mtAppear->rotationOffset = 0;
-                        mtAppear->scale = OptionalPoint(std::make_optional(100.0), std::make_optional(100.0));
-                        mtHide->generated = mtAppear->generated = true;
-                        m_processedDynamicEvents.push_front(mtHide);
-                        m_processedDynamicEvents.push_front(mtAppear);
-                        break;
-                    }
-                }
-            }
-            if (i != tiles.size() - 1)
-            {
-                switch (tiles[i].trackDisappearAnimation)
-                {
-                case TrackDisappearAnimation::None:
-                    break;
-                case TrackDisappearAnimation::Fade:
-                default:
-                    {
-                        const auto mtDisappear = new Event::Track::MoveTrack();
-                        mtDisappear->floor = i;
-                        mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
-                        mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
-                        mtDisappear->beat = seconds2beat(mtDisappear->seconds);
-                        mtDisappear->duration = 0.5;
-                        mtDisappear->opacity = 0;
-                        mtDisappear->generated = true;
-                        m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
-                        break;
-                    }
-                case TrackDisappearAnimation::Shrink_Spin:
-                    {
-                        const auto mtDisappear = new Event::Track::MoveTrack();
-                        mtDisappear->floor = i;
-                        mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
-                        mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
-                        mtDisappear->beat = seconds2beat(mtDisappear->seconds);
-                        mtDisappear->duration = 0.5;
-                        mtDisappear->rotationOffset = 180;
-                        mtDisappear->scale = OptionalPoint(std::make_optional(0.0), std::make_optional(0.0));
-                        mtDisappear->generated = true;
-                        m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
-                        break;
-                    }
-                }
-            }
-        }
-
-        // RepeatEvents
-        for (const auto& event : dynamicEvents)
-        {
-            for (const auto& repeatEvents : vecRe[event->floor])
-            {
-                for (const auto& tag : repeatEvents->tag)
-                {
-                    for (const auto& eventTag : event->eventTag)
-                    {
-                        if (tag != eventTag)
-                            continue;
-                        const double spb = bpm2crotchet(getBpmByBeat(event->beat + event->angleOffset / 180));
-                        if (repeatEvents->repeatType == Event::Modifiers::RepeatEvents::RepeatType::Beat)
-                        {
-                            const double gap = spb * repeatEvents->interval;
-                            for (size_t i = 1; i <= repeatEvents->repetitions; i++)
-                            {
-                                auto eventClone = event->clone();
-                                eventClone->seconds += gap * static_cast<double>(i);
-                                eventClone->beat = seconds2beat(eventClone->seconds);
-                                eventClone->generated = true;
-                                m_processedDynamicEvents.push_front(eventClone);
-                            }
-                        }
-                        else if (repeatEvents->repeatType == Event::Modifiers::RepeatEvents::RepeatType::Floor)
-                        {
-                            for (size_t i = 1; i <= repeatEvents->floorCount; i++)
-                            {
-                                const auto eventClone = event->clone();
-                                eventClone->seconds =
-                                    tiles[eventClone->floor + i].seconds + eventClone->angleOffset / 180 * spb;
-                                eventClone->beat = seconds2beat(eventClone->seconds);
-                                if (repeatEvents->executeOnCurrentFloor)
-                                    eventClone->floor += i;
-                                eventClone->generated = true;
-                                m_processedDynamicEvents.push_front(eventClone);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
+        parseDynamicEvents(dynamicEvents, vecRe);
+        parseAnimateTrack();
+        parseRepeatEvents(dynamicEvents, vecRe);
         m_processedDynamicEvents.sort([](const Event::DynamicEvent* a, const Event::DynamicEvent* b)
                                       { return a->beat < b->beat; }); // stable sort
-
-        // MoveTrack // FIXME
-        for (const auto& event : m_processedDynamicEvents)
-        {
-            const auto mt = dynamic_cast<Event::Track::MoveTrack*>(event);
-            if (mt == nullptr)
-                continue;
-            const size_t b = rel2absIndex(mt->floor, mt->startTile),
-                         e = std::min(tiles.size() - 1, rel2absIndex(mt->floor, mt->endTile));
-            for (size_t i = b; i <= e; i++)
-            {
-                auto& d = tiles[i].moveTrackDatas;
-                d.emplace_back(mt->floor, mt->angleOffset, mt->beat, mt->seconds, mt->startTile, mt->endTile,
-                               mt->duration, mt->positionOffset, 114514, 114514, mt->rotationOffset, 114514, mt->scale,
-                               114514, 114514, mt->opacity, 114514, mt->ease);
-            }
-        }
-        for (auto& tile : tiles)
-        {
-            double xEndSec, yEndSec, rotEndSec, scXEndSec, scYEndSec,
-                opEndSec = xEndSec = yEndSec = rotEndSec = scXEndSec = scYEndSec =
-                    std::numeric_limits<double>::infinity();
-            // if (!tile.moveTrackDatas.empty())
-            for (auto& moveTrackData : std::ranges::reverse_view(tile.moveTrackDatas))
-            {
-                moveTrackData.xEndSec = xEndSec;
-                moveTrackData.yEndSec = yEndSec;
-                moveTrackData.rotEndSec = rotEndSec;
-                moveTrackData.scXEndSec = scXEndSec;
-                moveTrackData.scYEndSec = scYEndSec;
-                moveTrackData.opEndSec = opEndSec;
-                if (moveTrackData.positionOffset.first)
-                    xEndSec = moveTrackData.seconds;
-                if (moveTrackData.positionOffset.second)
-                    yEndSec = moveTrackData.seconds;
-                if (moveTrackData.rotationOffset)
-                    rotEndSec = moveTrackData.seconds;
-                if (moveTrackData.scale.first)
-                    scXEndSec = moveTrackData.seconds;
-                if (moveTrackData.scale.second)
-                    scYEndSec = moveTrackData.seconds;
-                if (moveTrackData.opacity)
-                    opEndSec = moveTrackData.seconds;
-            }
-        }
+        parseMoveTrackData();
 
         tiles[0].beat = -std::numeric_limits<double>::infinity();
     }
@@ -696,130 +319,13 @@ namespace AdoCpp
             if (seconds < dynamicEvent->seconds)
                 break;
             if (const auto* const recolorTrack = dynamic_cast<Event::Track::RecolorTrack*>(dynamicEvent))
-            {
-                // double x, y;
-                // if (!recolorTrack->duration || recolorTrack->duration == 0)
-                //     x = y = 1;
-                // else
-                //     x = (seconds - recolorTrack->seconds) /
-                //         (*recolorTrack->duration * bpm2crotchet(getBpmByBeat(recolorTrack->beat))),
-                //     y = ease(recolorTrack->ease, x);
-                const size_t b = rel2absIndex(recolorTrack->floor, recolorTrack->startTile),
-                             e = std::min(tiles.size() - 1, rel2absIndex(recolorTrack->floor, recolorTrack->endTile));
-                for (size_t i = b; i <= e; i++)
-                {
-                    tiles[i].trackColor.c = recolorTrack->trackColor;
-                    tiles[i].secondaryTrackColor.c = recolorTrack->secondaryTrackColor;
-                    tiles[i].trackColorType.c = recolorTrack->trackColorType;
-                    tiles[i].trackStyle.c = recolorTrack->trackStyle;
-                    tiles[i].trackColorPulse.c = recolorTrack->trackColorPulse;
-                    tiles[i].trackPulseLength.c = recolorTrack->trackPulseLength;
-                    tiles[i].trackColorAnimDuration.c = recolorTrack->trackColorAnimDuration;
-                }
-            }
+                updateTileColorInfo(recolorTrack);
         }
 
         for (size_t i = 0; i < tiles.size(); i++)
         {
-            auto& tile = tiles[i];
-
-            // Color
-            {
-                double x = seconds;
-                if (const double y = tile.trackColorAnimDuration.c; y == 0)
-                {
-                    x = 0;
-                }
-                else
-                {
-                    x /= y;
-                    if (tile.trackColorPulse.c == TrackColorPulse::Forward)
-                        x -= i * 1.0 / tile.trackPulseLength.c;
-                    else if (tile.trackColorPulse.c == TrackColorPulse::Backward)
-                        x += i * 1.0 / tile.trackPulseLength.c;
-                    while (x < 0)
-                        x += 1;
-                    while (x >= 1)
-                        x -= 1;
-                }
-
-                switch (tile.trackColorType.c)
-                {
-                case TrackColorType::Single:
-                    tile.color = tile.trackColor.c;
-                    break;
-                case TrackColorType::Stripes:
-                    tile.color = (i % 2 == 0) ? tile.trackColor.c : tile.secondaryTrackColor.c;
-                    break;
-                case TrackColorType::Glow:
-                    {
-                        if (x > 0.5)
-                            x = 1 - x;
-                        const uint8_t res = (x > 0.5 ? 1 - x : x) * 2 * 255;
-                        tile.color = tile.trackColor.c * Color(res, res, res, 255) +
-                            tile.secondaryTrackColor.c * Color(res, res, res, 255);
-                        break;
-                    }
-
-                case TrackColorType::Blink:
-                    {
-                        const uint8_t res = x * 255;
-                        tile.color = tile.trackColor.c * Color(res, res, res, 255) +
-                            tile.secondaryTrackColor.c * Color(res, res, res, 255);
-                        break;
-                    }
-                case TrackColorType::Switch:
-                    {
-                        tile.color = x > 0.5 ? tile.secondaryTrackColor.c : tile.trackColor.c;
-                        break;
-                    }
-                case TrackColorType::Rainbow:
-                case TrackColorType::Volume:
-                default:
-                    tile.color = tile.trackColor.c;
-                }
-            }
-
-            // Move
-            for (const auto& data : tile.moveTrackDatas) // FIXME
-            {
-                const double bpm = getBpmForDynamicEvent(data.floor, data.angleOffset), spb = bpm2crotchet(bpm);
-                auto calcX = [&seconds, &data, &spb](const double endSec)
-                {
-                    return data.duration != 0.0 ? (std::min(seconds, endSec) - data.seconds) / spb / data.duration
-                                                : 1.0;
-                };
-                if (data.positionOffset.first)
-                {
-                    const double x = calcX(data.xEndSec), y = ease(data.ease, x);
-                    tile.pos.c.x += (tile.pos.o.x + *data.positionOffset.first - tile.pos.c.x) * y;
-                }
-                if (data.positionOffset.second)
-                {
-                    const double x = calcX(data.yEndSec), y = ease(data.ease, x);
-                    tile.pos.c.y += (tile.pos.o.y + *data.positionOffset.second - tile.pos.c.y) * y;
-                }
-                if (data.rotationOffset)
-                {
-                    const double x = calcX(data.rotEndSec), y = ease(data.ease, x);
-                    tile.rotation.c += (*data.rotationOffset - tile.rotation.c) * y;
-                }
-                if (data.scale.first)
-                {
-                    const double x = calcX(data.scXEndSec), y = ease(data.ease, x);
-                    tile.scale.c.x += (*data.scale.first - tile.scale.c.x) * y;
-                }
-                if (data.scale.second)
-                {
-                    const double x = calcX(data.scYEndSec), y = ease(data.ease, x);
-                    tile.scale.c.y += (*data.scale.second - tile.scale.c.y) * y;
-                }
-                if (data.opacity)
-                {
-                    const double x = calcX(data.opEndSec), y = ease(data.ease, x);
-                    tile.opacity += (*data.opacity - tile.opacity) * y;
-                }
-            }
+            updateTileColor(seconds, i);
+            updateTilePos(seconds, i);
         }
 
         {
@@ -893,14 +399,14 @@ namespace AdoCpp
     void Level::insertTile(const size_t floor, const Tile& tile)
     {
         parsed = false;
-        tiles.insert(tiles.begin() + floor, tile);
+        tiles.insert(tiles.begin() + floor, tile); // NOLINT(*-narrowing-conversions)
     }
-    void Level::insertTile(const size_t floor, double angle)
+    void Level::insertTile(const size_t floor, const double angle)
     {
         parsed = false;
-        tiles.emplace(tiles.begin() + floor, angle);
+        tiles.emplace(tiles.begin() + floor, angle); // NOLINT(*-narrowing-conversions)
     }
-    auto Level::changeTileAngle(const size_t floor, double angle) -> void
+    auto Level::changeTileAngle(const size_t floor, const double angle) -> void
     {
         parsed = false;
         tiles[floor].angle = degrees(angle);
@@ -908,7 +414,7 @@ namespace AdoCpp
     void Level::eraseTile(const size_t pos, const size_t n)
     {
         parsed = false;
-        tiles.erase(tiles.begin() + pos, tiles.begin() + std::min(n, tiles.size()));
+        tiles.erase(tiles.begin() + pos, tiles.begin() + std::min(n, tiles.size())); // NOLINT(*-narrowing-conversions)
     }
     void Level::pushBackTile(const Tile& tile)
     {
@@ -937,7 +443,7 @@ namespace AdoCpp
                                                     { return e_->floor < event_->floor; }) -
             events.begin(),
                      i = std::min(begin + index, end);
-        events.insert(events.begin() + i, e);
+        events.insert(events.begin() + i, e); // NOLINT(*-narrowing-conversions)
     }
     bool Level::removeEvent(const size_t floor, const size_t index)
     {
@@ -953,7 +459,7 @@ namespace AdoCpp
                      i = begin + index;
         if (i >= end)
             return false;
-        events.erase(events.begin() + i);
+        events.erase(events.begin() + i); // NOLINT(*-narrowing-conversions)
         return true;
     }
 
@@ -1113,10 +619,8 @@ namespace AdoCpp
             angle = tiles[floor - 1].angle.deg() - 180 - tiles[floor].angle.deg();
         if (tiles[floor - 1].orbit == CounterClockwise)
             angle *= -1;
-        while (angle <= 0)
-            angle += 360;
-        while (angle > 360)
-            angle -= 360;
+        angle = positiveRemainder(angle, 360);
+        if (angle == 0) angle = 360;
         return angle;
     }
 
@@ -1366,4 +870,524 @@ namespace AdoCpp
     const Settings& Level::getSettings() const { return settings; }
     const std::vector<Tile>& Level::getTiles() const { return tiles; }
     const std::vector<Event::Event*>& Level::getEvents() const { return events; }
+
+    void Level::parseTiles()
+    {
+        // clang-format off
+        std::vector<bool>                          twirls(tiles.size());
+        std::vector<double>                        pauses(tiles.size());
+        std::vector<Event::GamePlay::SetHitsound*> setHitsounds(tiles.size());
+        std::vector<Event::Track::PositionTrack*>  positionTracks(tiles.size());
+        std::vector<Event::Track::ColorTrack*>     colorTracks(tiles.size());
+        std::vector<Event::Track::AnimateTrack*>   animateTracks(tiles.size());
+        std::vector<Event::Dlc::Hold*>             holds(tiles.size());
+        for (const auto& event : events)
+        {
+            if (!event->active)
+                continue;
+
+            if (typeid(*event) == typeid(Event::GamePlay::Twirl))
+                twirls[event->floor] = true;
+            else if (const auto pause                = dynamic_cast<Event::GamePlay::Pause*>(event))
+                pauses[pause->floor]                 = pause->duration;
+            else if (const auto setHitsound          = dynamic_cast<Event::GamePlay::SetHitsound*>(event))
+                setHitsounds[setHitsound->floor]     = setHitsound;
+
+            else if (const auto positionTrack        = dynamic_cast<Event::Track::PositionTrack*>(event))
+                positionTracks[positionTrack->floor] = positionTrack;
+            else if (const auto colorTrack           = dynamic_cast<Event::Track::ColorTrack*>(event))
+                colorTracks[colorTrack->floor]       = colorTrack;
+            else if (const auto animateTrack         = dynamic_cast<Event::Track::AnimateTrack*>(event))
+                animateTracks[animateTrack->floor]   = animateTrack;
+            else if (const auto hold                 = dynamic_cast<Event::Dlc::Hold*>(event))
+                holds[hold->floor]                   = hold;
+        }
+        // clang-format on
+        tiles[0].orbit = Clockwise, tiles[0].beat = 0, settings.apply(tiles[0]);
+        for (size_t i = 0; i < tiles.size(); i++)
+        {
+            // Tile's twirl
+            if (i != 0)
+                tiles[i].orbit = tiles[i - 1].orbit;
+            if (twirls[i])
+                tiles[i].orbit = !tiles[i].orbit;
+
+            // Tile's beat
+            if (i != 0)
+            {
+                if (tiles[i].angle.deg() == 999)
+                {
+                    tiles[i].beat = tiles[i - 1].beat;
+                }
+                else
+                {
+                    double angle;
+                    if (tiles[i - 1].angle.deg() == 999)
+                        angle = tiles[i - 2].angle.deg() - tiles[i].angle.deg();
+                    else
+                        angle = tiles[i - 1].angle.deg() - 180 - tiles[i].angle.deg();
+                    if (tiles[i - 1].orbit == CounterClockwise)
+                        angle *= -1;
+                    while (angle <= 0)
+                        angle += 360;
+                    while (angle > 360)
+                        angle -= 360;
+                    if (i == 1)
+                        angle -= 180;
+                    const double beat = angle / 180 + pauses[i - 1] + (holds[i - 1] ? holds[i - 1]->duration * 2 : 0);
+                    tiles[i].beat = tiles[i - 1].beat + beat;
+                }
+            }
+
+            // Tile's position
+            if (i != 0)
+            {
+                tiles[i].stickToFloors = tiles[i - 1].stickToFloors;
+                tiles[i].pos.o += tiles[i - 1].pos.o, tiles[i].editorPos = tiles[i - 1].editorPos;
+                if ((i + 1 == tiles.size() || tiles[i + 1].angle.deg() != 999) && tiles[i].angle.deg() != 999)
+                {
+                    const double dx = cos(deg2rad(tiles[i].angle.deg())), dy = sin(deg2rad(tiles[i].angle.deg()));
+                    tiles[i].pos.o.x += dx, tiles[i].editorPos.x += dx;
+                    tiles[i].pos.o.y += dy, tiles[i].editorPos.y += dy;
+                }
+            }
+            if (positionTracks[i])
+            {
+                tiles[i].editorPos += positionTracks[i]->positionOffset;
+                if (positionTracks[i]->justThisTile && i != tiles.size() - 1)
+                    tiles[i + 1].pos.o -= positionTracks[i]->positionOffset;
+                if (!positionTracks[i]->editorOnly)
+                    tiles[i].pos.o += positionTracks[i]->positionOffset;
+                if (positionTracks[i]->stickToFloors)
+                    tiles[i].stickToFloors = *positionTracks[i]->stickToFloors;
+            }
+
+            // Tile's color
+            // clang-format off
+            if (i != 0)
+            {
+                tiles[i].trackColorType.o         = tiles[i - 1].trackColorType.o;
+                tiles[i].trackColor.o             = tiles[i - 1].trackColor.o;
+                tiles[i].secondaryTrackColor.o    = tiles[i - 1].secondaryTrackColor.o;
+                tiles[i].trackColorAnimDuration.o = tiles[i - 1].trackColorAnimDuration.o;
+                tiles[i].trackStyle.o             = tiles[i - 1].trackStyle.o;
+                tiles[i].trackColorPulse.o        = tiles[i - 1].trackColorPulse.o;
+                tiles[i].trackPulseLength.o       = tiles[i - 1].trackPulseLength.o;
+            }
+            if (colorTracks[i])
+            {
+                tiles[i].trackColorType.o         = colorTracks[i]->trackColorType;
+                tiles[i].trackColor.o             = colorTracks[i]->trackColor;
+                tiles[i].secondaryTrackColor.o    = colorTracks[i]->secondaryTrackColor;
+                tiles[i].trackColorAnimDuration.o = colorTracks[i]->trackColorAnimDuration;
+                tiles[i].trackStyle.o             = colorTracks[i]->trackStyle;
+                tiles[i].trackColorPulse.o        = colorTracks[i]->trackColorPulse; //
+                tiles[i].trackPulseLength.o       = colorTracks[i]->trackPulseLength; //
+            }
+
+            // Tile's animation
+            if (i != 0)
+            {
+                tiles[i].trackAnimationFloor     = tiles[i - 1].trackAnimationFloor;
+                tiles[i].trackAnimation          = tiles[i - 1].trackAnimation;
+                tiles[i].beatsAhead              = tiles[i - 1].beatsAhead;
+                tiles[i].trackDisappearAnimation = tiles[i - 1].trackDisappearAnimation;
+                tiles[i].beatsBehind             = tiles[i - 1].beatsBehind;
+            } // clang-format on
+            if (animateTracks[i])
+            {
+                tiles[i].trackAnimationFloor = animateTracks[i]->floor;
+
+                if (animateTracks[i]->trackAnimation)
+                    tiles[i].trackAnimation = *animateTracks[i]->trackAnimation;
+                tiles[i].beatsAhead = animateTracks[i]->beatsAhead;
+
+                if (animateTracks[i]->trackDisappearAnimation)
+                    tiles[i].trackDisappearAnimation = *animateTracks[i]->trackDisappearAnimation;
+                tiles[i].beatsBehind = animateTracks[i]->beatsBehind;
+            }
+
+            // Tile's hitsound
+            // clang-format off
+            if (i != 0)
+            {
+                tiles[i].hitsound              = tiles[i - 1].hitsound;
+                tiles[i].hitsoundVolume        = tiles[i - 1].hitsoundVolume;
+                tiles[i].midspinHitsound       = tiles[i - 1].midspinHitsound;
+                tiles[i].midspinHitsoundVolume = tiles[i - 1].midspinHitsoundVolume;
+            }
+            if (setHitsounds[i])
+            {
+                switch (setHitsounds[i]->gameSound)
+                {
+                case Event::GamePlay::SetHitsound::GameSound::Hitsound:
+                    tiles[i].hitsound       = setHitsounds[i]->hitsound;
+                    tiles[i].hitsoundVolume = setHitsounds[i]->hitsoundVolume;
+                    break;
+                case Event::GamePlay::SetHitsound::GameSound::Midspin:
+                    tiles[i].midspinHitsound       = setHitsounds[i]->hitsound;
+                    tiles[i].midspinHitsoundVolume = setHitsounds[i]->hitsoundVolume;
+                    break;
+                }
+            }
+            // clang-format on
+
+            // Tile's events
+            tiles[i].events.clear();
+        }
+        tiles[0].beat = -settings.countdownTicks;
+    }
+    void Level::parseTileEventsAndSetSpeed()
+    {
+        m_setSpeeds.clear();
+        for (const auto& event : events)
+        {
+            if (const auto setSpeed = dynamic_cast<Event::GamePlay::SetSpeed*>(event))
+                if (event->active)
+                    setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
+                    m_setSpeeds.push_back(setSpeed);
+            tiles[event->floor].events.push_back(event);
+        }
+        for (auto& tile : tiles)
+            tile.seconds = beat2seconds(tile.beat);
+    }
+    void Level::parseDynamicEvents(std::vector<Event::DynamicEvent*>& dynamicEvents,
+                                   std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe)
+    {
+        m_processedDynamicEvents.clear();
+
+        for (const auto& event : events)
+        {
+            if (!event->active)
+                continue;
+            if (auto dynamicEventPtr = dynamic_cast<Event::DynamicEvent*>(event))
+            {
+                if (typeid(dynamicEventPtr) == typeid(Event::GamePlay::SetSpeed))
+                    continue;
+                if (dynamicEventPtr->angleOffset == 0)
+                {
+                    dynamicEventPtr->seconds = tiles[dynamicEventPtr->floor].seconds;
+                    dynamicEventPtr->beat = tiles[dynamicEventPtr->floor].beat;
+                }
+                else
+                {
+                    const double bpm = getBpmForDynamicEvent(dynamicEventPtr->floor, dynamicEventPtr->angleOffset),
+                                 spb = bpm2crotchet(bpm);
+                    dynamicEventPtr->seconds =
+                        tiles[dynamicEventPtr->floor].seconds + dynamicEventPtr->angleOffset / 180 * spb;
+                    dynamicEventPtr->beat = seconds2beat(dynamicEventPtr->seconds);
+                }
+
+                dynamicEvents.push_back(dynamicEventPtr);
+                m_processedDynamicEvents.push_back(dynamicEventPtr);
+            }
+            if (auto repeatEvents = dynamic_cast<Event::Modifiers::RepeatEvents*>(event))
+            {
+                vecRe[repeatEvents->floor].push_back(repeatEvents);
+            }
+        }
+    }
+    void Level::parseAnimateTrack()
+    {
+        // AnimateTrack // FIXME
+        for (size_t i = 0; i < tiles.size(); i++)
+        {
+            const double spb = bpm2crotchet(getBpmByBeat(tiles[tiles[i].trackAnimationFloor].beat)),
+                         secondsAhead = tiles[i].beatsAhead * spb, secondsBehind = tiles[i].beatsBehind * spb;
+            if (i != 0)
+            {
+                switch (tiles[i].trackAnimation)
+                {
+                case TrackAnimation::None:
+                    break;
+                case TrackAnimation::Fade:
+                default:
+                    {
+                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
+                        mtHide->floor = mtAppear->floor = i;
+                        mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
+                            RelativeIndex(0, ThisTile);
+                        mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
+                        mtHide->opacity = 0;
+                        mtAppear->seconds = tiles[i].seconds - secondsAhead;
+                        mtAppear->beat = seconds2beat(mtAppear->seconds);
+                        mtAppear->duration = 0.5;
+                        mtAppear->opacity = 100;
+                        mtHide->generated = mtAppear->generated = true;
+                        m_processedDynamicEvents.push_front(mtHide);
+                        m_processedDynamicEvents.push_front(mtAppear);
+                        break;
+                    }
+                case TrackAnimation::Grow_Spin:
+                    {
+                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
+                        mtHide->floor = mtAppear->floor = i;
+                        mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
+                            RelativeIndex(0, ThisTile);
+                        mtHide->beat = mtHide->seconds = -std::numeric_limits<double>::infinity();
+                        mtHide->rotationOffset = -180;
+                        mtHide->scale = OptionalPoint(std::make_optional(0.0), std::make_optional(0.0));
+                        mtAppear->seconds = tiles[i].seconds - secondsAhead;
+                        mtAppear->beat = seconds2beat(mtAppear->seconds);
+                        mtAppear->duration = 0.5;
+                        mtAppear->rotationOffset = 0;
+                        mtAppear->scale = OptionalPoint(std::make_optional(100.0), std::make_optional(100.0));
+                        mtHide->generated = mtAppear->generated = true;
+                        m_processedDynamicEvents.push_front(mtHide);
+                        m_processedDynamicEvents.push_front(mtAppear);
+                        break;
+                    }
+                }
+            }
+            if (i != tiles.size() - 1)
+            {
+                switch (tiles[i].trackDisappearAnimation)
+                {
+                case TrackDisappearAnimation::None:
+                    break;
+                case TrackDisappearAnimation::Fade:
+                default:
+                    {
+                        const auto mtDisappear = new Event::Track::MoveTrack();
+                        mtDisappear->floor = i;
+                        mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
+                        mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
+                        mtDisappear->beat = seconds2beat(mtDisappear->seconds);
+                        mtDisappear->duration = 0.5;
+                        mtDisappear->opacity = 0;
+                        mtDisappear->generated = true;
+                        m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
+                        break;
+                    }
+                case TrackDisappearAnimation::Shrink_Spin:
+                    {
+                        const auto mtDisappear = new Event::Track::MoveTrack();
+                        mtDisappear->floor = i;
+                        mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
+                        mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
+                        mtDisappear->beat = seconds2beat(mtDisappear->seconds);
+                        mtDisappear->duration = 0.5;
+                        mtDisappear->rotationOffset = 180;
+                        mtDisappear->scale = OptionalPoint(std::make_optional(0.0), std::make_optional(0.0));
+                        mtDisappear->generated = true;
+                        m_processedDynamicEvents.insert(m_processedDynamicEvents.begin(), mtDisappear);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    void Level::parseRepeatEvents(const std::vector<Event::DynamicEvent*>& dynamicEvents,
+                                  const std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe)
+    {
+        for (const auto& event : dynamicEvents)
+            for (const auto& repeatEvents : vecRe[event->floor])
+                for (const auto& tag : repeatEvents->tag)
+                    for (const auto& eventTag : event->eventTag)
+                    {
+                        if (tag != eventTag)
+                            continue;
+                        const double spb = bpm2crotchet(getBpmByBeat(event->beat + event->angleOffset / 180));
+                        if (repeatEvents->repeatType == Event::Modifiers::RepeatEvents::RepeatType::Beat)
+                        {
+                            const double gap = spb * repeatEvents->interval;
+                            for (size_t i = 1; i <= repeatEvents->repetitions; i++)
+                            {
+                                auto eventClone = event->clone();
+                                eventClone->seconds += gap * static_cast<double>(i);
+                                eventClone->beat = seconds2beat(eventClone->seconds);
+                                eventClone->generated = true;
+                                m_processedDynamicEvents.push_front(eventClone);
+                            }
+                        }
+                        else if (repeatEvents->repeatType == Event::Modifiers::RepeatEvents::RepeatType::Floor)
+                        {
+                            for (size_t i = 1; i <= repeatEvents->floorCount; i++)
+                            {
+                                const auto eventClone = event->clone();
+                                eventClone->seconds =
+                                    tiles[eventClone->floor + i].seconds + eventClone->angleOffset / 180 * spb;
+                                eventClone->beat = seconds2beat(eventClone->seconds);
+                                if (repeatEvents->executeOnCurrentFloor)
+                                    eventClone->floor += i;
+                                eventClone->generated = true;
+                                m_processedDynamicEvents.push_front(eventClone);
+                            }
+                        }
+                    }
+    }
+    void Level::parseMoveTrackData()
+    {
+        for (const auto& event : m_processedDynamicEvents)
+        {
+            const auto mt = dynamic_cast<Event::Track::MoveTrack*>(event);
+            if (mt == nullptr)
+                continue;
+            const size_t b = rel2absIndex(mt->floor, mt->startTile),
+                         e = std::min(tiles.size() - 1, rel2absIndex(mt->floor, mt->endTile));
+            for (size_t i = b; i <= e; i++)
+            {
+                auto& d = tiles[i].moveTrackDatas;
+                // clang-format off
+                d.emplace_back(mt->floor, mt->angleOffset, mt->beat, mt->seconds, mt->startTile, mt->endTile,
+                               mt->duration,
+                               mt->positionOffset, 114514, 114514,
+                               mt->rotationOffset, 114514,
+                               mt->scale, 114514, 114514,
+                               mt->opacity, 114514,
+                               mt->ease);
+                // clang-format on
+            }
+        }
+        for (auto& tile : tiles)
+        {
+            double xEndSec, yEndSec, rotEndSec, scXEndSec, scYEndSec,
+                opEndSec = xEndSec = yEndSec = rotEndSec = scXEndSec = scYEndSec =
+                    std::numeric_limits<double>::infinity();
+            for (auto& moveTrackData : std::ranges::reverse_view(tile.moveTrackDatas))
+            {
+                moveTrackData.xEndSec = xEndSec;
+                moveTrackData.yEndSec = yEndSec;
+                moveTrackData.rotEndSec = rotEndSec;
+                moveTrackData.scXEndSec = scXEndSec;
+                moveTrackData.scYEndSec = scYEndSec;
+                moveTrackData.opEndSec = opEndSec;
+                if (moveTrackData.positionOffset.first)
+                    xEndSec = moveTrackData.seconds;
+                if (moveTrackData.positionOffset.second)
+                    yEndSec = moveTrackData.seconds;
+                if (moveTrackData.rotationOffset)
+                    rotEndSec = moveTrackData.seconds;
+                if (moveTrackData.scale.first)
+                    scXEndSec = moveTrackData.seconds;
+                if (moveTrackData.scale.second)
+                    scYEndSec = moveTrackData.seconds;
+                if (moveTrackData.opacity)
+                    opEndSec = moveTrackData.seconds;
+            }
+        }
+    }
+    void Level::updateTileColorInfo(const Event::Track::RecolorTrack* const recolorTrack)
+    {
+        // double x, y;
+        // if (!recolorTrack->duration || recolorTrack->duration == 0)
+        //     x = y = 1;
+        // else
+        //     x = (seconds - recolorTrack->seconds) /
+        //         (*recolorTrack->duration * bpm2crotchet(getBpmByBeat(recolorTrack->beat))),
+        //     y = ease(recolorTrack->ease, x);
+        const size_t b = rel2absIndex(recolorTrack->floor, recolorTrack->startTile),
+                     e = std::min(tiles.size() - 1, rel2absIndex(recolorTrack->floor, recolorTrack->endTile));
+        for (size_t i = b; i <= e; i++)
+        {
+            tiles[i].trackColor.c = recolorTrack->trackColor;
+            tiles[i].secondaryTrackColor.c = recolorTrack->secondaryTrackColor;
+            tiles[i].trackColorType.c = recolorTrack->trackColorType;
+            tiles[i].trackStyle.c = recolorTrack->trackStyle;
+            tiles[i].trackColorPulse.c = recolorTrack->trackColorPulse;
+            tiles[i].trackPulseLength.c = recolorTrack->trackPulseLength;
+            tiles[i].trackColorAnimDuration.c = recolorTrack->trackColorAnimDuration;
+        }
+    }
+
+    void Level::updateTileColor(const double seconds, const size_t i)
+    {
+        auto& tile = tiles[i];
+        double x = seconds;
+        if (const double y = tile.trackColorAnimDuration.c; y == 0)
+            x = 0;
+        else
+        {
+            x /= y;
+            if (tile.trackColorPulse.c == TrackColorPulse::Forward)
+                x -= static_cast<double>(i) * 1.0 / tile.trackPulseLength.c;
+            else if (tile.trackColorPulse.c == TrackColorPulse::Backward)
+                x += static_cast<double>(i) * 1.0 / tile.trackPulseLength.c;
+            x = positiveRemainder(x, 1.0);
+        }
+
+        switch (tile.trackColorType.c)
+        {
+        case TrackColorType::Single:
+            tile.color = tile.trackColor.c;
+            break;
+        case TrackColorType::Stripes:
+            tile.color = (i % 2 == 0) ? tile.trackColor.c : tile.secondaryTrackColor.c;
+            break;
+        case TrackColorType::Glow:
+            {
+                if (x > 0.5)
+                    x = 1 - x;
+                const uint8_t a = static_cast<uint8_t>((x > 0.5 ? 1 - x : x) * 2 * 255), b = 255 - a;
+                tile.color = tile.trackColor.c * Color(a, a, a, 255) + tile.secondaryTrackColor.c * Color(b, b, b, 255);
+                break;
+            }
+
+        case TrackColorType::Blink:
+            {
+                const uint8_t a = static_cast<uint8_t>(x * 255), b = 255 - a;
+                tile.color = tile.trackColor.c * Color(a, a, a, 255) + tile.secondaryTrackColor.c * Color(b, b, b, 255);
+                break;
+            }
+        case TrackColorType::Switch:
+            {
+                tile.color = x > 0.5 ? tile.secondaryTrackColor.c : tile.trackColor.c;
+                break;
+            }
+        case TrackColorType::Rainbow: // TODO
+            {
+                auto [h, s, v] = tile.trackColor.c.toHSV();
+                h += x * 360;
+                h = positiveRemainder(h, 360);
+                tile.color = Color::fromHSV(h, s, v);
+                tile.color.a = tile.trackColor.c.a;
+                break;
+            }
+        case TrackColorType::Volume: // TODO
+            {
+                tile.color = static_cast<int>(x * 4 /*?*/) % 2 == 0 ? tile.trackColor.c : tile.secondaryTrackColor.c;
+            }
+        default:
+            tile.color = tile.trackColor.c;
+        }
+    }
+    void Level::updateTilePos(const double seconds, const size_t i)
+    {
+        for (auto& tile = tiles[i]; const auto& data : tile.moveTrackDatas) // FIXME
+        {
+            const double bpm = getBpmForDynamicEvent(data.floor, data.angleOffset), spb = bpm2crotchet(bpm);
+            auto calcX = [&seconds, &data, &spb](const double endSec)
+            { return data.duration != 0.0 ? (std::min(seconds, endSec) - data.seconds) / spb / data.duration : 1.0; };
+            if (data.positionOffset.first)
+            {
+                const double x = calcX(data.xEndSec), y = ease(data.ease, x);
+                tile.pos.c.x += (tile.pos.o.x + *data.positionOffset.first - tile.pos.c.x) * y;
+            }
+            if (data.positionOffset.second)
+            {
+                const double x = calcX(data.yEndSec), y = ease(data.ease, x);
+                tile.pos.c.y += (tile.pos.o.y + *data.positionOffset.second - tile.pos.c.y) * y;
+            }
+            if (data.rotationOffset)
+            {
+                const double x = calcX(data.rotEndSec), y = ease(data.ease, x);
+                tile.rotation.c += (*data.rotationOffset - tile.rotation.c) * y;
+            }
+            if (data.scale.first)
+            {
+                const double x = calcX(data.scXEndSec), y = ease(data.ease, x);
+                tile.scale.c.x += (*data.scale.first - tile.scale.c.x) * y;
+            }
+            if (data.scale.second)
+            {
+                const double x = calcX(data.scYEndSec), y = ease(data.ease, x);
+                tile.scale.c.y += (*data.scale.second - tile.scale.c.y) * y;
+            }
+            if (data.opacity)
+            {
+                const double x = calcX(data.opEndSec), y = ease(data.ease, x);
+                tile.opacity += (*data.opacity - tile.opacity) * y;
+            }
+        }
+    }
 } // namespace AdoCpp
