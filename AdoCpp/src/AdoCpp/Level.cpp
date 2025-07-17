@@ -296,7 +296,7 @@ namespace AdoCpp
                                       { return a->beat < b->beat; }); // stable sort
         parseMoveTrackData();
 
-        tiles[0].beat = -std::numeric_limits<double>::infinity();
+        tiles[0].beat = tiles[0].seconds = -std::numeric_limits<double>::infinity();
     }
     void Level::update()
     {
