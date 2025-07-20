@@ -58,4 +58,24 @@ namespace AdoCpp
         }
         strcpy_s(dest, sizeInBytes, str.c_str());
     }
+    void addTag(rapidjson::Value& jsonValue, const std::vector<std::string>& tags,
+                rapidjson::Document::AllocatorType& alloc, bool repeatEvents)
+    {
+        char tagBuf[1145]{};
+        tags2cstr(tags, tagBuf, 1145);
+        rapidjson::Value tagValue;
+        tagValue.SetString(tagBuf, strlen(tagBuf), alloc);
+        if (repeatEvents)
+            jsonValue.AddMember("tag", tagValue, alloc);
+        else
+            jsonValue.AddMember("eventTag", tagValue, alloc);
+    }
+    void autoRemoveDecimalPart(rapidjson::Value& jsonValue, const char* name, const double value,
+                               rapidjson::Document::AllocatorType& alloc)
+    {
+        if (static_cast<int>(value) == value)
+            jsonValue.AddMember(rapidjson::StringRef(name), static_cast<int>(value), alloc);
+        else
+            jsonValue.AddMember(rapidjson::StringRef(name), value, alloc);
+    }
 } // namespace AdoCpp

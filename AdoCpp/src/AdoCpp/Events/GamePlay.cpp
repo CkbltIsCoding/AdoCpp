@@ -30,18 +30,9 @@ namespace AdoCpp::Event::GamePlay
             val.AddMember("speedType", "Bpm", alloc);
         else
             val.AddMember("speedType", "Multiplier", alloc);
-        if (static_cast<int>(beatsPerMinute) == beatsPerMinute)
-            val.AddMember("beatsPerMinute", static_cast<int>(beatsPerMinute), alloc);
-        else
-            val.AddMember("beatsPerMinute", beatsPerMinute, alloc);
-        if (static_cast<int>(bpmMultiplier) == bpmMultiplier)
-            val.AddMember("bpmMultiplier", static_cast<int>(bpmMultiplier), alloc);
-        else
-            val.AddMember("bpmMultiplier", bpmMultiplier, alloc);
-        if (static_cast<int>(angleOffset) == angleOffset)
-            val.AddMember("angleOffset", static_cast<int>(angleOffset), alloc);
-        else
-            val.AddMember("angleOffset", angleOffset, alloc);
+        autoRemoveDecimalPart(val, "beatsPerMinute", beatsPerMinute, alloc);
+        autoRemoveDecimalPart(val, "bpmMultiplier", bpmMultiplier, alloc);
+        autoRemoveDecimalPart(val, "angleOffset", angleOffset, alloc);
         return val;
     }
     Twirl::Twirl(const rapidjson::Value& data) : StaticEvent(data) {}
@@ -51,7 +42,6 @@ namespace AdoCpp::Event::GamePlay
         rapidjson::Value val(rapidjson::kObjectType);
         val.AddMember("floor", floor, alloc);
         val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
-
         return val;
     }
     Pause::Pause(const rapidjson::Value& data) : StaticEvent(data)
@@ -82,15 +72,8 @@ namespace AdoCpp::Event::GamePlay
         rapidjson::Value val(rapidjson::kObjectType);
         val.AddMember("floor", floor, alloc);
         val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
-
-        if (static_cast<int>(duration) == duration)
-            val.AddMember("duration", static_cast<int>(duration), alloc);
-        else
-            val.AddMember("duration", duration, alloc);
-        if (static_cast<int>(countdownTicks) == countdownTicks)
-            val.AddMember("countdownTicks", static_cast<int>(countdownTicks), alloc);
-        else
-            val.AddMember("countdownTicks", countdownTicks, alloc);
+        autoRemoveDecimalPart(val, "duration", duration, alloc);
+        autoRemoveDecimalPart(val, "countdownTicks", countdownTicks, alloc);
         if (angleCorrectionDir == AngleCorrectionDir::None)
             val.AddMember("angleCorrectionDir", "None", alloc);
         else if (angleCorrectionDir == AngleCorrectionDir::Forward)
@@ -121,10 +104,7 @@ namespace AdoCpp::Event::GamePlay
         else if (gameSound == GameSound::Midspin)
             val.AddMember("gameSound", "Midspin", alloc);
         val.AddMember("hitsound", rapidjson::StringRef(hitsound2cstr(hitsound)), alloc);
-        if (static_cast<int>(hitsoundVolume) == hitsoundVolume)
-            val.AddMember("hitsoundVolume", static_cast<int>(hitsoundVolume), alloc);
-        else
-            val.AddMember("hitsoundVolume", hitsoundVolume, alloc);
+        autoRemoveDecimalPart(val, "hitsoundVolume", hitsoundVolume, alloc);
         return val;
     }
 

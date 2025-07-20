@@ -1,14 +1,13 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include <AdoCpp.h>
 
-class KeyViewerSystem : public sf::Drawable, public sf::Transformable
+class KeyViewerSystem final : public sf::Drawable, public sf::Transformable
 {
 public:
 	struct Key
 	{
-		sf::Keyboard::Scan scan;
+		sf::Keyboard::Scan scan{};
 		sf::Vector2u pos;
 		sf::Color releasedColor{ 255, 255, 255, 0 };
 		sf::Color pressedColor{ 255, 255, 255, 255 };
@@ -16,7 +15,7 @@ public:
 	};
 	struct Stamp
 	{
-		bool press;
+		bool press{};
 		sf::Time time;
 	};
 

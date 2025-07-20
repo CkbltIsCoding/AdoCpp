@@ -13,7 +13,7 @@ namespace AdoCpp
             const double val = a - static_cast<double>(static_cast<int>(a / b)) * b;
             return val >= 0.0 ? val : val + b;
         }
-    }
+    } // namespace priv
 
     // Most of the code is copied from "SFML/Graphics/Color.inl".
     constexpr Color::Color(const std::uint8_t red, const std::uint8_t green, const std::uint8_t blue,
@@ -45,10 +45,7 @@ namespace AdoCpp
     }
     constexpr Color Color::fromHSV(const double h, const double s, const double v)
     {
-        auto _abs = [](const double d)
-        {
-            return d > 0.0 ? d : -d;
-        };
+        auto _abs = [](const double d) { return d > 0.0 ? d : -d; };
         const double c = v * s, x = c * (1 - _abs(priv::positiveRemainder_(h / 60, 2) - 1)), m = v - c;
         auto [r1, g1, b1] = [&]() -> std::tuple<double, double, double>
         {
@@ -64,7 +61,8 @@ namespace AdoCpp
                 return {x, 0, c};
             return {c, 0, x};
         }();
-        return Color((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255);
+        return {static_cast<uint8_t>((r1 + m) * 255), static_cast<uint8_t>((g1 + m) * 255),
+                static_cast<uint8_t>((b1 + m) * 255)};
     }
     constexpr std::tuple<double, double, double> Color::toHSV() const
     {
@@ -78,8 +76,8 @@ namespace AdoCpp
                 return 60 * priv::positiveRemainder_((g1 - b1) / delta, 6);
             if (cMax == g1)
                 return 60 * ((b1 - r1) / delta + 2);
-            if (cMax == b1)
-                return 60 * ((r1 - g1) / delta + 4);
+            // if (cMax == b1)
+            return 60 * ((r1 - g1) / delta + 4);
         };
         auto S = [&]() -> double
         {

@@ -66,7 +66,7 @@ namespace AdoCpp
       180, 195, 210, 225, 240, 255,
       270, 285, 300, 315, 330, 345,
       555, 666, 777, 888, 999
-  };
+    };
     constexpr char paths[] = {
         'R', 'p', 'J', 'E', 'T', 'o',
         'U', 'q', 'G', 'Q', 'H', 'W',
@@ -180,4 +180,9 @@ namespace AdoCpp
 
     std::vector<std::string> cstr2tags(const char* str);
     void tags2cstr(const std::vector<std::string>& tags, char* dest, rsize_t sizeInBytes);
+
+    void addTag(rapidjson::Value& jsonValue, const std::vector<std::string>& tags,
+                rapidjson::Document::AllocatorType& alloc, bool repeatEvents = false);
+    void autoRemoveDecimalPart(rapidjson::Value& jsonValue, const char* name, double value,
+                               rapidjson::Document::AllocatorType& alloc);
 } // namespace AdoCpp

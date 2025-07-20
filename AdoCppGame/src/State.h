@@ -5,6 +5,7 @@
 class State
 {
 public:
+    virtual ~State() = default;
     virtual void init(Game* game) = 0;
     virtual void cleanup() = 0;
 
@@ -15,7 +16,7 @@ public:
     virtual void update() = 0;
     virtual void render() = 0;
 
-    void changeState(State* state) { game->changeState(state); }
+    void changeState(State* state) const { game->changeState(state); }
 
 protected:
     State() { game = nullptr; }

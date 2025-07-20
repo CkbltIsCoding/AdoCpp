@@ -38,6 +38,7 @@ add_executable (
         "thirdparty/ImGuiFileDialog.h"
         "thirdparty/ImGuiFileDialog.cpp"
         "thirdparty/ImGuiFileDialogConfig.h"
+        src/Tile.cpp
 )
 
 set_property(TARGET AdoCppGame PROPERTY CXX_STANDARD 20)

@@ -1,10 +1,7 @@
 #pragma once
-// ReSharper disable CppUnusedIncludeDirective
-#include <map>
-#include <optional>
 #include <rapidjson/document.h>
-#include <vector>
 
+// ReSharper disable CppUnusedIncludeDirective
 #include "Easing.h"
 #include "Events/Dlc.h"
 #include "Events/GamePlay.h"

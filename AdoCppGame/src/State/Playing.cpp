@@ -1,6 +1,5 @@
 #include "Playing.h"
 #include <imgui-SFML.h>
-#include <iostream>
 
 StatePlaying StatePlaying::m_statePlaying;
 
@@ -105,11 +104,11 @@ void StatePlaying::update()
         spareClock.restart();
         if (game->activeTileIndex.value_or(0) != 0)
         {
-            const double beginTimer = game->level.beat2seconds(tiles[*game->activeTileIndex].beat) -
+            const float beginTimer = static_cast<float>(game->level.beat2seconds(tiles[*game->activeTileIndex].beat)) -
                 game->inputOffset / 1000;
 
             if (musicPlayable()) // FIXME
-                game->music.setPlayingOffset(sf::seconds(std::max(0.0, beginTimer)));
+                game->music.setPlayingOffset(sf::seconds(std::max(0.f, beginTimer)));
             else
                 spareClockOffset = game->level.beat2seconds(tiles[*game->activeTileIndex].beat) -
                     game->inputOffset / 1000;
@@ -170,7 +169,6 @@ void StatePlaying::update()
             const auto [p, lep, vle] = game->level.getTimingBoundary(playerTileIndex, game->difficulty);
             const double timing = game->level.getTiming(playerTileIndex, seconds),
                          x = std::min(65.0 / 2, std::max(-65.0 / 2, timing / vle * 65.0 / 2.0));
-            // std::cout << timing << ' ' << x << std::endl;
             const AdoCpp::HitMargin hitMargin =
                 game->level.getHitMargin(playerTileIndex, seconds, game->difficulty);
             if (hitMargin == AdoCpp::HitMargin::TooEarly)
@@ -278,8 +276,8 @@ void StatePlaying::render()
     if (ImGui::Begin("LeftText", nullptr, flags))
     {
         ImGui::Text("FPS: %.0f avg, %.0f min, %.0f max", game->avgFps, game->minFps, game->maxFps);
-        static float progress, bpm, kps;
-        progress = 100 * static_cast<float>(playerTileIndex) / static_cast<float>(tiles.size() - 1);
+        static double progress, bpm, kps;
+        progress = 100 * static_cast<double>(playerTileIndex) / static_cast<double>(tiles.size() - 1);
         bpm = game->level.getBpmByBeat(beat);
         kps = bpm / 60 /
             (game->level.getAngle(playerTileIndex + (playerTileIndex + 1 == tiles.size() ? 0 : 1)) /

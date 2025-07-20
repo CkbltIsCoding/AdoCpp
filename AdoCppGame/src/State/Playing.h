@@ -1,48 +1,42 @@
 #pragma once
 
-#include "State.h"
 #include "AssetManager.h"
 #include "HitErrorMeter.h"
 #include "HitText.h"
 #include "KeyViewer.h"
+#include "State.h"
 
 class StatePlaying : public State
 {
 public:
-	void init(Game* _game);
-	void cleanup();
+    void init(Game* _game) override;
+    void cleanup() override;
 
-	void pause();
-	void resume();
+    void pause() override;
+    void resume() override;
 
-	void handleEvent(sf::Event event);
-	void update();
-	void render();
+    void handleEvent(sf::Event event) override;
+    void update() override;
+    void render() override;
 
-	static StatePlaying* instance()
-	{
-		return &m_statePlaying;
-	}
+    static StatePlaying* instance() { return &m_statePlaying; }
 
 protected:
-	StatePlaying() {}
+    StatePlaying() = default;
 
-	bool musicPlayable()
-	{
-		return game->music.getDuration().asMilliseconds() != 0;
-	}
+    bool musicPlayable() const { return game->music.getDuration().asMilliseconds() != 0; }
 
 private:
-	static StatePlaying m_statePlaying;
-	sf::CircleShape planet1, planet2;
-	size_t nowTileIndex, playerTileIndex;
-	HitTextSystem hitTextSystem{AssetManager::GetFont("Maplestory OTF Bold.otf")};
-	HitErrorMeterSystem hitErrorMeterSystem;
-	KeyViewerSystem keyViewerSystem;
-	int keyInputCnt;
-	double seconds, beat;
-	sf::Clock spareClock;
-	double spareClockOffset;
-	bool waiting;
-	bool isMusicPlayed;
+    static StatePlaying m_statePlaying;
+    sf::CircleShape planet1, planet2;
+    size_t nowTileIndex{}, playerTileIndex{};
+    HitTextSystem hitTextSystem{AssetManager::GetFont("Maplestory OTF Bold.otf")};
+    HitErrorMeterSystem hitErrorMeterSystem;
+    KeyViewerSystem keyViewerSystem;
+    int keyInputCnt{};
+    double seconds{}, beat{};
+    sf::Clock spareClock;
+    double spareClockOffset{};
+    bool waiting{};
+    bool isMusicPlayed{};
 };

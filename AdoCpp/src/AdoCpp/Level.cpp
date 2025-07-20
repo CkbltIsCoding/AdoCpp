@@ -197,7 +197,7 @@ namespace AdoCpp
     {
         clear();
         assert(document.IsObject());
-        settings = Settings::fromJson(document["settings"]);
+
         tiles.emplace_back(0);
         if (document.HasMember("angleData"))
         {
@@ -206,11 +206,12 @@ namespace AdoCpp
         }
         else
         {
-            if (!document.HasMember("pathData"))
-                throw LevelPathAngleDataNotFoundException();
+            assert(document.HasMember("pathData") && "The json must have either 'angleData' or 'pathData'");
             for (const auto& path : std::string(document["pathData"].GetString()))
                 tiles.emplace_back(path2angle(path));
         }
+
+        settings = Settings::fromJson(document["settings"]);
 
         for (const auto& eventData : document["actions"].GetArray())
         {

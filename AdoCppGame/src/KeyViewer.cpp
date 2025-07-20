@@ -138,6 +138,7 @@ void KeyViewerSystem::setRainColorByRow(const sf::Color rainColor, unsigned int 
             key.rainColor = rainColor;
 }
 
+// ReSharper disable once CppMemberFunctionMayBeStatic
 void KeyViewerSystem::update() {}
 
 KeyViewerSystem::Key& KeyViewerSystem::operator[](const size_t index) { return m_keys[index]; }

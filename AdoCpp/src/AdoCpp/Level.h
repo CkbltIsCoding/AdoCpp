@@ -41,16 +41,6 @@ namespace AdoCpp
         }
     };
 
-    class LevelPathAngleDataNotFoundException final : public std::exception
-    {
-    public:
-        LevelPathAngleDataNotFoundException() = default;
-        [[nodiscard]] const char* what() const noexcept override
-        {
-            return "LevelPathAngleDataNotFoundException: The json data doesn't have AngleData or PathData";
-        }
-    };
-
     /**
      * @brief Adofai's difficulty.
      */

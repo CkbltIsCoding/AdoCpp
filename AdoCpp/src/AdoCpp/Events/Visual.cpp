@@ -27,39 +27,19 @@ namespace AdoCpp::Event::Visual
         val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
             val.AddMember("active", active, alloc);
-        if (static_cast<int>(duration) == duration)
-            val.AddMember("duration", static_cast<int>(duration), alloc);
-        else
-            val.AddMember("duration", duration, alloc);
+        autoRemoveDecimalPart(val, "duration", duration, alloc);
         if (relativeTo)
             val.AddMember("relativeTo", rapidjson::StringRef(relativeToCamera2cstr(*relativeTo)), alloc);
         // ReSharper disable once CppLocalVariableMayBeConst
         if (auto op = optionalPoint2json(position, alloc); op)
             val.AddMember("position", *op, alloc);
         if (rotation)
-        {
-            if (static_cast<int>(*rotation) == *rotation)
-                val.AddMember("rotation", static_cast<int>(*rotation), alloc);
-            else
-                val.AddMember("rotation", *rotation, alloc);
-        }
+            autoRemoveDecimalPart(val, "rotation", *rotation, alloc);
         if (zoom)
-        {
-            if (static_cast<int>(*zoom) == *zoom)
-                val.AddMember("zoom", static_cast<int>(*zoom), alloc);
-            else
-                val.AddMember("zoom", *zoom, alloc);
-        }
+            autoRemoveDecimalPart(val, "zoom", *zoom, alloc);
         val.AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
-        if (static_cast<int>(angleOffset) == angleOffset)
-            val.AddMember("angleOffset", static_cast<int>(angleOffset), alloc);
-        else
-            val.AddMember("angleOffset", angleOffset, alloc);
-        char tagBuf[1145]{};
-        tags2cstr(eventTag, tagBuf, 1145);
-        rapidjson::Value tagValue;
-        tagValue.SetString(tagBuf, strlen(tagBuf), alloc);
-        val.AddMember("eventTag", tagValue, alloc);
+        autoRemoveDecimalPart(val, "angleOffset", angleOffset, alloc);
+        addTag(val, eventTag, alloc);
         return val;
     }
 } // namespace AdoCpp::Event::Visual

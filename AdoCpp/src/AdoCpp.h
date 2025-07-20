@@ -1,6 +1,6 @@
 /**
  * @file AdoCpp.h
- * @brief An ADOFAI library.
+ * @brief An ADOFAI level parser and generator for C++.
  * @author CkbltIsCoding
  */
 #pragma once

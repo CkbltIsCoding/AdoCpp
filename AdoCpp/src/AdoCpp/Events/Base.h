@@ -16,7 +16,7 @@ namespace AdoCpp::Event
         virtual ~Event() = default;
         explicit Event(const rapidjson::Value& data);
         size_t floor = 0;
-        bool active;
+        bool active = true;
         [[nodiscard]] constexpr virtual bool stackable() const noexcept = 0;
         [[nodiscard]] constexpr virtual const char* name() const noexcept = 0;
         /**
@@ -59,7 +59,7 @@ namespace AdoCpp::Event
         double seconds = 0;
         std::vector<std::string> eventTag;
         /**
-         * This field is used to make deleting event pointers easier
+         * This field is used to make it easier to deleting event pointers.
          * @see AdoCpp::Level::clear
          * @see AdoCpp::Level::~Level
          */

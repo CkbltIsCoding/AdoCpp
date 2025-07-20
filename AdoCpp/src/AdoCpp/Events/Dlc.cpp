@@ -13,15 +13,8 @@ namespace AdoCpp::Event::Dlc
         rapidjson::Value val(rapidjson::kObjectType);
         val.AddMember("floor", floor, alloc);
         val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
-
-        if (static_cast<int>(duration) == duration)
-            val.AddMember("duration", static_cast<int>(duration), alloc);
-        else
-            val.AddMember("duration", duration, alloc);
-        if (static_cast<int>(distanceMultiplier) == distanceMultiplier)
-            val.AddMember("distanceMultiplier", static_cast<int>(distanceMultiplier), alloc);
-        else
-            val.AddMember("distanceMultiplier", distanceMultiplier, alloc);
+        autoRemoveDecimalPart(val, "duration", duration, alloc);
+        autoRemoveDecimalPart(val, "distanceMultiplier", distanceMultiplier, alloc);
         val.AddMember("landingAnimation", landingAnimation, alloc);
         return val;
     }

@@ -27,16 +27,9 @@ namespace AdoCpp::Event::Modifiers
             val.AddMember("repeatType", "Beat", alloc);
         val.AddMember("repetitions", repetitions, alloc);
         val.AddMember("floorCount", floorCount, alloc);
-        if (static_cast<int>(interval) == interval)
-            val.AddMember("interval", static_cast<int>(interval), alloc);
-        else
-            val.AddMember("interval", interval, alloc);
+        autoRemoveDecimalPart(val, "interval", interval, alloc);
         val.AddMember("executeOnCurrentFloor", executeOnCurrentFloor, alloc);
-        char tagBuf[1145]{};
-        tags2cstr(tag, tagBuf, 1145);
-        rapidjson::Value tagValue;
-        tagValue.SetString(tagBuf, strlen(tagBuf), alloc);
-        val.AddMember("tag", tagValue, alloc);
+        addTag(val, tag, alloc, true);
         return val;
     }
 } // namespace AdoCpp::Event::Modifiers
