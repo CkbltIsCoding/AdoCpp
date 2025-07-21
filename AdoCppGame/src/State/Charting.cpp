@@ -1,5 +1,6 @@
 #include "Charting.h"
 #include "Playing.h"
+#include "StateLiveCharting.h"
 
 #include <AudioProcessing.h>
 #include <ImGuiFileDialog.h>
@@ -9,6 +10,8 @@
 #include <imgui.h>
 #include <iostream>
 #include <misc/cpp/imgui_stdlib.h>
+
+#include "implot.h"
 
 constexpr ImGuiWindowFlags ADOCPPGAME_FLAGS =
     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
@@ -144,14 +147,17 @@ void StateCharting::resume()
 
 void StateCharting::handleEvent(const sf::Event event)
 {
+    using enum sf::Keyboard::Key;
     if (!ImGui::GetIO().WantCaptureKeyboard)
     {
         if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>())
         {
-            if (keyPressed->code == sf::Keyboard::Key::F12)
+            if (keyPressed->code == F12)
                 game->autoplay = !game->autoplay;
-            else if (keyPressed->code == sf::Keyboard::Key::Space)
+            else if (keyPressed->code == Space)
                 game->level.initCamera(), game->pushState(StatePlaying::instance());
+            else if (keyPressed->code == Grave)
+                game->pushState(StateLiveCharting::instance());
         }
     }
     if (!ImGui::GetIO().WantCaptureMouse)
@@ -163,16 +169,14 @@ void StateCharting::handleEvent(const sf::Event event)
                 d = {0, mws->delta * game->zoom.y};
             else
                 d = {-mws->delta * game->zoom.y, 0};
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl) ||
-                sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RControl))
+            if (sf::Keyboard::isKeyPressed(LControl) || sf::Keyboard::isKeyPressed(RControl))
             {
                 if (d.x > 0 || d.y > 0)
                     game->zoom /= 1.5f;
                 else
                     game->zoom *= 1.5f;
             }
-            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift) ||
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift))
+            else if (sf::Keyboard::isKeyPressed(LShift) || sf::Keyboard::isKeyPressed(RShift))
             {
                 game->view.move({-d.y, -d.x});
             }
@@ -188,7 +192,7 @@ void StateCharting::handleEvent(const sf::Event event)
                 for (size_t i = 0; i < game->level.getTiles().size(); i++)
                 {
                     game->window.setView(game->view);
-                    auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
+                    const auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
                     if (game->tileSystem[i].isPointInside(mouseCoords))
                     {
                         game->activeTileIndex = i;
@@ -221,9 +225,10 @@ void StateCharting::render()
     defaultView.setCenter(sf::Vector2f(game->windowSize) / 2.f);
     game->window.setView(defaultView);
 
-#ifdef DEBUG
+#ifndef NDEBUG
     ImGui::ShowDemoWindow();
-#endif // DEBUG
+    ImPlot::ShowDemoWindow();
+#endif // NDEBUG
 
     renderFilenameBar();
     renderSettings();
@@ -423,8 +428,7 @@ void StateCharting::renderEventSettings() const
         if (ImGui::Begin("RightSettings", nullptr, ADOCPPGAME_FLAGS))
         {
             static float rightSettingsTabBtnsWidth, rightSettingsTabContentWidth;
-            rightSettingsTabBtnsWidth = width / 5,
-            rightSettingsTabContentWidth = width - rightSettingsTabBtnsWidth;
+            rightSettingsTabBtnsWidth = width / 5, rightSettingsTabContentWidth = width - rightSettingsTabBtnsWidth;
             static std::optional<size_t> tileIndex;
             static size_t selectedTab = 0;
             if (game->activeTileIndex != tileIndex)
@@ -692,7 +696,8 @@ void StateCharting::newLevel()
     game->level.update();
     game->tileSystem.parse();
     game->tileSystem.update();
-    game->musicPath = game->levelPath.parent_path().append(game->level.getSettings().songFilename);
+    game->origMusicPath = game->musicPath =
+        game->levelPath.parent_path().append(game->level.getSettings().songFilename);
     if (!game->musicPath.empty())
     {
         if (!game->music.openFromFile(game->musicPath))

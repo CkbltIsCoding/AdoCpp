@@ -2,7 +2,7 @@
 
 #include "State.h"
 
-class StateCharting : public State
+class StateCharting final : public State
 {
 public:
 	void init(Game* l_game) override;

@@ -7,6 +7,7 @@
 #include <State/Charting.h>
 #include <IconsFontAwesome6.h>
 #include <iostream>
+#include <implot.h>
 
 Game::Game() :
 	running(true),
@@ -27,13 +28,12 @@ Game::Game() :
 	//window.setVerticalSyncEnabled(true);
 	[[maybe_unused]] AssetManager mgr;
 	font = AssetManager::GetFont("SourceHanSansSC.otf");
-
 	if (!ImGui::SFML::Init(window, false))
-	{
-		std::cerr << "Error! ImGui::SFML::Init() returns false.";
-		exit(-1);
-	}
-	ImGuiIO& io = ImGui::GetIO();
+    {
+        std::cerr << "Error! ImGui::SFML::Init() returns false.";
+        exit(-1);
+    }
+    const ImGuiIO& io = ImGui::GetIO();
 	//io.FontGlobalScale = 2;
 
 	io.Fonts->Clear();
@@ -65,6 +65,8 @@ Game::Game() :
 	style.FrameRounding = 5;
 	style.PopupRounding = 10;
 
+    ImPlot::CreateContext();
+
 	level.defaultLevel();
 	changeState(StateCharting::instance());
 }
@@ -90,6 +92,7 @@ void Game::run()
 		update();
 		render();
 	}
+    ImPlot::DestroyContext();
 	ImGui::SFML::Shutdown();
 }
 
@@ -124,6 +127,7 @@ void Game::popState()
 
 void Game::handleEvent()
 {
+    using enum sf::Keyboard::Key;
 	while (const auto event = window.pollEvent())
 	{
 		if (event->is<sf::Event::Closed>())
@@ -131,7 +135,7 @@ void Game::handleEvent()
 		if (const auto resized = event->getIf<sf::Event::Resized>())
 			windowSize = resized->size;
 		if (const auto keyPressed = event->getIf<sf::Event::KeyPressed>())
-			if (keyPressed->code == sf::Keyboard::Key::F11)
+			if (keyPressed->code == F11)
 				fullscreen = !fullscreen, createWindow();
 		ImGui::SFML::ProcessEvent(window, *event);
 		states.back()->handleEvent(*event);

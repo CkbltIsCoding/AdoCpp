@@ -1,12 +1,7 @@
 #pragma once
-
-#include "AssetManager.h"
-#include "HitErrorMeter.h"
-#include "HitText.h"
-#include "KeyViewer.h"
 #include "State.h"
 
-class StatePlaying final : public State
+class StateLiveCharting : public State
 {
 public:
     void init(Game* _game) override;
@@ -19,24 +14,21 @@ public:
     void update() override;
     void render() override;
 
-    static StatePlaying* instance() { return &m_statePlaying; }
+    static StateLiveCharting* instance() { return &m_stateLiveCharting; }
 
 protected:
-    StatePlaying() = default;
+    StateLiveCharting() = default;
 
     bool musicPlayable() const { return game->music.getDuration().asMilliseconds() != 0; }
 
 private:
-    static StatePlaying m_statePlaying;
+    static StateLiveCharting m_stateLiveCharting;
     sf::CircleShape planet1, planet2;
     size_t nowTileIndex{}, playerTileIndex{};
-    HitTextSystem hitTextSystem{AssetManager::GetFont("Maplestory OTF Bold.otf")};
-    HitErrorMeterSystem hitErrorMeterSystem;
-    KeyViewerSystem keyViewerSystem;
-    int keyInputCnt{};
     double seconds{}, beat{};
     sf::Clock spareClock;
     double spareClockOffset{};
-    bool waiting{};
-    bool isMusicPlayed{};
+    std::optional<sf::SoundBuffer> soundBuffer;
+    std::optional<sf::Sound> music;
+    std::optional<std::vector<double>> samples;
 };

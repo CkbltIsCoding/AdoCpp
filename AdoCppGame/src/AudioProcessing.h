@@ -1,6 +1,5 @@
 #pragma once
 #include <SFML/Audio.hpp>
-#include <iostream>
 
 inline std::filesystem::path addHitsound(std::filesystem::path path, const std::vector<AdoCpp::Tile>& tiles,
                                          float* progress = nullptr)
@@ -59,5 +58,6 @@ inline std::filesystem::path addHitsound(std::filesystem::path path, const std::
     path.replace_extension().concat("-hitsound").concat(ext);
     if (!newSb.saveToFile(path))
         throw std::runtime_error("Couldn't save sound");
+    delete samples;
     return path;
 }

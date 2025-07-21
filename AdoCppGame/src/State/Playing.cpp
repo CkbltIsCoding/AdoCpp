@@ -28,8 +28,9 @@ void StatePlaying::init(Game* _game)
     if (game->activeTileIndex.value_or(0) == 0)
     {
         playerTileIndex = 0;
-        beat = -game->level.getSettings().countdownTicks;
-        seconds = beat * AdoCpp::bpm2crotchet(game->level.getSettings().bpm);
+        const auto& settings = game->level.getSettings();
+        beat = -settings.countdownTicks;
+        seconds = beat * AdoCpp::bpm2crotchet(settings.bpm);
     }
     else
     {
@@ -62,15 +63,16 @@ void StatePlaying::resume()
     game->window.setKeyRepeatEnabled(false);
 }
 
-void StatePlaying::handleEvent(sf::Event event)
+void StatePlaying::handleEvent(const sf::Event event)
 {
+    using enum sf::Keyboard::Key;
     if (!ImGui::GetIO().WantCaptureKeyboard)
     {
         if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>())
         {
-            if (keyPressed->code == sf::Keyboard::Key::F12)
+            if (keyPressed->code == F12)
                 game->autoplay = !game->autoplay;
-            else if (keyPressed->code == sf::Keyboard::Key::Escape)
+            else if (keyPressed->code == Escape)
                 game->activeTileIndex = playerTileIndex, game->popState();
             for (const auto& scan : game->keyLimiter)
             {
@@ -92,6 +94,7 @@ void StatePlaying::handleEvent(sf::Event event)
 void StatePlaying::update()
 {
     auto& tiles = game->level.getTiles();
+    const auto& settings = game->level.getSettings();
 
     // ReSharper disable CppFunctionalStyleCast
     // Time
@@ -110,8 +113,8 @@ void StatePlaying::update()
             if (musicPlayable()) // FIXME
                 game->music.setPlayingOffset(sf::seconds(std::max(0.f, beginTimer)));
             else
-                spareClockOffset = game->level.beat2seconds(tiles[*game->activeTileIndex].beat) -
-                    game->inputOffset / 1000;
+                spareClockOffset =
+                    game->level.beat2seconds(tiles[*game->activeTileIndex].beat) - game->inputOffset / 1000;
 
             if (musicPlayable())
                 seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
@@ -121,9 +124,7 @@ void StatePlaying::update()
         }
         else
         {
-            seconds =
-                (std::min)(0.0,
-                           -game->level.getSettings().countdownTicks * AdoCpp::bpm2crotchet(game->level.getSettings().bpm)) +
+            seconds = (std::min)(0.0, -settings.countdownTicks * AdoCpp::bpm2crotchet(settings.bpm)) +
                 game->inputOffset / 1000,
             beat = game->level.seconds2beat(seconds);
             if (!musicPlayable())
@@ -169,8 +170,7 @@ void StatePlaying::update()
             const auto [p, lep, vle] = game->level.getTimingBoundary(playerTileIndex, game->difficulty);
             const double timing = game->level.getTiming(playerTileIndex, seconds),
                          x = std::min(65.0 / 2, std::max(-65.0 / 2, timing / vle * 65.0 / 2.0));
-            const AdoCpp::HitMargin hitMargin =
-                game->level.getHitMargin(playerTileIndex, seconds, game->difficulty);
+            const AdoCpp::HitMargin hitMargin = game->level.getHitMargin(playerTileIndex, seconds, game->difficulty);
             if (hitMargin == AdoCpp::HitMargin::TooEarly)
             {
                 playerTileIndex--;
@@ -185,19 +185,16 @@ void StatePlaying::update()
             }
             else
             {
-                if (playerTileIndex != tiles.size() - 1 &&
-                    tiles[playerTileIndex + 1].angle.deg() == 999)
+                if (playerTileIndex != tiles.size() - 1 && tiles[playerTileIndex + 1].angle.deg() == 999)
                     playerTileIndex++;
-                hitTextSystem.addHitText(seconds, hitMargin,
-                                         {float(tiles[playerTileIndex].pos.c.x),
-                                          float(tiles[playerTileIndex].pos.c.y)});
+                hitTextSystem.addHitText(
+                    seconds, hitMargin, {float(tiles[playerTileIndex].pos.c.x), float(tiles[playerTileIndex].pos.c.y)});
             }
             hitErrorMeterSystem.addTick(seconds, hitMargin, x);
         }
         keyInputCnt = 0;
         while (playerTileIndex < tiles.size() - 1 &&
-               game->level.getHitMargin(playerTileIndex + 1, seconds, game->difficulty) ==
-                   AdoCpp::HitMargin::TooLate)
+               game->level.getHitMargin(playerTileIndex + 1, seconds, game->difficulty) == AdoCpp::HitMargin::TooLate)
         {
             playerTileIndex++;
             if (tiles[playerTileIndex].angle.deg() != 999)
@@ -279,9 +276,7 @@ void StatePlaying::render()
         static double progress, bpm, kps;
         progress = 100 * static_cast<double>(playerTileIndex) / static_cast<double>(tiles.size() - 1);
         bpm = game->level.getBpmByBeat(beat);
-        kps = bpm / 60 /
-            (game->level.getAngle(playerTileIndex + (playerTileIndex + 1 == tiles.size() ? 0 : 1)) /
-             180);
+        kps = bpm / 60 / (game->level.getAngle(playerTileIndex + (playerTileIndex + 1 == tiles.size() ? 0 : 1)) / 180);
         ImGui::Text("Progress: %.2f%%", progress);
         ImGui::Text("BPM: %.2f", bpm);
         ImGui::Text("KPS: %.2f", kps);
