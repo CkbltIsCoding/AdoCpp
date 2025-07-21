@@ -332,7 +332,7 @@ namespace AdoCpp
         /**
          * @brief Parse the level.
          */
-        void parse(bool force = false);
+        void parse(bool basic = false, bool force = false);
 
         /**
          * @brief Update the level.
@@ -365,10 +365,10 @@ namespace AdoCpp
 
         /**
          * @brief Erase the tiles.
-         * @param pos The position.
-         * @param n The number.
+         * @param first The position.
+         * @param last The number.
          */
-        void eraseTile(size_t pos, size_t n = -1ull);
+        void eraseTile(size_t first, size_t last = -1ull);
 
         /**
          * @brief Push back the tile.
@@ -543,7 +543,7 @@ namespace AdoCpp
         /**
          * @brief Update the camera.
          * @param seconds The seconds.
-         * @param floor The floor planet land on.
+         * @param floor The floor planet lands on.
          */
         void updateCamera(double seconds, size_t floor);
 
@@ -575,7 +575,7 @@ namespace AdoCpp
 
     private:
         void parseTiles();
-        void parseTileEventsAndSetSpeed();
+        void parseSetSpeed();
         void parseDynamicEvents(std::vector<Event::DynamicEvent*>& dynamicEvents,
                                 std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe);
         void parseAnimateTrack();

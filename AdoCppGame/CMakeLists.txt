@@ -26,7 +26,7 @@ add_executable(
         src/State.h
         src/State/Charting.h src/State/Charting.cpp
         src/State/Playing.h src/State/Playing.cpp
-        src/State/StateLiveCharting.h src/State/StateLiveCharting.cpp
+        src/State/LiveCharting.h src/State/LiveCharting.cpp
         src/Tile.h src/Tile.cpp
         src/HitErrorMeter.h
         src/HitText.h

@@ -92,6 +92,7 @@ AdoCppGame uses following software and libraries as its dependencies:
 - ImGui as a GUI library
 - ImGui-SFML to use ImGui with SFML
 - ImGuiFileDialog to select files
+- ImPlot to show audio oscillogram
 - Exprtk as a mathematical expression toolkit library
 
 Notice that AdoCppGame is still under development

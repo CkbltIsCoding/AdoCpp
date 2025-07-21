@@ -4,8 +4,8 @@ namespace AdoCpp::Event
 {
     Event::Event(const rapidjson::Value& data)
     {
-        this->floor = data["floor"].GetUint64();
-        this->active = !data.HasMember("active") || toBool(data["active"]);
+        floor = data["floor"].GetUint64();
+        active = !data.HasMember("active") || toBool(data["active"]);
     }
     rapidjson::Document Event::intoJson() const
     {

@@ -1,6 +1,6 @@
 #include "Charting.h"
+#include "LiveCharting.h"
 #include "Playing.h"
-#include "StateLiveCharting.h"
 
 #include <AudioProcessing.h>
 #include <ImGuiFileDialog.h>
@@ -157,7 +157,7 @@ void StateCharting::handleEvent(const sf::Event event)
             else if (keyPressed->code == Space)
                 game->level.initCamera(), game->pushState(StatePlaying::instance());
             else if (keyPressed->code == Grave)
-                game->pushState(StateLiveCharting::instance());
+                game->pushState(LiveCharting::instance());
         }
     }
     if (!ImGui::GetIO().WantCaptureMouse)

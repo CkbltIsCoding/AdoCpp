@@ -280,14 +280,19 @@ namespace AdoCpp
         return doc;
     }
 
-    void Level::parse(const bool force)
+    void Level::parse(const bool basic, const bool force)
     {
         if (parsed && !force)
             return;
         assert(tiles.size() >= 2 && "AdoCpp::Level class must have at least two tiles to parse");
         parsed = true;
         parseTiles();
-        parseTileEventsAndSetSpeed();
+        parseSetSpeed();
+        if (basic)
+        {
+            tiles[0].beat = tiles[0].seconds = -std::numeric_limits<double>::infinity();
+            return;
+        }
         std::vector<Event::DynamicEvent*> dynamicEvents;
         std::vector<std::vector<Event::Modifiers::RepeatEvents*>> vecRe{tiles.size()};
         parseDynamicEvents(dynamicEvents, vecRe);
@@ -412,10 +417,19 @@ namespace AdoCpp
         parsed = false;
         tiles[floor].angle = degrees(angle);
     }
-    void Level::eraseTile(const size_t pos, const size_t n)
+    void Level::eraseTile(const size_t first, const size_t last)
     {
         parsed = false;
-        tiles.erase(tiles.begin() + pos, tiles.begin() + std::min(n, tiles.size())); // NOLINT(*-narrowing-conversions)
+        for (size_t i = first; i < last; i++)
+        {
+            for (auto& event : tiles[i].events)
+            {
+                removeEvent(i, 0);
+                delete event;
+                event = nullptr;
+            }
+        }
+        tiles.erase(tiles.begin() + first, tiles.begin() + std::min(last, tiles.size())); // NOLINT(*-narrowing-conversions)
     }
     void Level::pushBackTile(const Tile& tile)
     {
@@ -621,7 +635,8 @@ namespace AdoCpp
         if (tiles[floor - 1].orbit == CounterClockwise)
             angle *= -1;
         angle = positiveRemainder(angle, 360);
-        if (angle == 0) angle = 360;
+        if (angle == 0)
+            angle = 360;
         return angle;
     }
 
@@ -882,8 +897,11 @@ namespace AdoCpp
         std::vector<Event::Track::ColorTrack*>     colorTracks(tiles.size());
         std::vector<Event::Track::AnimateTrack*>   animateTracks(tiles.size());
         std::vector<Event::Dlc::Hold*>             holds(tiles.size());
+        for (auto& tile : tiles)
+            tile.events.clear();
         for (const auto& event : events)
         {
+            tiles[event->floor].events.push_back(event);
             if (!event->active)
                 continue;
 
@@ -905,6 +923,7 @@ namespace AdoCpp
         }
         // clang-format on
         tiles[0].orbit = Clockwise, tiles[0].beat = 0, settings.apply(tiles[0]);
+        Vector2lf nextPosOff;
         for (size_t i = 0; i < tiles.size(); i++)
         {
             // Tile's twirl
@@ -944,7 +963,8 @@ namespace AdoCpp
             if (i != 0)
             {
                 tiles[i].stickToFloors = tiles[i - 1].stickToFloors;
-                tiles[i].pos.o += tiles[i - 1].pos.o, tiles[i].editorPos = tiles[i - 1].editorPos;
+                tiles[i].pos.o = tiles[i - 1].pos.o + nextPosOff;
+                tiles[i].editorPos = tiles[i - 1].editorPos + nextPosOff;
                 if ((i + 1 == tiles.size() || tiles[i + 1].angle.deg() != 999) && tiles[i].angle.deg() != 999)
                 {
                     const double dx = cos(deg2rad(tiles[i].angle.deg())), dy = sin(deg2rad(tiles[i].angle.deg()));
@@ -952,11 +972,12 @@ namespace AdoCpp
                     tiles[i].pos.o.y += dy, tiles[i].editorPos.y += dy;
                 }
             }
+            nextPosOff = {0, 0};
             if (positionTracks[i])
             {
                 tiles[i].editorPos += positionTracks[i]->positionOffset;
                 if (positionTracks[i]->justThisTile && i != tiles.size() - 1)
-                    tiles[i + 1].pos.o -= positionTracks[i]->positionOffset;
+                    nextPosOff = -positionTracks[i]->positionOffset;
                 if (!positionTracks[i]->editorOnly)
                     tiles[i].pos.o += positionTracks[i]->positionOffset;
                 if (positionTracks[i]->stickToFloors)
@@ -1032,13 +1053,10 @@ namespace AdoCpp
                 }
             }
             // clang-format on
-
-            // Tile's events
-            tiles[i].events.clear();
         }
         tiles[0].beat = -settings.countdownTicks;
     }
-    void Level::parseTileEventsAndSetSpeed()
+    void Level::parseSetSpeed()
     {
         m_setSpeeds.clear();
         for (const auto& event : events)
@@ -1047,7 +1065,6 @@ namespace AdoCpp
                 if (event->active)
                     setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
                     m_setSpeeds.push_back(setSpeed);
-            tiles[event->floor].events.push_back(event);
         }
         for (auto& tile : tiles)
             tile.seconds = beat2seconds(tile.beat);

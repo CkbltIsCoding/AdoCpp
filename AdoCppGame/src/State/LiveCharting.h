@@ -1,7 +1,7 @@
 #pragma once
 #include "State.h"
 
-class StateLiveCharting : public State
+class LiveCharting final : public State
 {
 public:
     void init(Game* _game) override;
@@ -13,16 +13,20 @@ public:
     void handleEvent(sf::Event event) override;
     void update() override;
     void render() override;
+    void renderAudioWindow();
+    void renderEventBar();
+    void renderEventSettings();
+    void parseUpdateLevel();
 
-    static StateLiveCharting* instance() { return &m_stateLiveCharting; }
+    static LiveCharting* instance() { return &m_stateLiveCharting; }
 
 protected:
-    StateLiveCharting() = default;
+    LiveCharting() = default;
 
     bool musicPlayable() const { return game->music.getDuration().asMilliseconds() != 0; }
 
 private:
-    static StateLiveCharting m_stateLiveCharting;
+    static LiveCharting m_stateLiveCharting;
     sf::CircleShape planet1, planet2;
     size_t nowTileIndex{}, playerTileIndex{};
     double seconds{}, beat{};
@@ -31,4 +35,5 @@ private:
     std::optional<sf::SoundBuffer> soundBuffer;
     std::optional<sf::Sound> music;
     std::optional<std::vector<double>> samples;
+    bool render_needToUpdateOscillogram;
 };
