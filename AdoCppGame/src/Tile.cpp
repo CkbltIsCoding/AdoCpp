@@ -1,5 +1,7 @@
 #include "Tile.h"
 
+#include <map>
+
 TileShape::TileShape(const double l_lastAngle, const double l_angle, const double l_nextAngle)
 {
     m_lastAngle = l_lastAngle, m_angle = l_angle, m_nextAngle = l_nextAngle;
@@ -53,12 +55,10 @@ void TileShape::update()
         h = h.rotatedBy(nextAngle) + w;
         if (60 <= includedAngle && includedAngle <= 300)
         {
-            // ֱ��AB �� ֱ��EF �Ľ���
             m.x = ((e.x - f.x) * (b.x * a.y - a.x * b.y) - (a.x - b.x) * (f.x * e.y - e.x * f.y)) /
                 ((e.x - f.x) * (a.y - b.y) - (a.x - b.x) * (e.y - f.y));
             m.y = ((e.y - f.y) * (b.y * a.x - a.y * b.x) - (a.y - b.y) * (f.y * e.x - e.y * f.x)) /
                 ((e.y - f.y) * (a.x - b.x) - (a.y - b.y) * (e.x - f.x));
-            // ֱ��CD �� ֱ��GH �Ľ���
             n.x = ((g.x - h.x) * (d.x * c.y - c.x * d.y) - (c.x - d.x) * (h.x * g.y - g.x * h.y)) /
                 ((g.x - h.x) * (c.y - d.y) - (c.x - d.x) * (g.y - h.y));
             n.y = ((g.y - h.y) * (d.y * c.x - c.y * d.x) - (c.y - d.y) * (h.y * g.x - g.y * h.x)) /
@@ -75,17 +75,14 @@ void TileShape::update()
             sf::Vector2f p;
             if (includedAngle < 180)
             {
-                // ֱ��AB �� ֱ��FG �Ľ���
                 m.x = ((f.x - g.x) * (b.x * a.y - a.x * b.y) - (a.x - b.x) * (g.x * f.y - f.x * g.y)) /
                     ((f.x - g.x) * (a.y - b.y) - (a.x - b.x) * (f.y - g.y));
                 m.y = ((f.y - g.y) * (b.y * a.x - a.y * b.x) - (a.y - b.y) * (g.y * f.x - f.y * g.x)) /
                     ((f.y - g.y) * (a.x - b.x) - (a.y - b.y) * (f.x - g.x));
-                // ֱ��AD �� ֱ��FG �Ľ���
                 n.x = ((f.x - g.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (g.x * f.y - f.x * g.y)) /
                     ((f.x - g.x) * (a.y - d.y) - (a.x - d.x) * (f.y - g.y));
                 n.y = ((f.y - g.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (g.y * f.x - f.y * g.x)) /
                     ((f.y - g.y) * (a.x - d.x) - (a.y - d.y) * (f.x - g.x));
-                // ֱ��AD �� ֱ��CF �Ľ���
                 p.x = ((f.x - c.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (c.x * f.y - f.x * c.y)) /
                     ((f.x - c.x) * (a.y - d.y) - (a.x - d.x) * (f.y - c.y));
                 p.y = ((f.y - c.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (c.y * f.x - f.y * c.x)) /
@@ -94,17 +91,14 @@ void TileShape::update()
             }
             else
             {
-                // ֱ��AD �� ֱ��FG �Ľ���
                 m.x = ((f.x - g.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (g.x * f.y - f.x * g.y)) /
                     ((f.x - g.x) * (a.y - d.y) - (a.x - d.x) * (f.y - g.y));
                 m.y = ((f.y - g.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (g.y * f.x - f.y * g.x)) /
                     ((f.y - g.y) * (a.x - d.x) - (a.y - d.y) * (f.x - g.x));
-                // ֱ��CD �� ֱ��FG �Ľ���
                 n.x = ((f.x - g.x) * (d.x * c.y - c.x * d.y) - (c.x - d.x) * (g.x * f.y - f.x * g.y)) /
                     ((f.x - g.x) * (c.y - d.y) - (c.x - d.x) * (f.y - g.y));
                 n.y = ((f.y - g.y) * (d.y * c.x - c.y * d.x) - (c.y - d.y) * (g.y * f.x - f.y * g.x)) /
                     ((f.y - g.y) * (c.x - d.x) - (c.y - d.y) * (f.x - g.x));
-                // ֱ��AD �� ֱ��GH �Ľ���
                 p.x = ((h.x - g.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (g.x * h.y - h.x * g.y)) /
                     ((h.x - g.x) * (a.y - d.y) - (a.x - d.x) * (h.y - g.y));
                 p.y = ((h.y - g.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (g.y * h.x - h.y * g.x)) /
@@ -205,7 +199,6 @@ void TileSystem::parse()
     m_tileSprites.clear();
     auto& tiles = m_level.getTiles();
     const auto& settings = m_level.getSettings();
-    auto& events = m_level.getEvents();
     for (size_t i = 0; i < tiles.size(); i++)
     {
         const double angle = tiles[i].angle.deg();
@@ -223,21 +216,24 @@ void TileSystem::parse()
         m_tileSprites.emplace_back(lastAngle, angle, nextAngle);
     }
     double oBpm = settings.bpm, bpm = oBpm;
-    for (const auto& event : events)
+    for (const auto& tile : tiles)
     {
-        if (const auto twirl = dynamic_cast<AdoCpp::Event::GamePlay::Twirl*>(event))
+        for (const auto& event : tile.events)
         {
-            m_tileSprites[twirl->floor].setTwirl(true);
-        }
-        else if (const auto setSpeed = dynamic_cast<AdoCpp::Event::GamePlay::SetSpeed*>(event))
-        {
-            if (setSpeed->speedType == AdoCpp::Event::GamePlay::SetSpeed::SpeedType::Bpm)
-                bpm = setSpeed->beatsPerMinute;
-            else
-                bpm *= setSpeed->bpmMultiplier;
-            if (bpm != oBpm)
-                m_tileSprites[setSpeed->floor].setSpeed(bpm > oBpm ? 1 : 2);
-            oBpm = bpm;
+            if (const auto twirl = std::dynamic_pointer_cast<AdoCpp::Event::GamePlay::Twirl>(event))
+            {
+                m_tileSprites[twirl->floor].setTwirl(true);
+            }
+            else if (const auto setSpeed = std::dynamic_pointer_cast<AdoCpp::Event::GamePlay::SetSpeed>(event))
+            {
+                if (setSpeed->speedType == AdoCpp::Event::GamePlay::SetSpeed::SpeedType::Bpm)
+                    bpm = setSpeed->beatsPerMinute;
+                else
+                    bpm *= setSpeed->bpmMultiplier;
+                if (bpm != oBpm)
+                    m_tileSprites[setSpeed->floor].setSpeed(bpm > oBpm ? 1 : 2);
+                oBpm = bpm;
+            }
         }
     }
 }
@@ -279,14 +275,42 @@ void TileSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
         auto& sprite = m_tileSprites[i];
         const auto& tile = m_level.getTiles()[i];
 
-        if (currentViewRect.findIntersection(sprite.getGlobalBoundsFaster()) &&
-            tile.scale.c.x != 0 && tile.scale.c.y != 0)
+        if (currentViewRect.findIntersection(sprite.getGlobalBoundsFaster()) && tile.scale.c.x != 0 &&
+            tile.scale.c.y != 0)
         {
             sprite.setTrackColor(sf::Color(tile.color.toInteger()));
             sprite.setTrackStyle(tile.trackStyle.c);
             sprite.setOpacity(static_cast<float>(tile.opacity));
             sprite.update();
             target.draw(m_tileSprites[i]);
+        }
+    }
+    if (m_activeTileIndex && m_tilePlaceMode)
+    {
+        const auto& selectedTile = m_tileSprites[*m_activeTileIndex];
+        const std::map<const char*, float> keyMap = {{"D", 0},   {"E", 45},  {"W", 90},  {"Q", 135},
+                                                     {"A", 180}, {"Z", 225}, {"X", 270}, {"C", 315}};
+        const std::map<const char*, float> shiftKeyMap = {{"J", 30},  {"Y", 60},  {"T", 120}, {"H", 150},
+                                                          {"N", 210}, {"V", 240}, {"B", 300}, {"M", 330}};
+        const std::map<const char*, float> shiftGraveKeyMap = {{"J", 15},  {"Y", 75},  {"T", 105}, {"H", 165},
+                                                               {"N", 195}, {"V", 255}, {"B", 285}, {"M", 345}};
+        const sf::Vector2f tilePos = selectedTile.getPosition();
+        for (const auto& [key, value] : (m_tilePlaceMode == 1       ? keyMap
+                                             : m_tilePlaceMode == 2 ? shiftKeyMap
+                                                                    : shiftGraveKeyMap))
+        {
+            const sf::Vector2f rectPos = tilePos + sf::Vector2f(1.f, 0.f).rotatedBy(sf::degrees(value));
+            sf::Text text{font, key, 128};
+            text.setPosition(rectPos);
+            text.setOrigin(text.getLocalBounds().getCenter());
+            text.setScale(sf::Vector2f(0.002f, -0.002f));
+            text.setFillColor(sf::Color::Black);
+
+            sf::RectangleShape rect{{0.5f, 0.5f}};
+            rect.setPosition(rectPos - sf::Vector2f(0.25f, 0.25f));
+            rect.setFillColor(sf::Color::White);
+            target.draw(rect);
+            target.draw(text);
         }
     }
 }

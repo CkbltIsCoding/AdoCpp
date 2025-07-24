@@ -140,13 +140,16 @@ public:
     explicit TileSystem(AdoCpp::Level& l_level) : m_level(l_level) { parse(); }
     void parse();
     void setActiveTileIndex(const std::optional<size_t> i) { m_activeTileIndex = i; }
+    void setTilePlaceMode(const int mode) { m_tilePlaceMode = mode; }
     void update();
     // ReSharper disable once CppMemberFunctionMayBeConst
-    TileSprite& operator[](const size_t index)  { return m_tileSprites[index]; }
+    TileSprite& operator[](const size_t index) { return m_tileSprites[index]; }
 
 private:
     void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     AdoCpp::Level& m_level;
     std::optional<size_t> m_activeTileIndex;
     mutable std::vector<TileSprite> m_tileSprites;
+    int m_tilePlaceMode;
+    sf::Font font{"assets/font/Maplestory OTF Bold.otf"};
 };

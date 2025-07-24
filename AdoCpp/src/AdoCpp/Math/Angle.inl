@@ -69,7 +69,7 @@ namespace AdoCpp
     ////////////////////////////////////////////////////////////
     constexpr Angle Angle::wrapUnsigned() const
     {
-        return radians(priv::positiveRemainder(m_degrees, 360.0));
+        return degrees(priv::positiveRemainder(m_degrees, 360.0));
     }
 
 

@@ -71,9 +71,23 @@ namespace AdoCpp
     struct Tile
     {
         /**
+         * Default constructor.
+         */
+        Tile() = default;
+        /**
+         * Default deconstructor.
+         */
+        ~Tile() = default;
+
+        /**
          * @brief The tile's angle.
          */
         Angle angle{};
+        /**
+         * @brief The event ptrs of the tile.
+         */
+        std::vector<std::shared_ptr<Event::Event>> events;
+
         /**
          * @brief The orbit of the planets when one of them lands on the tile.
          */
@@ -141,14 +155,10 @@ namespace AdoCpp
          */
         DynamicValue<uint32_t> trackPulseLength{10};
         /**
-         *
+         * The tile's color.
          */
         Color color;
 
-        /**
-         * @brief The event ptrs of the tile.
-         */
-        std::vector<Event::Event*> events;
 
         size_t trackAnimationFloor = 0;
         TrackAnimation trackAnimation = TrackAnimation::None;
@@ -210,8 +220,8 @@ namespace AdoCpp
         double hitsoundVolume = 100;
         double countdownTicks = 0;
         TrackColorType trackColorType = TrackColorType::Single;
-        Color trackColor = Color("debb7b");
-        Color secondaryTrackColor = Color("debb7b");
+        Color trackColor = Color(0xdebb7bff);
+        Color secondaryTrackColor = Color(0xdebb7bff);
         double trackColorAnimDuration = 0;
         TrackColorPulse trackColorPulse = TrackColorPulse::None;
         uint32_t trackPulseLength = 10;
@@ -220,7 +230,7 @@ namespace AdoCpp
         double beatsAhead = 0;
         TrackDisappearAnimation trackDisappearAnimation = TrackDisappearAnimation::None;
         double beatsBehind = 0;
-        Color backgroundColor = Color("000000");
+        Color backgroundColor = Color(0, 0, 0);
         bool stickToFloors = false;
         double unscaledSize = 100;
         RelativeToCamera relativeTo = RelativeToCamera::Player;
@@ -294,14 +304,12 @@ namespace AdoCpp
         /**
          * @brief Default destructor.
          */
-        ~Level();
+        ~Level() = default;
 
         /**
          * @brief Clear the level class.
          */
         void clear();
-
-        void free() const;
 
         /**
          * @brief Generate the default level.
@@ -387,20 +395,6 @@ namespace AdoCpp
         void popBackTile();
 
         /**
-         * @brief Add the event.
-         * @param event The event.
-         * @param index The index.
-         */
-        void addEvent(const Event::Event* event, size_t index);
-        /**
-         * @brief Remove the event.
-         * @param floor The floor.
-         * @param index The index.
-         * @return Whether it is success.
-         */
-        bool removeEvent(size_t floor, size_t index);
-
-        /**
          * @brief Convert baseIndex + relativeIndex into absolute index.
          * @param baseIndex The base index.
          * @param relativeIndex The index relative to the base index.
@@ -431,14 +425,14 @@ namespace AdoCpp
          * @param beat The beat.
          * @return The index of the tile.
          */
-        [[nodiscard]] size_t getTileIndexByBeat(double beat) const;
+        [[nodiscard]] size_t getFloorByBeat(double beat) const;
 
         /**
          * @brief Get the index of the tile that one of the planets lands on.
          * @param seconds The seconds.
          * @return The index of the tile.
          */
-        [[nodiscard]] size_t getTileIndexBySeconds(double seconds) const;
+        [[nodiscard]] size_t getFloorBySeconds(double seconds) const;
 
         /**
          * @brief Get the bpm.
@@ -550,13 +544,17 @@ namespace AdoCpp
         [[nodiscard]] Settings& getSettings();
         [[nodiscard]] const Settings& getSettings() const;
         [[nodiscard]] const std::vector<Tile>& getTiles() const;
-        [[nodiscard]] const std::vector<Event::Event*>& getEvents() const;
 
-    protected:
+        [[nodiscard]] Angle& getTileAngle(size_t floor);
+        [[nodiscard]] std::vector<std::shared_ptr<Event::Event>>& getTileEvents(size_t floor);
+
         /**
          * @brief Whether the level has been parsed.
          */
         bool parsed = false;
+        bool nonBasicParsed = false;
+
+    protected:
 
         /**
          * @brief The level's settings.
@@ -568,14 +566,10 @@ namespace AdoCpp
          */
         std::vector<Tile> tiles;
 
-        /**
-         * @brief The level's event pointers.
-         */
-        std::vector<Event::Event*> events;
-
-    private:
-        void parseTiles();
+    public:
+        void parseTiles(size_t beginFloor = 0);
         void parseSetSpeed();
+    private:
         void parseDynamicEvents(std::vector<Event::DynamicEvent*>& dynamicEvents,
                                 std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe);
         void parseAnimateTrack();
@@ -608,8 +602,8 @@ namespace AdoCpp
             Easing ease;
         };
 
-        std::list<Event::DynamicEvent*> m_processedDynamicEvents;
-        std::vector<Event::GamePlay::SetSpeed*> m_setSpeeds;
+        std::list<std::shared_ptr<Event::DynamicEvent>> m_processedDynamicEvents;
+        std::vector<std::shared_ptr<Event::GamePlay::SetSpeed>> m_setSpeeds;
         std::vector<MoveCameraData> m_moveCameraDatas;
 
         struct Camera

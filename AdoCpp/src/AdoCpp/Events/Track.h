@@ -17,15 +17,15 @@ namespace AdoCpp::Event::Track
         [[nodiscard]] constexpr const char* name() const noexcept override { return "ColorTrack"; }
         [[nodiscard]] constexpr ColorTrack* clone() const override { return new ColorTrack(*this); }
         [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
-        TrackColorType trackColorType;
+        TrackColorType trackColorType{};
         Color trackColor;
         Color secondaryTrackColor;
-        double trackColorAnimDuration;
+        double trackColorAnimDuration{};
         TrackColorPulse trackColorPulse{TrackColorPulse::None};
         uint32_t trackPulseLength = 10;
-        TrackStyle trackStyle;
+        TrackStyle trackStyle{};
         std::string trackTexture;
-        double trackGlowIntensity;
+        double trackGlowIntensity{};
     };
     class AnimateTrack final : public StaticEvent
     {
@@ -37,9 +37,9 @@ namespace AdoCpp::Event::Track
         [[nodiscard]] constexpr AnimateTrack* clone() const override { return new AnimateTrack(*this); }
         [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         std::optional<TrackAnimation> trackAnimation;
-        double beatsAhead;
+        double beatsAhead{};
         std::optional<TrackDisappearAnimation> trackDisappearAnimation;
-        double beatsBehind;
+        double beatsBehind{};
     };
     class RecolorTrack final : public DynamicEvent
     {
@@ -52,17 +52,17 @@ namespace AdoCpp::Event::Track
         [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         RelativeIndex startTile;
         RelativeIndex endTile;
-        double gapLength;
+        double gapLength{};
         std::optional<double> duration;
-        TrackColorType trackColorType;
+        TrackColorType trackColorType = TrackColorType::Single;
         Color trackColor;
         Color secondaryTrackColor;
-        double trackColorAnimDuration;
-        TrackColorPulse trackColorPulse;
+        double trackColorAnimDuration{};
+        TrackColorPulse trackColorPulse = TrackColorPulse::None;
         uint32_t trackPulseLength = 10;
-        TrackStyle trackStyle;
-        double trackGlowIntensity;
-        Easing ease;
+        TrackStyle trackStyle{};
+        double trackGlowIntensity{};
+        Easing ease{};
     };
     class PositionTrack final : public StaticEvent
     {
@@ -75,11 +75,11 @@ namespace AdoCpp::Event::Track
         [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         Vector2lf positionOffset;
         RelativeIndex relativeTo;
-        double rotation;
-        double scale;
-        double opacity;
-        bool justThisTile;
-        bool editorOnly;
+        double rotation{};
+        double scale{};
+        double opacity{};
+        bool justThisTile{false};
+        bool editorOnly{false};
         std::optional<bool> stickToFloors;
     };
     class MoveTrack final : public DynamicEvent

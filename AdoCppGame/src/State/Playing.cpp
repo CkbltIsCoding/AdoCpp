@@ -120,7 +120,7 @@ void StatePlaying::update()
                 seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
             else
                 seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
-            beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getTileIndexByBeat(beat);
+            beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
         }
         else
         {
@@ -146,7 +146,7 @@ void StatePlaying::update()
         }
         else
             seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
-        beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getTileIndexByBeat(beat);
+        beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
     }
 
     // Update the level

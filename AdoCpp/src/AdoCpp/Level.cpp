@@ -158,29 +158,16 @@ namespace AdoCpp
 
     Level::Level(const std::filesystem::path& path) { fromFile(path); }
 
-    Level::~Level() { free(); }
-
     static double deg2rad(const double deg) { return deg * 3.141592653589793 / 180; }
 
     void Level::clear()
     {
         parsed = false;
-        free();
         settings = Settings();
         tiles.clear();
-        events.clear();
         m_processedDynamicEvents.clear();
         m_moveCameraDatas.clear();
         m_setSpeeds.clear();
-    }
-
-    void Level::free() const
-    {
-        for (const auto& pde : m_processedDynamicEvents)
-            if (pde->generated)
-                delete pde;
-        for (const auto& e : events)
-            delete e;
     }
 
     void Level::defaultLevel()
@@ -215,8 +202,8 @@ namespace AdoCpp
 
         for (const auto& eventData : document["actions"].GetArray())
         {
-            if (Event::Event* event = Event::newEvent(eventData))
-                events.push_back(event);
+            if (auto event = std::shared_ptr<Event::Event>(Event::newEvent(eventData)))
+                tiles[event->floor].events.push_back(event);
         }
     }
 
@@ -248,9 +235,9 @@ namespace AdoCpp
         rapidjson::Value val(rapidjson::kObjectType);
         {
             rapidjson::Value angleData(rapidjson::kArrayType);
-            for (const auto& tile : tiles)
+            for (size_t i = 1; i < tiles.size(); i++)
             {
-                if (static_cast<int>(tile.angle.deg()) == tile.angle.deg())
+                if (const auto& tile = tiles[i]; static_cast<int>(tile.angle.deg()) == tile.angle.deg())
                     angleData.PushBack(static_cast<int>(tile.angle.deg()), alloc);
                 else
                     angleData.PushBack(tile.angle.deg(), alloc);
@@ -262,8 +249,9 @@ namespace AdoCpp
         }
         {
             rapidjson::Value actions(rapidjson::kArrayType);
-            for (const auto& event : events)
-                actions.PushBack(event->intoJson(alloc), alloc);
+            for (const auto& tile : tiles)
+                for (const auto& event : tile.events)
+                    actions.PushBack(event->intoJson(alloc), alloc);
 
             val.AddMember("actions", actions, alloc);
         }
@@ -282,10 +270,10 @@ namespace AdoCpp
 
     void Level::parse(const bool basic, const bool force)
     {
-        if (parsed && !force)
+        if (parsed && !force && nonBasicParsed)
             return;
         assert(tiles.size() >= 2 && "AdoCpp::Level class must have at least two tiles to parse");
-        parsed = true;
+        parsed = true, nonBasicParsed = false;
         parseTiles();
         parseSetSpeed();
         if (basic)
@@ -293,13 +281,13 @@ namespace AdoCpp
             tiles[0].beat = tiles[0].seconds = -std::numeric_limits<double>::infinity();
             return;
         }
+        nonBasicParsed = true;
         std::vector<Event::DynamicEvent*> dynamicEvents;
         std::vector<std::vector<Event::Modifiers::RepeatEvents*>> vecRe{tiles.size()};
         parseDynamicEvents(dynamicEvents, vecRe);
         parseAnimateTrack();
         parseRepeatEvents(dynamicEvents, vecRe);
-        m_processedDynamicEvents.sort([](const Event::DynamicEvent* a, const Event::DynamicEvent* b)
-                                      { return a->beat < b->beat; }); // stable sort
+        m_processedDynamicEvents.sort([](const auto& a, const auto& b) { return a->beat < b->beat; }); // stable sort
         parseMoveTrackData();
 
         tiles[0].beat = tiles[0].seconds = -std::numeric_limits<double>::infinity();
@@ -324,8 +312,8 @@ namespace AdoCpp
         {
             if (seconds < dynamicEvent->seconds)
                 break;
-            if (const auto* const recolorTrack = dynamic_cast<Event::Track::RecolorTrack*>(dynamicEvent))
-                updateTileColorInfo(recolorTrack);
+            if (auto recolorTrack = std::dynamic_pointer_cast<Event::Track::RecolorTrack>(dynamicEvent))
+                updateTileColorInfo(recolorTrack.get());
         }
 
         for (size_t i = 0; i < tiles.size(); i++)
@@ -420,16 +408,8 @@ namespace AdoCpp
     void Level::eraseTile(const size_t first, const size_t last)
     {
         parsed = false;
-        for (size_t i = first; i < last; i++)
-        {
-            for (auto& event : tiles[i].events)
-            {
-                removeEvent(i, 0);
-                delete event;
-                event = nullptr;
-            }
-        }
-        tiles.erase(tiles.begin() + first, tiles.begin() + std::min(last, tiles.size())); // NOLINT(*-narrowing-conversions)
+        tiles.erase(tiles.begin() + first, // NOLINT(*-narrowing-conversions)
+                    tiles.begin() + std::min(last, tiles.size())); // NOLINT(*-narrowing-conversions)
     }
     void Level::pushBackTile(const Tile& tile)
     {
@@ -445,37 +425,6 @@ namespace AdoCpp
     {
         parsed = false;
         tiles.pop_back();
-    }
-    void Level::addEvent(const Event::Event* event, const size_t index)
-    {
-        parsed = false;
-        Event::Event* e = event->clone();
-        delete event;
-        const size_t begin = std::ranges::upper_bound(events, e, [](const Event::Event* e_, const Event::Event* event_)
-                                                      { return e_->floor <= event_->floor; }) -
-            events.begin(),
-                     end = std::ranges::upper_bound(events, e, [](const Event::Event* e_, const Event::Event* event_)
-                                                    { return e_->floor < event_->floor; }) -
-            events.begin(),
-                     i = std::min(begin + index, end);
-        events.insert(events.begin() + i, e); // NOLINT(*-narrowing-conversions)
-    }
-    bool Level::removeEvent(const size_t floor, const size_t index)
-    {
-        parsed = false;
-        const size_t begin = std::upper_bound(events.begin(), events.end(), floor,
-                                              [](const size_t floor_, const Event::Event* event_)
-                                              { return floor_ <= event_->floor; }) -
-            events.begin(),
-                     end = std::upper_bound(events.begin(), events.end(), floor,
-                                            [](const size_t floor_, const Event::Event* event_)
-                                            { return floor_ < event_->floor; }) -
-            events.begin(),
-                     i = begin + index;
-        if (i >= end)
-            return false;
-        events.erase(events.begin() + i); // NOLINT(*-narrowing-conversions)
-        return true;
     }
 
     size_t Level::rel2absIndex(const size_t baseIndex, const RelativeIndex relativeIndex) const
@@ -531,14 +480,14 @@ namespace AdoCpp
         return std::make_pair(p2, p1);
     }
     inline bool Level::isFirePlanetStatic(const size_t floor) { return floor % 2 == 0; }
-    size_t Level::getTileIndexByBeat(const double beat) const
+    size_t Level::getFloorByBeat(const double beat) const
     {
         assert(parsed && "AdoCpp::Level class is not parsed");
         return std::upper_bound(tiles.begin() + 1, tiles.end(), beat,
                                 [](const double& val, const Tile& e) -> bool { return val < e.beat; }) -
             (tiles.begin() + 1);
     }
-    size_t Level::getTileIndexBySeconds(const double seconds) const
+    size_t Level::getFloorBySeconds(const double seconds) const
     {
         assert(parsed && "AdoCpp::Level class is not parsed");
         return std::upper_bound(tiles.begin() + 1, tiles.end(), seconds,
@@ -690,7 +639,7 @@ namespace AdoCpp
                                        settings.rotation, rotEndSec, settings.zoom, zoomEndSec, Easing::Linear);
         for (const auto& m_processedDynamicEvent : std::ranges::reverse_view(m_processedDynamicEvents))
         {
-            const auto mc = dynamic_cast<Event::Visual::MoveCamera*>(m_processedDynamicEvent);
+            const auto mc = std::dynamic_pointer_cast<Event::Visual::MoveCamera>(m_processedDynamicEvent);
             if (mc == nullptr)
                 continue;
             m_moveCameraDatas.emplace(m_moveCameraDatas.begin() + 1, mc->floor, mc->angleOffset, mc->beat, mc->seconds,
@@ -698,7 +647,7 @@ namespace AdoCpp
                                       yEndSec, mc->rotation, rotEndSec, mc->zoom, zoomEndSec, mc->ease);
             if (mc->relativeTo)
             {
-                relEndSec = mc->seconds;
+                // relEndSec = mc->seconds; // i hate this line
                 if (*mc->relativeTo == RelativeToCamera::LastPosition)
                     xEndSec = yEndSec = mc->seconds;
             }
@@ -766,8 +715,9 @@ namespace AdoCpp
                                      speed = gapDis * getBpmBySeconds(seconds) / 60.0 / 2.0;
                         if (targetPos != m_camera.player)
                         {
-                            const Vector2lf v = targetPos - m_camera.player, n = v.normalized() * delta * speed;
-                            if ((m_camera.player - targetPos).lengthSquared() > n.lengthSquared())
+                            const Vector2lf v = targetPos - m_camera.player;
+                            if (const Vector2lf n = v.normalized() * delta * speed;
+                                (m_camera.player - targetPos).lengthSquared() > n.lengthSquared())
                                 m_camera.player += n;
                             else
                                 m_camera.player = targetPos;
@@ -885,46 +835,56 @@ namespace AdoCpp
     Settings& Level::getSettings() { return settings; }
     const Settings& Level::getSettings() const { return settings; }
     const std::vector<Tile>& Level::getTiles() const { return tiles; }
-    const std::vector<Event::Event*>& Level::getEvents() const { return events; }
+    Angle& Level::getTileAngle(const size_t floor)
+    {
+        parsed = false;
+        return tiles[floor].angle;
+    }
+    std::vector<std::shared_ptr<Event::Event>>& Level::getTileEvents(const size_t floor)
+    {
+        parsed = false;
+        return tiles[floor].events;
+    }
 
-    void Level::parseTiles()
+    void Level::parseTiles(const size_t beginFloor)
     {
         // clang-format off
-        std::vector<bool>                          twirls(tiles.size());
-        std::vector<double>                        pauses(tiles.size());
-        std::vector<Event::GamePlay::SetHitsound*> setHitsounds(tiles.size());
-        std::vector<Event::Track::PositionTrack*>  positionTracks(tiles.size());
-        std::vector<Event::Track::ColorTrack*>     colorTracks(tiles.size());
-        std::vector<Event::Track::AnimateTrack*>   animateTracks(tiles.size());
-        std::vector<Event::Dlc::Hold*>             holds(tiles.size());
-        for (auto& tile : tiles)
-            tile.events.clear();
-        for (const auto& event : events)
+        std::vector<bool>                                          twirls(tiles.size());
+        std::vector<double>                                        pauses(tiles.size());
+        std::vector<std::shared_ptr<Event::GamePlay::SetHitsound>> setHitsounds(tiles.size());
+        std::vector<std::shared_ptr<Event::Track::PositionTrack>>  positionTracks(tiles.size());
+        std::vector<std::shared_ptr<Event::Track::ColorTrack>>     colorTracks(tiles.size());
+        std::vector<std::shared_ptr<Event::Track::AnimateTrack>>   animateTracks(tiles.size());
+        std::vector<std::shared_ptr<Event::Dlc::Hold>>             holds(tiles.size());
+        for (size_t floor = beginFloor; floor < tiles.size(); floor++)
         {
-            tiles[event->floor].events.push_back(event);
-            if (!event->active)
-                continue;
+            for (const auto& event : tiles[floor].events)
+            {
+                event->floor = floor;
+                if (!event->active)
+                    continue;
 
-            if (typeid(*event) == typeid(Event::GamePlay::Twirl))
-                twirls[event->floor] = true;
-            else if (const auto pause                = dynamic_cast<Event::GamePlay::Pause*>(event))
-                pauses[pause->floor]                 = pause->duration;
-            else if (const auto setHitsound          = dynamic_cast<Event::GamePlay::SetHitsound*>(event))
-                setHitsounds[setHitsound->floor]     = setHitsound;
+                if (typeid(*event) == typeid(Event::GamePlay::Twirl))
+                    twirls[event->floor] = true;
+                else if (const auto pause                = std::dynamic_pointer_cast<Event::GamePlay::Pause>(event))
+                    pauses[pause->floor]                 = pause->duration;
+                else if (const auto setHitsound          = std::dynamic_pointer_cast<Event::GamePlay::SetHitsound>(event))
+                    setHitsounds[setHitsound->floor]     = setHitsound;
 
-            else if (const auto positionTrack        = dynamic_cast<Event::Track::PositionTrack*>(event))
-                positionTracks[positionTrack->floor] = positionTrack;
-            else if (const auto colorTrack           = dynamic_cast<Event::Track::ColorTrack*>(event))
-                colorTracks[colorTrack->floor]       = colorTrack;
-            else if (const auto animateTrack         = dynamic_cast<Event::Track::AnimateTrack*>(event))
-                animateTracks[animateTrack->floor]   = animateTrack;
-            else if (const auto hold                 = dynamic_cast<Event::Dlc::Hold*>(event))
-                holds[hold->floor]                   = hold;
+                else if (const auto positionTrack        = std::dynamic_pointer_cast<Event::Track::PositionTrack>(event))
+                    positionTracks[positionTrack->floor] = positionTrack;
+                else if (const auto colorTrack           = std::dynamic_pointer_cast<Event::Track::ColorTrack>(event))
+                    colorTracks[colorTrack->floor]       = colorTrack;
+                else if (const auto animateTrack         = std::dynamic_pointer_cast<Event::Track::AnimateTrack>(event))
+                    animateTracks[animateTrack->floor]   = animateTrack;
+                else if (const auto hold                 = std::dynamic_pointer_cast<Event::Dlc::Hold>(event))
+                    holds[hold->floor]                   = hold;
+            }
         }
         // clang-format on
         tiles[0].orbit = Clockwise, tiles[0].beat = 0, settings.apply(tiles[0]);
         Vector2lf nextPosOff;
-        for (size_t i = 0; i < tiles.size(); i++)
+        for (size_t i = beginFloor; i < tiles.size(); i++)
         {
             // Tile's twirl
             if (i != 0)
@@ -1059,12 +1019,15 @@ namespace AdoCpp
     void Level::parseSetSpeed()
     {
         m_setSpeeds.clear();
-        for (const auto& event : events)
+        for (const auto& tile : tiles)
         {
-            if (const auto setSpeed = dynamic_cast<Event::GamePlay::SetSpeed*>(event))
-                if (event->active)
-                    setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
-                    m_setSpeeds.push_back(setSpeed);
+            for (const auto& event : tile.events)
+            {
+                if (const auto setSpeed = std::dynamic_pointer_cast<Event::GamePlay::SetSpeed>(event))
+                    if (event->active)
+                        setSpeed->beat = tiles[setSpeed->floor].beat + setSpeed->angleOffset / 180,
+                        m_setSpeeds.push_back(setSpeed);
+            }
         }
         for (auto& tile : tiles)
             tile.seconds = beat2seconds(tile.beat);
@@ -1074,34 +1037,37 @@ namespace AdoCpp
     {
         m_processedDynamicEvents.clear();
 
-        for (const auto& event : events)
+        for (const auto& tile : tiles)
         {
-            if (!event->active)
-                continue;
-            if (auto dynamicEventPtr = dynamic_cast<Event::DynamicEvent*>(event))
+            for (const auto& event : tile.events)
             {
-                if (typeid(dynamicEventPtr) == typeid(Event::GamePlay::SetSpeed))
+                if (!event->active)
                     continue;
-                if (dynamicEventPtr->angleOffset == 0)
+                if (auto dynamicEventPtr = std::dynamic_pointer_cast<Event::DynamicEvent>(event))
                 {
-                    dynamicEventPtr->seconds = tiles[dynamicEventPtr->floor].seconds;
-                    dynamicEventPtr->beat = tiles[dynamicEventPtr->floor].beat;
-                }
-                else
-                {
-                    const double bpm = getBpmForDynamicEvent(dynamicEventPtr->floor, dynamicEventPtr->angleOffset),
-                                 spb = bpm2crotchet(bpm);
-                    dynamicEventPtr->seconds =
-                        tiles[dynamicEventPtr->floor].seconds + dynamicEventPtr->angleOffset / 180 * spb;
-                    dynamicEventPtr->beat = seconds2beat(dynamicEventPtr->seconds);
-                }
+                    if (typeid(dynamicEventPtr) == typeid(Event::GamePlay::SetSpeed))
+                        continue;
+                    if (dynamicEventPtr->angleOffset == 0)
+                    {
+                        dynamicEventPtr->seconds = tiles[dynamicEventPtr->floor].seconds;
+                        dynamicEventPtr->beat = tiles[dynamicEventPtr->floor].beat;
+                    }
+                    else
+                    {
+                        const double bpm = getBpmForDynamicEvent(dynamicEventPtr->floor, dynamicEventPtr->angleOffset),
+                                     spb = bpm2crotchet(bpm);
+                        dynamicEventPtr->seconds =
+                            tiles[dynamicEventPtr->floor].seconds + dynamicEventPtr->angleOffset / 180 * spb;
+                        dynamicEventPtr->beat = seconds2beat(dynamicEventPtr->seconds);
+                    }
 
-                dynamicEvents.push_back(dynamicEventPtr);
-                m_processedDynamicEvents.push_back(dynamicEventPtr);
-            }
-            if (auto repeatEvents = dynamic_cast<Event::Modifiers::RepeatEvents*>(event))
-            {
-                vecRe[repeatEvents->floor].push_back(repeatEvents);
+                    dynamicEvents.push_back(dynamicEventPtr.get());
+                    m_processedDynamicEvents.push_back(dynamicEventPtr);
+                }
+                if (auto repeatEvents = std::dynamic_pointer_cast<Event::Modifiers::RepeatEvents>(event))
+                {
+                    vecRe[repeatEvents->floor].push_back(repeatEvents.get());
+                }
             }
         }
     }
@@ -1121,7 +1087,8 @@ namespace AdoCpp
                 case TrackAnimation::Fade:
                 default:
                     {
-                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
+                        const auto mtHide = std::make_shared<Event::Track::MoveTrack>(),
+                                   mtAppear = std::make_shared<Event::Track::MoveTrack>();
                         mtHide->floor = mtAppear->floor = i;
                         mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
                             RelativeIndex(0, ThisTile);
@@ -1138,7 +1105,8 @@ namespace AdoCpp
                     }
                 case TrackAnimation::Grow_Spin:
                     {
-                        const auto mtHide = new Event::Track::MoveTrack(), mtAppear = new Event::Track::MoveTrack();
+                        const auto mtHide = std::make_shared<Event::Track::MoveTrack>(),
+                                   mtAppear = std::make_shared<Event::Track::MoveTrack>();
                         mtHide->floor = mtAppear->floor = i;
                         mtHide->startTile = mtHide->endTile = mtAppear->startTile = mtAppear->endTile =
                             RelativeIndex(0, ThisTile);
@@ -1166,7 +1134,7 @@ namespace AdoCpp
                 case TrackDisappearAnimation::Fade:
                 default:
                     {
-                        const auto mtDisappear = new Event::Track::MoveTrack();
+                        const auto mtDisappear = std::make_shared<Event::Track::MoveTrack>();
                         mtDisappear->floor = i;
                         mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
                         mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
@@ -1179,7 +1147,7 @@ namespace AdoCpp
                     }
                 case TrackDisappearAnimation::Shrink_Spin:
                     {
-                        const auto mtDisappear = new Event::Track::MoveTrack();
+                        const auto mtDisappear = std::make_shared<Event::Track::MoveTrack>();
                         mtDisappear->floor = i;
                         mtDisappear->startTile = mtDisappear->endTile = RelativeIndex(0, ThisTile);
                         mtDisappear->seconds = tiles[i + 1].seconds + secondsBehind;
@@ -1211,11 +1179,11 @@ namespace AdoCpp
                             const double gap = spb * repeatEvents->interval;
                             for (size_t i = 1; i <= repeatEvents->repetitions; i++)
                             {
-                                auto eventClone = event->clone();
+                                const auto eventClone = event->clone();
                                 eventClone->seconds += gap * static_cast<double>(i);
                                 eventClone->beat = seconds2beat(eventClone->seconds);
                                 eventClone->generated = true;
-                                m_processedDynamicEvents.push_front(eventClone);
+                                m_processedDynamicEvents.push_front(std::shared_ptr<Event::DynamicEvent>(eventClone));
                             }
                         }
                         else if (repeatEvents->repeatType == Event::Modifiers::RepeatEvents::RepeatType::Floor)
@@ -1229,7 +1197,7 @@ namespace AdoCpp
                                 if (repeatEvents->executeOnCurrentFloor)
                                     eventClone->floor += i;
                                 eventClone->generated = true;
-                                m_processedDynamicEvents.push_front(eventClone);
+                                m_processedDynamicEvents.push_front(std::shared_ptr<Event::DynamicEvent>(eventClone));
                             }
                         }
                     }
@@ -1238,7 +1206,7 @@ namespace AdoCpp
     {
         for (const auto& event : m_processedDynamicEvents)
         {
-            const auto mt = dynamic_cast<Event::Track::MoveTrack*>(event);
+            const auto mt = std::dynamic_pointer_cast<Event::Track::MoveTrack>(event);
             if (mt == nullptr)
                 continue;
             const size_t b = rel2absIndex(mt->floor, mt->startTile),

@@ -12,6 +12,8 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "implot.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/ostreamwrapper.h"
 
 constexpr ImGuiWindowFlags ADOCPPGAME_FLAGS =
     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
@@ -131,14 +133,18 @@ void StateCharting::init(Game* l_game)
 {
     game = l_game;
     newLevel();
+    game->tileSystem.setTilePlaceMode(0);
 }
 
 void StateCharting::cleanup() {}
 
-void StateCharting::pause() {}
+void StateCharting::pause()
+{
+}
 
 void StateCharting::resume()
 {
+    game->tileSystem.setTilePlaceMode(0);
     game->activeTileIndex = std::nullopt;
     game->level.update();
     game->tileSystem.update();
@@ -257,19 +263,19 @@ void StateCharting::renderFilenameBar()
                 config.flags = ImGuiFileDialogFlags_Modal;
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose an ADOFAI file", ".adofai", config);
             }
-            if (addedHitsound)
-                ImGui::BeginDisabled();
-            if (ImGui::Button("Add hitsound", ImVec2(-1, 0)))
+            if (ImGui::Button("Save as ...", ImVec2(-1, 0)))
             {
-                if (!addedHitsound)
-                {
-                    future =
-                        std::async(std::launch::async, addHitsound, game->musicPath, game->level.getTiles(), &progress);
-                    ImGui::OpenPopup("Adding hitsound...");
-                }
+                IGFD::FileDialogConfig config;
+                config.path = game->origMusicPath.parent_path().string();
+                config.flags = ImGuiFileDialogFlags_Modal;
+                ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlgKey", "Save the ADOFAI file", ".adofai", config);
             }
-            if (addedHitsound)
-                ImGui::EndDisabled();
+            if (ImGui::Button(addedHitsound ? "Re-add hitsound" : "Add hitsound", ImVec2(-1, 0)))
+            {
+                future =
+                    std::async(std::launch::async, addHitsound, game->origMusicPath, game->level.getTiles(), &progress);
+                ImGui::OpenPopup("Adding hitsound...");
+            }
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             if (ImGui::BeginPopupModal("Adding hitsound...", nullptr))
             {
@@ -334,6 +340,20 @@ void StateCharting::renderFilenameBar()
                     ImGui::OpenPopup("Error!##AdoCpp::LevelJsonHasParseErrorException");
                 }
                 newLevel();
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+        if (ImGuiFileDialog::Instance()->Display("SaveFileDlgKey"))
+        {
+            if (ImGuiFileDialog::Instance()->IsOk())
+            {
+                const auto path = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::ofstream ofs(path, std::ios::binary);
+                rapidjson::Document doc = game->level.intoJson();
+                rapidjson::OStreamWrapper osw(ofs);
+                rapidjson::EncodedOutputStream<rapidjson::UTF8<>, rapidjson::OStreamWrapper> eos(osw, true);
+                rapidjson::PrettyWriter writer(eos);
+                doc.Accept(writer);
             }
             ImGuiFileDialog::Instance()->Close();
         }
@@ -457,11 +477,11 @@ void StateCharting::renderEventSettings() const
                     const char* title = tile.events[selectedTab]->name();
                     ImGui::SetCursorPosX(rightSettingsTabContentWidth / 2 - ImGui::CalcTextSize(title).x / 2);
                     ImGui::Text(title);
-                    AdoCpp::Event::Event* event = tile.events[selectedTab];
-                    if (const auto twirl = dynamic_cast<AdoCpp::Event::GamePlay::Twirl*>(event))
+                    auto event = tile.events[selectedTab];
+                    if (const auto twirl = std::dynamic_pointer_cast<AdoCpp::Event::GamePlay::Twirl>(event))
                     {
                     }
-                    if (const auto setSpeed = dynamic_cast<AdoCpp::Event::GamePlay::SetSpeed*>(event))
+                    if (const auto setSpeed = std::dynamic_pointer_cast<AdoCpp::Event::GamePlay::SetSpeed>(event))
                     {
                     }
                 }

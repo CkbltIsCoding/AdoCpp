@@ -1,16 +1,41 @@
 #include "LiveCharting.h"
+#include "IconsFontAwesome6.h"
 
+#include <iostream>
 #include <map>
 
 #include "implot.h"
 
 LiveCharting LiveCharting::m_stateLiveCharting;
 
+static std::map<std::string, float*> colorBuffers;
+bool ImGuiInputColor(const char* text, const char* id, AdoCpp::Color* colorPtr)
+{
+    if (!colorBuffers.contains(id))
+        colorBuffers[id] = new float[4];
+    ImGui::Text(text);
+    ImGui::SetNextItemWidth(-1);
+    const bool val = ImGui::ColorEdit4(text, colorBuffers[id]);
+    if (ImGui::IsItemEdited())
+        *colorPtr = AdoCpp::Color(
+            static_cast<uint8_t>(colorBuffers[id][0] * 255), static_cast<uint8_t>(colorBuffers[id][1] * 255),
+            static_cast<uint8_t>(colorBuffers[id][2] * 255), static_cast<uint8_t>(colorBuffers[id][3] * 255));
+    if (!ImGui::IsItemActive())
+    {
+        colorBuffers[id][0] = static_cast<float>(colorPtr->r) / 255.f;
+        colorBuffers[id][1] = static_cast<float>(colorPtr->g) / 255.f;
+        colorBuffers[id][2] = static_cast<float>(colorPtr->b) / 255.f;
+        colorBuffers[id][3] = static_cast<float>(colorPtr->a) / 255.f;
+    }
+    return val;
+}
+
 void LiveCharting::init(Game* _game)
 {
     game = _game;
 
     render_needToUpdateOscillogram = true;
+    seconds = 0;
 
     planet1.setFillColor(sf::Color::Red);
     planet2.setFillColor(sf::Color::Blue);
@@ -35,16 +60,19 @@ void LiveCharting::init(Game* _game)
         }
         catch (std::exception& ex)
         {
+            std::cerr << ex.what() << std::endl;
             soundBuffer = std::nullopt;
         }
     }
 }
 void LiveCharting::cleanup()
 {
-    game->level.parse(true);
+    game->level.parse(false, true);
     game->level.update();
     game->tileSystem.parse();
     game->tileSystem.update();
+    if (music)
+        music->stop();
 }
 void LiveCharting::pause() {}
 void LiveCharting::resume() {}
@@ -80,25 +108,64 @@ void LiveCharting::handleEvent(const sf::Event event)
                         game->level.pushBackTile(value);
                         game->activeTileIndex = game->level.getTiles().size() - 1;
                     }
-                    parseUpdateLevel();
+                    parseUpdateLevel(*game->activeTileIndex);
                 }
-
-            if (game->activeTileIndex && (keyPressed->code == Backspace || keyPressed->code == Delete))
+            if (game->activeTileIndex)
             {
-                // if (sf::Keyboard::isKeyPressed(LControl))
-                // {
-                //     if (keyPressed->code == Backspace)
-                //         game->level.eraseTile(0, *game->activeTileIndex), *game->activeTileIndex = 0;
-                //     else
-                //         game->level.eraseTile(*game->activeTileIndex + 1,
-                //                               game->level.getTiles().size());
-                // }
-                // else
-                // {
-                //     game->level.eraseTile(*game->activeTileIndex, *game->activeTileIndex + 1);
-                //     (*game->activeTileIndex)--;
-                // }
-                // parseUpdateLevel();
+                if ((keyPressed->code == Backspace || keyPressed->code == Delete))
+                {
+                    if (sf::Keyboard::isKeyPressed(LControl))
+                    {
+                        if (keyPressed->code == Backspace)
+                            game->level.eraseTile(0, *game->activeTileIndex), *game->activeTileIndex = 0;
+                        else
+                            game->level.eraseTile(*game->activeTileIndex + 1, game->level.getTiles().size());
+                    }
+                    else
+                    {
+                        game->level.eraseTile(*game->activeTileIndex, *game->activeTileIndex + 1);
+                        (*game->activeTileIndex)--;
+                    }
+                    parseUpdateLevel(*game->activeTileIndex);
+                }
+                if (keyPressed->code == Tab)
+                {
+                    game->level.insertTile(*game->activeTileIndex + 1, 999);
+                    parseUpdateLevel(*game->activeTileIndex);
+                }
+                if (keyPressed->code == Space && sf::Keyboard::isKeyPressed(LShift))
+                {
+                    const double tileAngle = game->level.getTiles()[*game->activeTileIndex].angle.deg();
+                    const double angle = AdoCpp::degrees(tileAngle + 180).wrapUnsigned().deg();
+                    game->level.insertTile(*game->activeTileIndex + 1, angle);
+                    parseUpdateLevel(*game->activeTileIndex);
+                }
+                if (keyPressed->code == Left)
+                {
+                    if (sf::Keyboard::isKeyPressed(LControl))
+                        *game->activeTileIndex = 0;
+                    else if (*game->activeTileIndex != 0)
+                        (*game->activeTileIndex)--;
+                }
+                if (keyPressed->code == Right)
+                {
+                    if (sf::Keyboard::isKeyPressed(LControl))
+                        *game->activeTileIndex = game->level.getTiles().size() - 1;
+                    else if (*game->activeTileIndex != game->level.getTiles().size() - 1)
+                        (*game->activeTileIndex)++;
+                }
+                if (keyPressed->code == O)
+                {
+                    AdoCpp::Angle& angle = game->level.getTileAngle(*game->activeTileIndex);
+                    angle += AdoCpp::degrees(15), angle = angle.wrapUnsigned();
+                    parseUpdateLevel(*game->activeTileIndex);
+                }
+                if (keyPressed->code == P)
+                {
+                    AdoCpp::Angle& angle = game->level.getTileAngle(*game->activeTileIndex);
+                    angle -= AdoCpp::degrees(15), angle = angle.wrapUnsigned();
+                    parseUpdateLevel(*game->activeTileIndex);
+                }
             }
         }
     }
@@ -150,7 +217,22 @@ void LiveCharting::update()
 {
     const auto w = static_cast<float>(game->windowSize.x), h = static_cast<float>(game->windowSize.y);
     game->view.setSize({w / (w + h) * 16 * game->zoom.x, -h / (w + h) * 16 * game->zoom.y});
+
+    game->level.parsed = true; // BRO FORCE THE LEVEL PARSE 💀💀💀
+    if (game->level.isParsed())
+    {
+        const auto [pos1, pos2] = game->level.getPlanetsPos(game->level.getFloorBySeconds(seconds), seconds);
+        planet1.setPosition({static_cast<float>(pos1.x), static_cast<float>(pos1.y)});
+        planet2.setPosition({static_cast<float>(pos2.x), static_cast<float>(pos2.y)});
+    }
+
     game->tileSystem.setActiveTileIndex(game->activeTileIndex);
+    if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift))
+        game->tileSystem.setTilePlaceMode(1);
+    else if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Grave))
+        game->tileSystem.setTilePlaceMode(2);
+    else
+        game->tileSystem.setTilePlaceMode(3);
     game->tileSystem.update();
 }
 void LiveCharting::render()
@@ -158,6 +240,8 @@ void LiveCharting::render()
     // render the world
     game->window.setView(game->view);
     game->window.draw(game->tileSystem);
+    game->window.draw(planet1);
+    game->window.draw(planet2);
 
     // render the GUI
     sf::View defaultView = game->window.getDefaultView();
@@ -196,7 +280,7 @@ void LiveCharting::renderAudioWindow()
                 static double lastT1, lastT2;
                 static std::vector<double> byLow, byHigh, bTime;
 
-                if (widthPx != lastWp || t1 != lastT1 || t2 != lastT2 && render_needToUpdateOscillogram)
+                if (widthPx != lastWp || t1 != lastT1 || t2 != lastT2 || render_needToUpdateOscillogram)
                 {
                     render_needToUpdateOscillogram = false;
                     lastWp = widthPx, lastT1 = t1, lastT2 = t2;
@@ -252,13 +336,39 @@ void LiveCharting::renderAudioWindow()
                     ImPlot::SetNextLineStyle(ImVec4(1, 1, 0, 1));
                 ImPlot::PlotInfLines("##TileSecond", &tile.seconds, 1);
             }
+            ImPlot::DragLineX(114514, &seconds, ImVec4(1, 0, 0, 1));
+            ImPlot::TagX(seconds, ImVec4(1, 0, 0, 1));
 
             ImPlot::EndPlot();
+        }
+        static bool play = false, musicPlayed = false;
+        if (ImGui::Button(play ? " " ICON_FA_PAUSE " Pause" : " " ICON_FA_PLAY " Play"))
+        {
+            play = !play, musicPlayed = false;
+            if (play)
+            {
+                spareClock.restart();
+            }
+            else if (music)
+            {
+                music->stop();
+            }
+        }
+        if (play)
+        {
+            seconds += spareClock.restart().asSeconds();
+        }
+        if (play && music && !musicPlayed)
+        {
+            musicPlayed = true;
+            if (seconds > 0)
+                music->setPlayingOffset(sf::seconds(seconds));
+            music->play();
         }
     }
     ImGui::End();
 }
-void LiveCharting::renderEventBar()
+void LiveCharting::renderEventBar() const
 {
     constexpr ImGuiWindowFlags flags =
         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
@@ -277,15 +387,23 @@ void LiveCharting::renderEventBar()
                     using namespace GamePlay;
                     if (ImGui::Button("Set Speed"))
                     {
-                        const auto e = new SetSpeed();
+                        const auto e = std::make_shared<SetSpeed>();
                         e->floor = *game->activeTileIndex;
-                        game->level.addEvent(e, 0), parseUpdateLevel();
+                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
                     }
+                    ImGui::SameLine();
                     if (ImGui::Button("Twirl"))
                     {
-                        const auto e = new Twirl();
+                        const auto e = std::make_shared<Twirl>();
                         e->floor = *game->activeTileIndex;
-                        game->level.addEvent(e, 0), parseUpdateLevel();
+                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Pause"))
+                    {
+                        const auto e = std::make_shared<Pause>();
+                        e->floor = *game->activeTileIndex;
+                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::EndTabItem();
                 }
@@ -294,15 +412,16 @@ void LiveCharting::renderEventBar()
                     using namespace Track;
                     if (ImGui::Button("Position Track"))
                     {
-                        const auto e = new PositionTrack();
+                        const auto e = std::make_shared<PositionTrack>();
                         e->floor = *game->activeTileIndex;
-                        game->level.addEvent(e, 0), parseUpdateLevel();
+                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
                     }
+                    ImGui::SameLine();
                     if (ImGui::Button("Set Track Color"))
                     {
-                        const auto e = new ColorTrack();
+                        const auto e = std::make_shared<ColorTrack>();
                         e->floor = *game->activeTileIndex;
-                        game->level.addEvent(e, 0), parseUpdateLevel();
+                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::EndTabItem();
                 }
@@ -312,7 +431,7 @@ void LiveCharting::renderEventBar()
         ImGui::End();
     }
 }
-void LiveCharting::renderEventSettings()
+void LiveCharting::renderEventSettings() const
 {
     if (game->activeTileIndex)
     {
@@ -324,13 +443,12 @@ void LiveCharting::renderEventSettings()
         ImGui::SetNextWindowSize(ImVec2(width, height));
         if (ImGui::Begin("Event", nullptr, flags)) // FIXME
         {
-            static float rightSettingsTabBtnsWidth, rightSettingsTabContentWidth;
-            rightSettingsTabBtnsWidth = width / 5, rightSettingsTabContentWidth = width - rightSettingsTabBtnsWidth;
+            const float tabButtonsWidth = width / 5 /*, tabContentWidth = width - tabButtonsWidth*/;
             static std::optional<size_t> tileIndex;
             static size_t selectedTab = 0;
             if (game->activeTileIndex != tileIndex)
                 tileIndex = game->activeTileIndex, selectedTab = 0;
-            if (ImGui::BeginChild("EventSettings/TabBtns", ImVec2(rightSettingsTabBtnsWidth, 0)))
+            if (ImGui::BeginChild("EventSettings/TabBtns", ImVec2(tabButtonsWidth, 0)))
             {
                 if (ImGui::BeginTable("EventSettings/TabBtns/Table", 1))
                 {
@@ -352,48 +470,191 @@ void LiveCharting::renderEventSettings()
                 if (!tile.events.empty())
                 {
                     const char* title = tile.events[selectedTab]->name();
-                    ImGui::SetCursorPosX(rightSettingsTabContentWidth / 2 - ImGui::CalcTextSize(title).x / 2);
                     ImGui::Text(title);
-                    AdoCpp::Event::Event* event = tile.events[selectedTab];
-                    using namespace AdoCpp::Event::GamePlay;
-                    if (const auto twirl = dynamic_cast<AdoCpp::Event::GamePlay::Twirl*>(event))
+                    ImGui::SameLine();
+                    if (ImGui::Button("Delete"))
                     {
+                        auto& events = game->level.getTileEvents(*game->activeTileIndex);
+                        events.erase(events.begin() + selectedTab);
+                        if (selectedTab == tile.events.size() && selectedTab != 0)
+                            selectedTab--;
+                        parseUpdateLevel(*game->activeTileIndex);
                     }
-                    if (const auto setSpeed = dynamic_cast<AdoCpp::Event::GamePlay::SetSpeed*>(event))
+                    else
                     {
-                        ImGui::Text("SpeedType");
-                        ImGui::SameLine();
-                        ImGui::RadioButton("BPM", reinterpret_cast<int*>(&setSpeed->speedType),
-                                           static_cast<int>(SetSpeed::SpeedType::Bpm));
-                        ImGui::SameLine();
-                        ImGui::RadioButton("Multiplier", reinterpret_cast<int*>(&setSpeed->speedType),
-                                           static_cast<int>(SetSpeed::SpeedType::Multiplier));
-                        if (setSpeed->speedType == SetSpeed::SpeedType::Multiplier)
-                            ImGui::BeginDisabled();
-                        ImGui::InputDouble("Beats Per Minute##SetSpeed", &setSpeed->beatsPerMinute);
-                        if (setSpeed->speedType == SetSpeed::SpeedType::Multiplier)
-                            ImGui::EndDisabled();
-                        if (setSpeed->speedType == SetSpeed::SpeedType::Bpm)
-                            ImGui::BeginDisabled();
-                        ImGui::InputDouble("BPM Multiplier##SetSpeed", &setSpeed->bpmMultiplier);
-                        if (setSpeed->speedType == SetSpeed::SpeedType::Bpm)
-                            ImGui::EndDisabled();
+                        if (ImGui::Checkbox("Active",
+                                            &game->level.getTileEvents(*game->activeTileIndex)[selectedTab]->active))
+                            parseUpdateLevel(*game->activeTileIndex);
+
+                        const std::shared_ptr<AdoCpp::Event::Event> event = tile.events[selectedTab];
+                        using namespace AdoCpp::Event::GamePlay;
+                        if (const auto setSpeed = std::dynamic_pointer_cast<SetSpeed>(event))
+                        {
+                            ImGui::Text("SpeedType");
+                            ImGui::SameLine();
+                            if (ImGui::RadioButton("BPM", setSpeed->speedType == SetSpeed::SpeedType::Bpm))
+                            {
+                                setSpeed->speedType = SetSpeed::SpeedType::Bpm;
+                                parseUpdateLevel(*game->activeTileIndex);
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::RadioButton("Multiplier",
+                                                   setSpeed->speedType == SetSpeed::SpeedType::Multiplier))
+                            {
+                                setSpeed->speedType = SetSpeed::SpeedType::Multiplier;
+                                parseUpdateLevel(*game->activeTileIndex);
+                            }
+                            if (setSpeed->speedType == SetSpeed::SpeedType::Multiplier)
+                                ImGui::BeginDisabled();
+                            if (ImGui::InputDouble("Beats Per Minute##SetSpeed", &setSpeed->beatsPerMinute, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (setSpeed->speedType == SetSpeed::SpeedType::Multiplier)
+                                ImGui::EndDisabled();
+                            if (setSpeed->speedType == SetSpeed::SpeedType::Bpm)
+                                ImGui::BeginDisabled();
+                            if (ImGui::InputDouble("BPM Multiplier##SetSpeed", &setSpeed->bpmMultiplier, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (setSpeed->speedType == SetSpeed::SpeedType::Bpm)
+                                ImGui::EndDisabled();
+                        }
+                        if (const auto pause = std::dynamic_pointer_cast<Pause>(event))
+                        {
+                            if (ImGui::InputDouble("Duration##Pause", &pause->duration, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::InputDouble("Countdown Ticks", &pause->countdownTicks, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                        }
+                        using namespace AdoCpp::Event::Track;
+                        if (const auto pt = std::dynamic_pointer_cast<PositionTrack>(event))
+                        {
+                            if (ImGui::InputDouble("X", &pt->positionOffset.x, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::InputDouble("Y", &pt->positionOffset.y, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            {
+                                static int selected;
+                                bool changed = false;
+                                selected = static_cast<int>(pt->relativeTo.relativeTo);
+                                ImGui::Text("Relative to");
+                                ImGui::SetNextItemWidth(-1);
+                                if (ImGui::BeginCombo("##relTo", AdoCpp::cstrRelativeToTile[selected]))
+                                {
+                                    for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrRelativeToTile); n++)
+                                    {
+                                        const bool is_selected = selected == n;
+                                        if (ImGui::Selectable(AdoCpp::cstrRelativeToTile[n], is_selected))
+                                            selected = n, changed = true;
+                                        if (is_selected)
+                                            ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
+                                if (changed)
+                                    pt->relativeTo.relativeTo = static_cast<AdoCpp::RelativeToTile>(selected),
+                                    parseUpdateLevel(*game->activeTileIndex);
+                            }
+                            if (ImGui::InputScalar("tiles", ImGuiDataType_U64, &pt->relativeTo.index, nullptr, nullptr,
+                                                   "%llu"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::InputDouble("Rotation", &pt->rotation, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::InputDouble("Scale", &pt->scale, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::InputDouble("Opacity", &pt->opacity, 0, 0, "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::Checkbox("Editor Only", &pt->editorOnly))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::Checkbox("Just This Tile", &pt->justThisTile))
+                                parseUpdateLevel(*game->activeTileIndex);
+                        }
+                        if (const auto ct = std::dynamic_pointer_cast<ColorTrack>(event))
+                        {
+                            {
+                                static int selected;
+                                bool changed = false;
+                                selected = static_cast<int>(ct->trackColorType);
+                                ImGui::Text("Track color type");
+                                ImGui::SetNextItemWidth(-1);
+                                if (ImGui::BeginCombo("Track Color Type", AdoCpp::cstrTrackColorType[selected]))
+                                {
+                                    for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackColorType); n++)
+                                    {
+                                        const bool is_selected = selected == n;
+                                        if (ImGui::Selectable(AdoCpp::cstrTrackColorType[n], is_selected))
+                                            selected = n, changed = true;
+                                        if (is_selected)
+                                            ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
+                                if (changed)
+                                    ct->trackColorType = static_cast<AdoCpp::TrackColorType>(selected),
+                                    parseUpdateLevel(*game->activeTileIndex);
+                            }
+                            if (ImGuiInputColor("Track Color", "ffdsaaf", &ct->trackColor))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGuiInputColor("Secondary Track Color", "ffdsafaf", &ct->secondaryTrackColor))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            if (ImGui::InputDouble("Track Color Animation Duration", &ct->trackColorAnimDuration, 0, 0,
+                                                   "%g"))
+                                parseUpdateLevel(*game->activeTileIndex);
+                            {
+                                static int selected;
+                                bool changed = false;
+                                selected = static_cast<int>(ct->trackColorPulse) + 1;
+                                ImGui::SetNextItemWidth(-1);
+                                if (ImGui::BeginCombo("Track Color Pulse", AdoCpp::cstrTrackColorPulse[selected]))
+                                {
+                                    for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackColorPulse); n++)
+                                    {
+                                        const bool is_selected = selected == n;
+                                        if (ImGui::Selectable(AdoCpp::cstrTrackColorPulse[n], is_selected))
+                                            selected = n, changed = true;
+                                        if (is_selected)
+                                            ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
+                                if (changed)
+                                    ct->trackColorPulse = static_cast<AdoCpp::TrackColorPulse>(selected - 1),
+                                    parseUpdateLevel(*game->activeTileIndex);
+                            }
+                            ImGui::InputScalar("Track Pulse Length", ImGuiDataType_U32, &ct->trackPulseLength);
+                            {
+                                static int selected;
+                                bool changed = false;
+                                selected = static_cast<int>(ct->trackStyle);
+                                ImGui::SetNextItemWidth(-1);
+                                if (ImGui::BeginCombo("Track Style", AdoCpp::cstrTrackStyle[selected]))
+                                {
+                                    for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackStyle); n++)
+                                    {
+                                        const bool is_selected = selected == n;
+                                        if (ImGui::Selectable(AdoCpp::cstrTrackStyle[n], is_selected))
+                                            selected = n, changed = true;
+                                        if (is_selected)
+                                            ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
+                                if (changed)
+                                    ct->trackStyle = static_cast<AdoCpp::TrackStyle>(selected),
+                                    parseUpdateLevel(*game->activeTileIndex);
+                            }
+                        }
                     }
                 }
             }
             ImGui::EndChild();
-            if (ImGui::Button("Delete"))
-            {
-                game->level.removeEvent(*game->activeTileIndex, selectedTab);
-                parseUpdateLevel();
-            }
         }
         ImGui::End();
     }
 }
-void LiveCharting::parseUpdateLevel()
+void LiveCharting::parseUpdateLevel(const size_t floor) const
 {
-    game->level.parse(true);
+    game->level.parsed = true;
+    game->level.parseTiles(floor);
+    game->level.parseSetSpeed();
     game->level.update();
     game->tileSystem.parse();
     game->tileSystem.update();

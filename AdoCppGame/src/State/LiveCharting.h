@@ -14,9 +14,9 @@ public:
     void update() override;
     void render() override;
     void renderAudioWindow();
-    void renderEventBar();
-    void renderEventSettings();
-    void parseUpdateLevel();
+    void renderEventBar() const;
+    void renderEventSettings() const;
+    void parseUpdateLevel(size_t floor) const;
 
     static LiveCharting* instance() { return &m_stateLiveCharting; }
 
