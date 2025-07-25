@@ -1,4 +1,5 @@
 #include "Playing.h"
+#include <imgui.h>
 #include <imgui-SFML.h>
 
 StatePlaying StatePlaying::m_statePlaying;

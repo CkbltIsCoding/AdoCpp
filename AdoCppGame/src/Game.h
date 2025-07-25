@@ -3,7 +3,6 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 #include <array>
-#include <imgui.h>
 
 #include <AdoCpp.h>
 #include "Tile.h"

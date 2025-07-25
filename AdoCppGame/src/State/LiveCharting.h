@@ -14,8 +14,19 @@ public:
     void update() override;
     void render() override;
     void renderAudioWindow();
+    void renderSettings() const;
+    void renderSSong() const;
+    void renderSLevel() const;
+    void renderSTrack() const;
+    void renderSBackground() const;
+    void renderSCamera() const;
+    void renderSMiscellaneous() const;
+    void renderSDecorations() const;
     void renderEventBar() const;
     void renderEventSettings() const;
+    void renderEventSetSpeed(AdoCpp::Event::GamePlay::SetSpeed* setSpeed) const;
+    void renderEventPositionTrack(AdoCpp::Event::Track::PositionTrack* pt) const;
+    void renderEventColorTrack(AdoCpp::Event::Track::ColorTrack* ct) const;
     void parseUpdateLevel(size_t floor) const;
 
     static LiveCharting* instance() { return &m_stateLiveCharting; }
