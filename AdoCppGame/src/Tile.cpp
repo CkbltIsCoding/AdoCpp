@@ -5,6 +5,37 @@ static constexpr float PI = 3.14159265358979323846, outline = 0.02f;
 
 static bool pointIsInsideTriangle(const std::vector<sf::Vector2f>& points, const sf::Vector2f point)
 {
+    //////////////////////////////////////////////////////////////////////////////
+    //
+    // Selba Ward (https://github.com/Hapaxia/SelbaWard)
+    // --
+    //
+    // Polygon
+    //
+    // Copyright(c) 2022-2025 M.J.Silk
+    //
+    // This software is provided 'as-is', without any express or implied
+    // warranty. In no event will the authors be held liable for any damages
+    // arising from the use of this software.
+    //
+    // Permission is granted to anyone to use this software for any purpose,
+    // including commercial applications, and to alter it and redistribute it
+    // freely, subject to the following restrictions :
+    //
+    // 1. The origin of this software must not be misrepresented; you must not
+    // claim that you wrote the original software.If you use this software
+    // in a product, an acknowledgment in the product documentation would be
+    // appreciated but is not required.
+    //
+    // 2. Altered source versions must be plainly marked as such, and must not be
+    // misrepresented as being the original software.
+    //
+    // 3. This notice may not be removed or altered from any source distribution.
+    //
+    // M.J.Silk
+    // MJSilk2@gmail.com
+    //
+    //////////////////////////////////////////////////////////////////////////////
     const long double point1X{(points[0].x)};
     const long double point1Y{(points[0].y)};
     const long double point2X{(points[1].x)};
@@ -24,6 +55,7 @@ static bool pointIsInsideTriangle(const std::vector<sf::Vector2f>& points, const
     return a >= 0.l && a <= 1.l && b >= 0.l && b <= 1.l && c >= 0.l && c <= 1.l;
 }
 
+// Thanks for StArray's code
 static void createCircle(sf::Vector3f center, const float r, bool isBorder, std::vector<sf::Vector3f>& vertices,
                          std::vector<size_t>& m_triangles, std::vector<bool>& borders, int resolution)
 {
@@ -56,6 +88,8 @@ static void createCircle(sf::Vector3f center, const float r, bool isBorder, std:
     m_triangles.push_back(centerIndex + resolution);
     m_triangles.push_back(centerIndex + 1);
 }
+
+// Thanks for StArray's code
 static void createTileMesh(float width, float length, sf::Angle startAngle, sf::Angle endAngle,
                            sf::VertexArray& m_vertices, std::vector<size_t>& m_triangles, std::vector<bool>& m_borders)
 {
@@ -395,7 +429,7 @@ static void createTileMesh(float width, float length, sf::Angle startAngle, sf::
         m_borders.push_back(borders[idx]);
     }
 }
-
+// Thanks for StArray's code
 static void createMidSpinMesh(float width, sf::Angle a1, sf::VertexArray& m_vertices, std::vector<size_t>& m_triangles,
                               std::vector<bool>& m_borders)
 {
