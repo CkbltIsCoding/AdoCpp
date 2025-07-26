@@ -1,6 +1,474 @@
 #include "Tile.h"
 #include <map>
 
+static constexpr float PI = 3.14159265358979323846, outline = 0.02f;
+
+static bool pointIsInsideTriangle(const std::vector<sf::Vector2f>& points, const sf::Vector2f point)
+{
+    const long double point1X{(points[0].x)};
+    const long double point1Y{(points[0].y)};
+    const long double point2X{(points[1].x)};
+    const long double point2Y{(points[1].y)};
+    const long double point3X{(points[2].x)};
+    const long double point3Y{(points[2].y)};
+    const long double pointX{(point.x)};
+    const long double pointY{(point.y)};
+
+    const long double denominatorMultiplier{
+        1.l / ((point2Y - point3Y) * (point1X - point3X) + (point3X - point2X) * (point1Y - point3Y))};
+    const long double a{((point2Y - point3Y) * (pointX - point3X) + (point3X - point2X) * (pointY - point3Y)) *
+                        denominatorMultiplier};
+    const long double b{((point3Y - point1Y) * (pointX - point3X) + (point1X - point3X) * (pointY - point3Y)) *
+                        denominatorMultiplier};
+    const long double c{1.l - a - b};
+    return a >= 0.l && a <= 1.l && b >= 0.l && b <= 1.l && c >= 0.l && c <= 1.l;
+}
+
+static void createCircle(sf::Vector3f center, const float r, bool isBorder, std::vector<sf::Vector3f>& vertices,
+                         std::vector<size_t>& m_triangles, std::vector<bool>& borders, int resolution)
+{
+    if (resolution <= 0)
+    {
+        resolution = 32; // Default value if not provided
+    }
+
+    const int centerIndex = vertices.size();
+    vertices.push_back(sf::Vector3f(center));
+    borders.push_back(isBorder);
+
+    for (int i = 0; i < resolution; i++)
+    {
+        const float angle = 2.f * PI * i / resolution;
+        sf::Vector3f vertex = sf::Vector3f(cos(angle) * r, sin(angle) * r, 0) + center;
+        vertices.push_back(vertex);
+        borders.push_back(isBorder);
+    }
+
+    for (int i = 1; i < resolution; i++)
+    {
+        m_triangles.push_back(centerIndex);
+        m_triangles.push_back(centerIndex + i);
+        m_triangles.push_back(centerIndex + i + 1);
+    }
+
+    // Closing the circle by connecting the last vertex to the first
+    m_triangles.push_back(centerIndex);
+    m_triangles.push_back(centerIndex + resolution);
+    m_triangles.push_back(centerIndex + 1);
+}
+static void createTileMesh(float width, float length, sf::Angle startAngle, sf::Angle endAngle,
+                           sf::VertexArray& m_vertices, std::vector<size_t>& m_triangles, std::vector<bool>& m_borders)
+{
+    startAngle = startAngle.wrapUnsigned(), endAngle = endAngle.wrapUnsigned();
+    std::vector<sf::Vector3f> vertices;
+    std::vector<bool> borders;
+    m_triangles.clear();
+
+    // region basic process
+    const float m11 = cos(startAngle.asRadians()), m12 = sin(startAngle.asRadians()), m21 = cos(endAngle.asRadians()),
+                m22 = sin(endAngle.asRadians());
+    float a[2]{};
+
+    if ((startAngle - endAngle).wrapUnsigned() >= (endAngle - startAngle).wrapUnsigned())
+    {
+        a[0] = startAngle.wrapUnsigned().asRadians();
+        a[1] = a[0] + (endAngle - startAngle).wrapUnsigned().asRadians();
+    }
+    else
+    {
+        a[0] = endAngle.wrapUnsigned().asRadians();
+        a[1] = a[0] + (startAngle - endAngle).wrapUnsigned().asRadians();
+    }
+    float angle = a[1] - a[0], mid = a[0] + angle / 2.f;
+    // endregion
+    if (angle < 2.0943952f && angle > 0)
+    {
+        // region angle < 2.0943952
+        float x;
+        if (angle < 0.08726646f)
+        {
+            x = 1.f;
+        }
+        else if (angle < 0.5235988f)
+        {
+            x = std::lerp(1.f, 0.83f, pow((angle - 0.08726646f) / 0.43633235f, 0.5f));
+        }
+        else if (angle < 0.7853982f)
+        {
+            x = std::lerp(0.83f, 0.77f, pow((angle - 0.5235988f) / 0.2617994f, 1.f));
+        }
+        else if (angle < 1.5707964f)
+        {
+            x = std::lerp(0.77f, 0.15f, pow((angle - 0.7853982f) / 0.7853982f, 0.7f));
+        }
+        else
+        {
+            x = std::lerp(0.15f, 0.f, pow((angle - 1.5707964f) / 0.5235988f, 0.5f));
+        }
+        float distance;
+        float radius;
+        if (x == 1.f)
+        {
+            distance = 0.f;
+            radius = width;
+        }
+        else
+        {
+            radius = std::lerp(0.f, width, x);
+            distance = (width - radius) / sin(angle / 2.f);
+        }
+        float circlex = -distance * cos(mid);
+        float circley = -distance * sin(mid);
+        width += outline;
+        length += outline;
+        radius += outline;
+        createCircle(sf::Vector3f(circlex, circley, 0), radius, true, vertices, m_triangles, borders, 0);
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(-radius * sin(a[1]) + circlex, radius * cos(a[1]) + circley, 0));
+            vertices.push_back(sf::Vector3f(circlex, circley, 0));
+            vertices.push_back(sf::Vector3f(radius * sin(a[0]) + circlex, -radius * cos(a[0]) + circley, 0));
+            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
+            vertices.push_back(sf::Vector3f());
+            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count + 4);
+            for (int i = 0; i < 6; i++)
+                borders.push_back(true);
+        }
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
+            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+
+            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
+            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
+            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
+            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 7);
+            m_triangles.push_back(count + 4);
+            for (int i = 0; i < 8; i++)
+                borders.push_back(true);
+        }
+        // endregion
+        // region outline
+        width -= outline * 2.f;
+        length -= outline * 2.f;
+        radius -= outline * 2.f;
+        if (radius < 0)
+        {
+            radius = 0;
+            circlex = -width / sin(angle / 2.f) * cos(mid);
+            circley = -width / sin(angle / 2.f) * sin(mid);
+        }
+        createCircle(sf::Vector3f(circlex, circley, 0), radius, false, vertices, m_triangles, borders, 0);
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(-radius * sin(a[1]) + circlex, radius * cos(a[1]) + circley, 0));
+            vertices.push_back(sf::Vector3f(circlex, circley, 0));
+            vertices.push_back(sf::Vector3f(radius * sin(a[0]) + circlex, -radius * cos(a[0]) + circley, 0));
+            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
+            vertices.push_back(sf::Vector3f());
+            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count + 4);
+            for (int i = 0; i < 6; i++)
+                borders.push_back(false);
+        }
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
+            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+
+            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
+            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
+            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
+            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 7);
+            m_triangles.push_back(count + 4);
+            for (int i = 0; i < 8; i++)
+                borders.push_back(false);
+        }
+        // endregion
+    }
+    else if (angle > 0)
+    {
+        // region normal case
+        width += outline;
+        length += outline;
+
+        float circlex = -width / sin(angle / 2.f) * cos(mid);
+        float circley = -width / sin(angle / 2.f) * sin(mid);
+
+        {
+            const size_t count = 0;
+            vertices.push_back(sf::Vector3f(circlex, circley, 0));
+            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
+            vertices.push_back(sf::Vector3f());
+            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            for (int i = 0; i < 4; i++)
+                borders.push_back(true);
+        }
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
+            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+
+            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
+            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
+            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
+            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 7);
+            m_triangles.push_back(count + 4);
+            for (int i = 0; i < 8; i++)
+                borders.push_back(true);
+        }
+        // endregion
+        // region fill
+        width -= outline * 2.f;
+        length -= outline * 2.f;
+
+        circlex = -width / sin(angle / 2.f) * cos(mid);
+        circley = -width / sin(angle / 2.f) * sin(mid);
+
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(circlex, circley, 0));
+            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
+            vertices.push_back(sf::Vector3f());
+            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            for (int i = 0; i < 4; i++)
+                borders.push_back(false);
+        }
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
+            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+
+            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
+            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
+            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
+            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 4);
+            m_triangles.push_back(count + 5);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 6);
+            m_triangles.push_back(count + 7);
+            m_triangles.push_back(count + 4);
+            for (int i = 0; i < 8; i++)
+                borders.push_back(false);
+        }
+        // endregion
+    }
+    else
+    {
+        // region outline (if included angle == 180, draw a semicircle)
+        length = width;
+        width += outline;
+        length += outline;
+
+        const sf::Vector3f midpoint{-m11 * 0.04f, -m12 * 0.04f, 0};
+        createCircle(midpoint, width, true, vertices, m_triangles, borders, 0);
+
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(midpoint + sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            vertices.push_back(midpoint + sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            vertices.push_back(midpoint + sf::Vector3f(-width * m12, width * m11, 0));
+            vertices.push_back(midpoint + sf::Vector3f(width * m12, -width * m11, 0));
+
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            for (int i = 0; i < 4; i++)
+                borders.push_back(true);
+        }
+        // endregion
+        // region fill
+        width -= outline * 2.f;
+        length -= outline * 2.f;
+        createCircle(midpoint, width, false, vertices, m_triangles, borders, 0);
+        {
+            const size_t count = vertices.size();
+            vertices.push_back(midpoint + (sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0)));
+            vertices.push_back(midpoint + (sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0)));
+            vertices.push_back(midpoint + (sf::Vector3f(-width * m12, width * m11, 0)));
+            vertices.push_back(midpoint + (sf::Vector3f(width * m12, -width * m11, 0)));
+
+            m_triangles.push_back(count);
+            m_triangles.push_back(count + 1);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 2);
+            m_triangles.push_back(count + 3);
+            m_triangles.push_back(count);
+            for (int i = 0; i < 4; i++)
+                borders.push_back(false);
+        }
+        // endregion
+    }
+    m_vertices.clear();
+    m_vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
+    m_borders.clear();
+    for (size_t i = 0; i < m_triangles.size(); i++)
+    {
+        const size_t idx = m_triangles[i];
+        m_vertices.append(sf::Vertex(sf::Vector2f(vertices[idx].x, vertices[idx].y)));
+        m_borders.push_back(borders[idx]);
+    }
+}
+
+static void createMidSpinMesh(float width, sf::Angle a1, sf::VertexArray& m_vertices, std::vector<size_t>& m_triangles,
+                              std::vector<bool>& m_borders)
+{
+    a1 = a1.wrapUnsigned();
+    float length = width;
+    const float m1 = cos(a1.asRadians()), m2 = sin(a1.asRadians());
+
+    // region outline
+    std::vector<sf::Vector3f> vertices;
+    std::vector<bool> borders;
+    m_triangles.clear();
+    const sf::Vector3f midpoint{-m1 * 0.04f, -m2 * 0.04f, 0};
+    width += outline;
+    length += outline;
+    {
+        constexpr size_t count = 0;
+        vertices.push_back(midpoint + sf::Vector3f(length * m1 + width * m2, length * m2 - width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(length * m1 - width * m2, length * m2 + width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(-width * m1, -width * m2, 0));
+        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        m_triangles.push_back(count);
+        m_triangles.push_back(count + 1);
+        m_triangles.push_back(count + 2);
+        m_triangles.push_back(count + 2);
+        m_triangles.push_back(count + 3);
+        m_triangles.push_back(count);
+        m_triangles.push_back(count + 4);
+        m_triangles.push_back(count + 5);
+        m_triangles.push_back(count + 6);
+        for (int i = 0; i < 7; i++)
+            borders.push_back(true);
+    }
+    // endregion
+    // region fill
+    width -= outline * 2;
+    length -= outline * 2;
+    {
+        const size_t count = vertices.size();
+        vertices.push_back(midpoint + sf::Vector3f(length * m1 + width * m2, length * m2 - width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(length * m1 - width * m2, length * m2 + width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(-width * m1, -width * m2, 0));
+        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        m_triangles.push_back(count);
+        m_triangles.push_back(count + 1);
+        m_triangles.push_back(count + 2);
+        m_triangles.push_back(count + 2);
+        m_triangles.push_back(count + 3);
+        m_triangles.push_back(count);
+        m_triangles.push_back(count + 4);
+        m_triangles.push_back(count + 5);
+        m_triangles.push_back(count + 6);
+        for (int i = 0; i < 7; i++)
+            borders.push_back(false);
+    }
+    // endregion
+
+    m_vertices.clear();
+    m_vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
+    m_borders.clear();
+    for (size_t i = 0; i < m_triangles.size(); i++)
+    {
+        const size_t idx = m_triangles[i];
+        m_vertices.append(sf::Vertex(sf::Vector2f(vertices[idx].x, vertices[idx].y)));
+        m_borders.push_back(borders[idx]);
+    }
+}
+
 TileShape::TileShape(const double l_lastAngle, const double l_angle, const double l_nextAngle)
 {
     m_lastAngle = l_lastAngle, m_angle = l_angle, m_nextAngle = l_nextAngle;
@@ -8,108 +476,50 @@ TileShape::TileShape(const double l_lastAngle, const double l_angle, const doubl
 }
 void TileShape::update()
 {
-    const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
-    const sf::Angle angle = sf::degrees(static_cast<float>(m_angle2)),
-                    nextAngle = sf::degrees(static_cast<float>(m_nextAngle));
-    const double includedAngle = AdoCpp::includedAngle(m_angle2, m_nextAngle);
+    std::vector<size_t> m_triangles{};
     if (m_nextAngle == 999)
-    {
-        std::vector<sf::Vector2f> vec = {{-0.25, 0.25}, {0, 0.25}, {0.25, 0}, {0, -0.25}, {-0.25, -0.25}};
-        sf::Vector2f v(1, 0);
-        v = v.rotatedBy(angle);
-        for (auto& p : vec)
-            p = p.rotatedBy(angle) + v;
-        importVertexPositions(vec);
-    }
-    else if (includedAngle == 180)
-    {
-        std::vector<sf::Vector2f> vec = {{-0.5, 0.25}, {0.5, 0.25}, {0.5, -0.25}, {-0.5, -0.25}};
-        for (auto& p : vec)
-            p = p.rotatedBy(angle);
-        importVertexPositions(vec);
-    }
-    else if (includedAngle == 360)
-    {
-        static constexpr float pi = 3.1415927f;
-        std::vector<sf::Vector2f> vec;
-
-        for (int i = 0; i <= m_interpolationLevel / 2; i++)
-        {
-            const float a = i * 2 * pi / m_interpolationLevel - angle.asRadians(), x = std::sin(a) * 0.25f,
-                        y = std::cos(a) * 0.25f;
-
-            vec.emplace_back(x, y);
-        }
-        vec.push_back(sf::Vector2f({-0.25, -0.25}).rotatedBy(angle));
-        vec.push_back(sf::Vector2f({-0.25, 0.25}).rotatedBy(angle));
-        importVertexPositions(vec);
-    }
+        createMidSpinMesh(0.275f, sf::degrees(m_angle + 180), m_vertices, m_triangles, m_borders);
     else
     {
-        sf::Vector2f a(-0.25, 0.25), b(0.25, 0.25), c(0.25, -0.25), d(-0.25, -0.25), e(-0.25, 0.25), f(0.25, 0.25),
-            g(0.25, -0.25), h(-0.25, -0.25), v(-0.25, 0), w(0.25, 0), m, n;
-        v = v.rotatedBy(angle), w = w.rotatedBy(nextAngle);
-        a = a.rotatedBy(angle) + v, b = b.rotatedBy(angle) + v, c = c.rotatedBy(angle) + v, d = d.rotatedBy(angle) + v;
-        e = e.rotatedBy(nextAngle) + w, f = f.rotatedBy(nextAngle) + w, g = g.rotatedBy(nextAngle) + w,
-        h = h.rotatedBy(nextAngle) + w;
-        if (60 <= includedAngle && includedAngle <= 300)
-        {
-            m.x = ((e.x - f.x) * (b.x * a.y - a.x * b.y) - (a.x - b.x) * (f.x * e.y - e.x * f.y)) /
-                ((e.x - f.x) * (a.y - b.y) - (a.x - b.x) * (e.y - f.y));
-            m.y = ((e.y - f.y) * (b.y * a.x - a.y * b.x) - (a.y - b.y) * (f.y * e.x - e.y * f.x)) /
-                ((e.y - f.y) * (a.x - b.x) - (a.y - b.y) * (e.x - f.x));
-            n.x = ((g.x - h.x) * (d.x * c.y - c.x * d.y) - (c.x - d.x) * (h.x * g.y - g.x * h.y)) /
-                ((g.x - h.x) * (c.y - d.y) - (c.x - d.x) * (g.y - h.y));
-            n.y = ((g.y - h.y) * (d.y * c.x - c.y * d.x) - (c.y - d.y) * (h.y * g.x - g.y * h.x)) /
-                ((g.y - h.y) * (c.x - d.x) - (c.y - d.y) * (g.x - h.x));
-            if (90 <= includedAngle && includedAngle <= 270)
-                importVertexPositions({f, g, n, d, a, m});
-            else if (includedAngle < 180)
-                importVertexPositions({f, g, h, c, d, a, m});
-            else
-                importVertexPositions({n, d, a, b, e, f, g});
-        }
-        else
-        {
-            sf::Vector2f p;
-            if (includedAngle < 180)
-            {
-                m.x = ((f.x - g.x) * (b.x * a.y - a.x * b.y) - (a.x - b.x) * (g.x * f.y - f.x * g.y)) /
-                    ((f.x - g.x) * (a.y - b.y) - (a.x - b.x) * (f.y - g.y));
-                m.y = ((f.y - g.y) * (b.y * a.x - a.y * b.x) - (a.y - b.y) * (g.y * f.x - f.y * g.x)) /
-                    ((f.y - g.y) * (a.x - b.x) - (a.y - b.y) * (f.x - g.x));
-                n.x = ((f.x - g.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (g.x * f.y - f.x * g.y)) /
-                    ((f.x - g.x) * (a.y - d.y) - (a.x - d.x) * (f.y - g.y));
-                n.y = ((f.y - g.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (g.y * f.x - f.y * g.x)) /
-                    ((f.y - g.y) * (a.x - d.x) - (a.y - d.y) * (f.x - g.x));
-                p.x = ((f.x - c.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (c.x * f.y - f.x * c.y)) /
-                    ((f.x - c.x) * (a.y - d.y) - (a.x - d.x) * (f.y - c.y));
-                p.y = ((f.y - c.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (c.y * f.x - f.y * c.x)) /
-                    ((f.y - c.y) * (a.x - d.x) - (a.y - d.y) * (f.x - c.x));
-                importVertexPositions({m, g, h, c, d, p, f, n, a});
-            }
-            else
-            {
-                m.x = ((f.x - g.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (g.x * f.y - f.x * g.y)) /
-                    ((f.x - g.x) * (a.y - d.y) - (a.x - d.x) * (f.y - g.y));
-                m.y = ((f.y - g.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (g.y * f.x - f.y * g.x)) /
-                    ((f.y - g.y) * (a.x - d.x) - (a.y - d.y) * (f.x - g.x));
-                n.x = ((f.x - g.x) * (d.x * c.y - c.x * d.y) - (c.x - d.x) * (g.x * f.y - f.x * g.y)) /
-                    ((f.x - g.x) * (c.y - d.y) - (c.x - d.x) * (f.y - g.y));
-                n.y = ((f.y - g.y) * (d.y * c.x - c.y * d.x) - (c.y - d.y) * (g.y * f.x - f.y * g.x)) /
-                    ((f.y - g.y) * (c.x - d.x) - (c.y - d.y) * (f.x - g.x));
-                p.x = ((h.x - g.x) * (d.x * a.y - a.x * d.y) - (a.x - d.x) * (g.x * h.y - h.x * g.y)) /
-                    ((h.x - g.x) * (a.y - d.y) - (a.x - d.x) * (h.y - g.y));
-                p.y = ((h.y - g.y) * (d.y * a.x - a.y * d.x) - (a.y - d.y) * (g.y * h.x - h.y * g.x)) /
-                    ((h.y - g.y) * (a.x - d.x) - (a.y - d.y) * (h.x - g.x));
-                importVertexPositions({b, e, f, n, d, m, g, p, a});
-            }
-        }
+        const sf::Angle startAngle = sf::degrees(m_angle == 999 ? m_lastAngle : m_angle + 180).wrapUnsigned(),
+                        endAngle = sf::degrees(m_nextAngle).wrapUnsigned();
+        createTileMesh(0.275f, 0.5f, startAngle, endAngle, m_vertices, m_triangles, m_borders);
     }
-    Polygon::update();
+    m_bounds = m_vertices.getBounds();
 }
-void TileShape2::update()
+sf::FloatRect TileShape::getLocalBounds() const { return m_bounds; }
+sf::FloatRect TileShape::getGlobalBounds() const { return getTransform().transformRect(getLocalBounds()); }
+bool TileShape::isPointInside(const sf::Vector2f point) const
 {
+    for (size_t i = 0; i < m_vertices.getVertexCount(); i += 3)
+    {
+        if (pointIsInsideTriangle({m_vertices[i].position, m_vertices[i + 1].position, m_vertices[i + 2].position},
+                                  point))
+            return true;
+    }
+    return false;
+}
+void TileShape::draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    states.transform *= getTransform();
+    states.texture = nullptr;
+    target.draw(m_vertices, states);
+}
+sf::Color TileShape::getFillColor() const { return m_fillColor; }
+void TileShape::setFillColor(const sf::Color color)
+{
+    m_fillColor = color;
+    for (size_t i = 0; i < m_borders.size(); i++)
+        if (!m_borders[i])
+            m_vertices[i].color = m_fillColor;
+}
+sf::Color TileShape::getOutlineColor() const { return m_outlineColor; }
+void TileShape::setOutlineColor(const sf::Color color)
+{
+    m_outlineColor = color;
+    for (size_t i = 0; i < m_borders.size(); i++)
+        if (m_borders[i])
+            m_vertices[i].color = m_outlineColor;
 }
 TileSprite::TileSprite(double lastAngleDeg, double angleDeg, double nextAngleDeg)
 {
@@ -123,25 +533,24 @@ TileSprite::TileSprite(double lastAngleDeg, double angleDeg, double nextAngleDeg
     m_angleDeg = angleDeg;
     m_nextAngleDeg = nextAngleDeg;
     m_shape.update();
-    m_outline.addVertices(m_shape.exportVertexPositions());
-    m_outline.addVertex(m_outline[0].position);
-    // m_outline.setClosed(true);
-    m_outline.setThickness(0.03f);
-    m_outline.update();
-    m_twirlShape.setOrigin({0.1f, 0.1f});
-    m_twirlShape.setRadius(0.1f);
-    m_twirlShape.setOutlineThickness(0.05f);
-    m_twirlShape.setFillColor(sf::Color::Transparent);
-    m_twirlShape.setOutlineColor(sf::Color::Magenta);
-    if (m_nextAngleDeg == 999)
     {
-        sf::Vector2f v(1, 0);
-        v = v.rotatedBy(sf::degrees(static_cast<float>(m_angleDeg)));
-        m_twirlShape.setPosition(v);
+        m_twirlShape.setOrigin({0.1f, 0.1f});
+        m_twirlShape.setRadius(0.1f);
+        m_twirlShape.setOutlineThickness(0.05f);
+        m_twirlShape.setFillColor(sf::Color::Transparent);
+        m_twirlShape.setOutlineColor(sf::Color::Magenta);
+        if (m_nextAngleDeg == 999)
+        {
+            sf::Vector2f v(1, 0);
+            v = v.rotatedBy(sf::degrees(static_cast<float>(m_angleDeg)));
+            m_twirlShape.setPosition(v);
+        }
     }
-    m_speedShape.setOrigin({0.15f, 0.15f});
-    m_speedShape.setRadius(0.15f);
-    m_speed = 0;
+    {
+        m_speedShape.setOrigin({0.15f, 0.15f});
+        m_speedShape.setRadius(0.15f);
+        m_speed = 0;
+    }
 }
 void TileSprite::update()
 {
@@ -172,10 +581,10 @@ void TileSprite::update()
         m_color.r = m_color.r / 2, m_color.g = m_color.g / 2 + 255 / 2, m_color.b = m_color.b / 2,
         m_borderColor.r = m_borderColor.r / 2, m_borderColor.g = m_borderColor.g / 2 + 255 / 2,
         m_borderColor.b = m_borderColor.b / 2;
-    if (m_shape.getColor() != m_color)
-        m_shape.setColor(m_color), m_shape.update();
-    if (m_outline.getColor() != m_borderColor)
-        m_outline.setColor(m_borderColor), m_outline.update();
+    // if (m_shape.getFillColor() != m_color)
+    m_shape.setFillColor(m_color);
+    // if (m_shape.getOutlineColor() != m_borderColor)
+    m_shape.setOutlineColor(m_borderColor);
     const auto alpha = static_cast<std::uint8_t>(m_opacity / 100 * 255);
     m_twirlShape.setOutlineColor(sf::Color::Magenta * sf::Color(255, 255, 255, alpha));
     if (m_speed)
@@ -188,7 +597,7 @@ void TileSprite::draw(sf::RenderTarget& target, sf::RenderStates states) const
     states.transform *= getTransform();
     states.texture = nullptr;
     target.draw(m_shape, states);
-    target.draw(m_outline, states);
+    // target.draw(m_outline, states);
     if (m_twirl)
         target.draw(m_twirlShape, states);
     if (m_speed)
@@ -199,7 +608,7 @@ void TileSystem::parse()
 {
     double lastAngle, nextAngle;
     m_tileSprites.clear();
-    auto& tiles = m_level.tiles;
+    const auto& tiles = m_level.tiles;
     const auto& settings = m_level.settings;
     for (size_t i = 0; i < tiles.size(); i++)
     {
@@ -247,7 +656,7 @@ void TileSystem::update()
     {
         // ReSharper disable CppCStyleCast
         auto& sprite = m_tileSprites[i];
-        auto& tile = tiles[i];
+        const auto& tile = tiles[i];
 
         sprite.setPosition({(float)tile.pos.c.x, (float)tile.pos.c.y});
         sprite.setActive(m_activeTileIndex ? m_activeTileIndex == i : false);

@@ -482,7 +482,7 @@ namespace AdoCpp
             return std::make_pair(p1, p2);
         return std::make_pair(p2, p1);
     }
-    inline bool Level::isFirePlanetStatic(const size_t floor) { return floor % 2 == 0; }
+    bool Level::isFirePlanetStatic(const size_t floor) { return floor % 2 == 0; }
     size_t Level::getFloorByBeat(const double beat) const
     {
         assert(parsed && "AdoCpp::Level class is not parsed");
@@ -914,12 +914,11 @@ namespace AdoCpp
                 tiles[i].stickToFloors = tiles[i - 1].stickToFloors;
                 tiles[i].pos.o = tiles[i - 1].pos.o + nextPosOff;
                 tiles[i].editorPos = tiles[i - 1].editorPos + nextPosOff;
-                if ((i + 1 == tiles.size() || tiles[i + 1].angle.deg() != 999) && tiles[i].angle.deg() != 999)
-                {
-                    const double dx = cos(deg2rad(tiles[i].angle.deg())), dy = sin(deg2rad(tiles[i].angle.deg()));
-                    tiles[i].pos.o.x += dx, tiles[i].editorPos.x += dx;
-                    tiles[i].pos.o.y += dy, tiles[i].editorPos.y += dy;
-                }
+                const double angle =
+                    tiles[i].angle.deg() == 999 ? (tiles[i - 1].angle + degrees(180)).rad() : tiles[i].angle.rad();
+                const double dx = cos(angle), dy = sin(angle);
+                tiles[i].pos.o.x += dx, tiles[i].editorPos.x += dx;
+                tiles[i].pos.o.y += dy, tiles[i].editorPos.y += dy;
             }
             nextPosOff = {0, 0};
             if (positionTracks[i])

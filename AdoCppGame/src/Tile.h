@@ -7,56 +7,37 @@
 #include <SelbaWard/Spline.hpp>
 #include <cmath>
 
-class TileShape final : public sw::Polygon
+class TileShape final : public sf::Drawable, public sf::Transformable
 {
     static constexpr float pi = 3.14159265f;
     static constexpr float w = 0.273f, l = 0.5f;
-
-    // static float L(float a, float b, float t) { return a + t * (b - a); }
-    // static float q(float x)
-    // {
-    //     return x <= 5 ? 1
-    //         : x <= 30 ? L(1, 0.83f, std::sqrt((x - 5) / 25))
-    //         : x <= 45 ? L(0.83f, 0.77f, (x - 30) / 15)
-    //         : x <= 90 ? L(0.77f, 0.15f, std::pow((x - 45) / 45, 0.7f))
-    //                   : L(0.15f, 0, std::sqrt((x - 90) / 45));
-    // }
-    // static float f(float x) { return x <= pi / 36 ? 0 : -(L(0, w, q(x * 180 / pi)) - w) / std::sin(x / 2); }
 
 public:
     TileShape() = default;
     TileShape(double l_lastAngle, double l_angle, double l_nextAngle);
     ~TileShape() override = default;
-    // void update2()
-    // {
-    //     // const double m_angle2 = m_angle == 999 ? m_lastAngle + 180 : m_angle;
-    //     // const float a1 = (float)m_angle2, a2 = (float)m_nextAngle;
-    //     // const float alpha = pi / 180 * std::min(fmod(a1 - a2, 360), fmod(a2 - a1, 360));
-    //     // const float
-    // }
-    // ReSharper disable once CppHidingFunction
     void update();
+    sf::FloatRect getLocalBounds() const;
+    sf::FloatRect getGlobalBounds() const;
     double getAngle() const { return m_angle; }
     void setAngle(double l_angle) { m_angle = l_angle; }
     double getNextAngle() const { return m_nextAngle; }
     void setNextAngle(double l_nextAngle) { m_nextAngle = l_nextAngle; }
     void setCircleInterpolationLevel(int l_interpolationLevel) { m_interpolationLevel = l_interpolationLevel; }
+    bool isPointInside(sf::Vector2f point) const;
+    void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+    sf::Color getFillColor() const;
+    void setFillColor(sf::Color color);
+    sf::Color getOutlineColor() const;
+    void setOutlineColor(sf::Color color);
 
 private:
     double m_lastAngle{}, m_angle{}, m_nextAngle{};
     int m_interpolationLevel{16};
-};
-
-class TileShape2 final : public sf::Shape
-{
-public:
-    TileShape2() = default;
-    TileShape2(double l_lastAngle, double l_angle, double l_nextAngle);
-    ~TileShape2() override = default;
-    void update();
-private:
-    double m_lastAngle{}, m_angle{}, m_nextAngle{};
-    int m_interpolationLevel{16};
+    sf::VertexArray m_vertices{};
+    std::vector<bool> m_borders{};
+    sf::FloatRect m_bounds{};
+    sf::Color m_fillColor{}, m_outlineColor{};
 };
 
 class TileSprite final : public sf::Drawable, public sf::Transformable
@@ -131,7 +112,7 @@ private:
     void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
     TileShape m_shape;
-    sw::Spline m_outline;
+    // sw::Spline m_outline;
     sf::CircleShape m_twirlShape;
     sf::CircleShape m_speedShape;
 
