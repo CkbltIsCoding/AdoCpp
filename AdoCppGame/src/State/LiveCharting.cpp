@@ -6,23 +6,38 @@
 #include <map>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "ImGuiFileDialog.h"
+#include <cmath>
+
 LiveCharting LiveCharting::m_stateLiveCharting;
 
 using namespace AdoCpp::Event;
 
-bool ImGuiInputFilename(const char* text, const char* hint, std::string* pathPtr)
+static bool ImGuiInputFilename(const IGFD::FileDialogConfig& fdConfig, const char* fdTitle,
+    const char* filter, const char* text, const char* hint, std::string* pathPtr)
 {
-    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
-    ImGui::SameLine();
+    char buffer[1145]{};
+    sprintf_s(buffer, "iif %s %s", fdTitle, text);
     if (ImGui::Button(" " ICON_FA_FOLDER " "))
     {
-        /* TODO val.... */
+        ImGuiFileDialog::Instance()->OpenDialog(buffer, fdTitle, filter, fdConfig);
+    }
+    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
+    ImGui::SameLine();
+    if (ImGuiFileDialog::Instance()->Display(buffer))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            *pathPtr = ImGuiFileDialog::Instance()->GetFilePathName();
+            val = true;
+        }
+        ImGuiFileDialog::Instance()->Close();
     }
     return val;
 }
 
 static std::map<std::string, float*> colorBuffers;
-bool ImGuiInputColor(const char* text, AdoCpp::Color* colorPtr)
+static bool ImGuiInputColor(const char* text, AdoCpp::Color* colorPtr)
 {
     if (!colorBuffers.contains(text))
         colorBuffers[text] = new float[4];
@@ -117,7 +132,7 @@ void LiveCharting::handleEvent(const sf::Event event)
                     else
                     {
                         game->level.pushBackTile(value);
-                        game->activeTileIndex = game->level.getTiles().size() - 1;
+                        game->activeTileIndex = game->level.tiles.size() - 1;
                     }
                     parseUpdateLevel(*game->activeTileIndex);
                 }
@@ -130,7 +145,7 @@ void LiveCharting::handleEvent(const sf::Event event)
                         if (keyPressed->code == Backspace)
                             game->level.eraseTile(0, *game->activeTileIndex), *game->activeTileIndex = 0;
                         else
-                            game->level.eraseTile(*game->activeTileIndex + 1, game->level.getTiles().size());
+                            game->level.eraseTile(*game->activeTileIndex + 1, game->level.tiles.size());
                     }
                     else
                     {
@@ -146,7 +161,7 @@ void LiveCharting::handleEvent(const sf::Event event)
                 }
                 if (keyPressed->code == Space && sf::Keyboard::isKeyPressed(LShift))
                 {
-                    const double tileAngle = game->level.getTiles()[*game->activeTileIndex].angle.deg();
+                    const double tileAngle = game->level.tiles[*game->activeTileIndex].angle.deg();
                     const double angle = AdoCpp::degrees(tileAngle + 180).wrapUnsigned().deg();
                     game->level.insertTile(*game->activeTileIndex + 1, angle);
                     parseUpdateLevel(*game->activeTileIndex);
@@ -161,19 +176,19 @@ void LiveCharting::handleEvent(const sf::Event event)
                 if (keyPressed->code == Right)
                 {
                     if (sf::Keyboard::isKeyPressed(LControl))
-                        *game->activeTileIndex = game->level.getTiles().size() - 1;
-                    else if (*game->activeTileIndex != game->level.getTiles().size() - 1)
+                        *game->activeTileIndex = game->level.tiles.size() - 1;
+                    else if (*game->activeTileIndex != game->level.tiles.size() - 1)
                         (*game->activeTileIndex)++;
                 }
                 if (keyPressed->code == O)
                 {
-                    AdoCpp::Angle& angle = game->level.getTileAngle(*game->activeTileIndex);
+                    AdoCpp::Angle& angle = game->level.tiles[*game->activeTileIndex].angle;
                     angle += AdoCpp::degrees(15), angle = angle.wrapUnsigned();
                     parseUpdateLevel(*game->activeTileIndex);
                 }
                 if (keyPressed->code == P)
                 {
-                    AdoCpp::Angle& angle = game->level.getTileAngle(*game->activeTileIndex);
+                    AdoCpp::Angle& angle = game->level.tiles[*game->activeTileIndex].angle;
                     angle -= AdoCpp::degrees(15), angle = angle.wrapUnsigned();
                     parseUpdateLevel(*game->activeTileIndex);
                 }
@@ -209,7 +224,7 @@ void LiveCharting::handleEvent(const sf::Event event)
         {
             if (mbp->button == sf::Mouse::Button::Left)
             {
-                for (size_t i = 0; i < game->level.getTiles().size(); i++)
+                for (size_t i = 0; i < game->level.tiles.size(); i++)
                 {
                     game->window.setView(game->view);
                     const auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
@@ -229,7 +244,6 @@ void LiveCharting::update()
     const auto w = static_cast<float>(game->windowSize.x), h = static_cast<float>(game->windowSize.y);
     game->view.setSize({w / (w + h) * 16 * game->zoom.x, -h / (w + h) * 16 * game->zoom.y});
 
-    game->level.parsed = true; // BRO FORCE THE LEVEL TO BE PARSED 💀💀💀
     if (game->level.isParsed())
     {
         const auto [pos1, pos2] = game->level.getPlanetsPos(game->level.getFloorBySeconds(seconds), seconds);
@@ -335,7 +349,7 @@ void LiveCharting::renderAudioWindow()
                 ImPlot::PlotLine("##DummyPointsForFitting", dummyX, dummyY, 4);
             }
 
-            const auto& tiles = game->level.getTiles();
+            const auto& tiles = game->level.tiles;
             for (size_t i = 0; i < tiles.size(); ++i)
             {
                 const auto& tile = tiles[i];
@@ -457,21 +471,21 @@ void LiveCharting::renderEventBar() const
                     {
                         const auto e = std::make_shared<SetSpeed>();
                         e->floor = *game->activeTileIndex;
-                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
+                        game->level.tiles[e->floor].events.push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Twirl"))
                     {
                         const auto e = std::make_shared<Twirl>();
                         e->floor = *game->activeTileIndex;
-                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
+                        game->level.tiles[e->floor].events.push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Pause"))
                     {
                         const auto e = std::make_shared<Pause>();
                         e->floor = *game->activeTileIndex;
-                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
+                        game->level.tiles[e->floor].events.push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::EndTabItem();
                 }
@@ -482,14 +496,14 @@ void LiveCharting::renderEventBar() const
                     {
                         const auto e = std::make_shared<PositionTrack>();
                         e->floor = *game->activeTileIndex;
-                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
+                        game->level.tiles[e->floor].events.push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Set Track Color"))
                     {
                         const auto e = std::make_shared<ColorTrack>();
                         e->floor = *game->activeTileIndex;
-                        game->level.getTileEvents(e->floor).push_back(e), parseUpdateLevel(e->floor);
+                        game->level.tiles[e->floor].events.push_back(e), parseUpdateLevel(e->floor);
                     }
                     ImGui::EndTabItem();
                 }
@@ -503,7 +517,7 @@ void LiveCharting::renderEventSettings() const
 {
     if (game->activeTileIndex)
     {
-        auto& tile = game->level.getTiles()[*game->activeTileIndex];
+        auto& tile = game->level.tiles[*game->activeTileIndex];
         constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
         const float width = ImGui::GetFontSize() * 20, height = ImGui::GetFontSize() * 20;
@@ -525,17 +539,17 @@ void LiveCharting::renderEventSettings() const
                         ImGui::SameLine();
                         if (ImGui::Button("Delete"))
                         {
-                            auto& events = game->level.getTileEvents(*game->activeTileIndex);
-                            events.erase(events.begin() + i);
+                            tile.events.erase(tile.events.begin() + i);
                             parseUpdateLevel(*game->activeTileIndex);
                             ImGui::EndTabItem();
                             i--;
                             continue;
                         }
-                        if (ImGui::Checkbox("Active", &game->level.getTileEvents(*game->activeTileIndex)[i]->active))
+                        const std::shared_ptr<Event> event = tile.events[i];
+
+                        if (ImGui::Checkbox("Active", &event->active))
                             parseUpdateLevel(*game->activeTileIndex);
 
-                        const std::shared_ptr<Event> event = tile.events[i];
                         using namespace AdoCpp::Event::GamePlay;
                         if (const auto setSpeed = std::dynamic_pointer_cast<SetSpeed>(event))
                             renderEventSetSpeed(setSpeed.get());
@@ -699,17 +713,18 @@ void LiveCharting::renderEventColorTrack(Track::ColorTrack* ct) const
 }
 void LiveCharting::parseUpdateLevel(const size_t floor) const
 {
-    game->level.parsed = true;
-    game->level.parseTiles(floor);
-    game->level.parseSetSpeed();
+    game->level.parse(floor, true, true);
     game->level.update();
     game->tileSystem.parse();
     game->tileSystem.update();
 }
 void LiveCharting::renderSSong() const
 {
-    auto& settings = game->level.getSettings();
-    if (ImGuiInputFilename("Song Filename", "No files selected", &settings.songFilename))
+    auto& settings = game->level.settings;
+    IGFD::FileDialogConfig cfg;
+    cfg.path = game->levelPath.parent_path().string();
+    cfg.flags = ImGuiFileDialogFlags_Modal;
+    if (ImGuiInputFilename(cfg, "Select a file", "Song Filename", ".ogg", "No files selected", &settings.songFilename))
         parseUpdateLevel(0);
     if (ImGui::InputDouble("BPM##SongSettings", &settings.bpm, 0, 0, "%g"))
         parseUpdateLevel(0);
@@ -745,7 +760,7 @@ void LiveCharting::renderSSong() const
 }
 void LiveCharting::renderSLevel() const
 {
-    auto& settings = game->level.getSettings();
+    auto& settings = game->level.settings;
     if (ImGui::InputText("Artist##LevelSettings", &settings.artist))
         parseUpdateLevel(0);
     if (ImGui::InputText("Song##LevelSettings", &settings.song))
@@ -757,7 +772,7 @@ void LiveCharting::renderSLevel() const
 }
 void LiveCharting::renderSTrack() const
 {
-    auto& settings = game->level.getSettings();
+    auto& settings = game->level.settings;
     {
         static int selected;
         selected = static_cast<int>(settings.trackColorType);
@@ -789,7 +804,7 @@ void LiveCharting::renderSTrack() const
         static int selected;
         selected = static_cast<int>(settings.trackColorPulse) + 1;
         bool changed = false;
-        if (ImGui::BeginCombo("/TrackColorPulse", AdoCpp::cstrTrackColorPulse[selected]))
+        if (ImGui::BeginCombo("Track Color Pulse##TrackSettings", AdoCpp::cstrTrackColorPulse[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackColorPulse); n++)
             {
@@ -804,13 +819,13 @@ void LiveCharting::renderSTrack() const
         if (changed)
             settings.trackColorPulse = static_cast<AdoCpp::TrackColorPulse>(selected - 1), parseUpdateLevel(0);
     }
-    if (ImGui::InputScalar("Track Pulse Length", ImGuiDataType_U32, &settings.trackPulseLength))
+    if (ImGui::InputScalar("Track Pulse Length##TrackSettings", ImGuiDataType_U32, &settings.trackPulseLength))
         parseUpdateLevel(0);
     {
         static int selected;
         selected = static_cast<int>(settings.trackStyle);
         bool changed = false;
-        if (ImGui::BeginCombo("Track Style", AdoCpp::cstrTrackStyle[selected]))
+        if (ImGui::BeginCombo("Track Style##TrackSettings", AdoCpp::cstrTrackStyle[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackStyle); n++)
             {
@@ -828,7 +843,7 @@ void LiveCharting::renderSTrack() const
     {
         static int selected;
         selected = static_cast<int>(settings.trackAnimation);
-        if (ImGui::BeginCombo("/TrackAnimation", AdoCpp::cstrTrackAnimation[selected]))
+        if (ImGui::BeginCombo("Track Animation##TrackSettings", AdoCpp::cstrTrackAnimation[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackAnimation); n++)
             {
@@ -842,13 +857,14 @@ void LiveCharting::renderSTrack() const
         }
         settings.trackAnimation = static_cast<AdoCpp::TrackAnimation>(selected);
     }
-    if (ImGui::InputDouble("Beats ahead", &settings.beatsAhead, 0, 0, "%g"))
+    if (ImGui::InputDouble("Beats ahead##TrackSettings", &settings.beatsAhead, 0, 0, "%g"))
         parseUpdateLevel(0);
     {
         static int selected;
         selected = static_cast<int>(settings.trackDisappearAnimation);
         bool changed = false;
-        if (ImGui::BeginCombo("/TrackDisappearAnimation", AdoCpp::cstrTrackDisappearAnimation[selected]))
+        if (ImGui::BeginCombo("Track Disappear Animation##TrackSettings",
+                              AdoCpp::cstrTrackDisappearAnimation[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackDisappearAnimation); n++)
             {
@@ -864,43 +880,45 @@ void LiveCharting::renderSTrack() const
             settings.trackDisappearAnimation = static_cast<AdoCpp::TrackDisappearAnimation>(selected),
             parseUpdateLevel(0);
     }
-    if (ImGui::InputDouble("Beats behind", &settings.beatsBehind, 0, 0, "%g"))
+    if (ImGui::InputDouble("Beats behind##TrackSettings", &settings.beatsBehind, 0, 0, "%g"))
         parseUpdateLevel(0);
 }
 void LiveCharting::renderSBackground() const
 {
-    auto& settings = game->level.getSettings();
+    auto& settings = game->level.settings;
     if (ImGuiInputColor("Background color##BackgroundSettings", &settings.backgroundColor))
         parseUpdateLevel(0);
 }
 void LiveCharting::renderSCamera() const
 {
-    auto& settings = game->level.getSettings();
+    auto& settings = game->level.settings;
     {
         static int selected;
         selected = static_cast<int>(settings.relativeTo);
+        bool changed = false;
         if (ImGui::BeginCombo("Relative To##CameraSettings", AdoCpp::cstrRelativeToCamera[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrRelativeToCamera); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrRelativeToCamera[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.relativeTo = static_cast<AdoCpp::RelativeToCamera>(selected);
+        if (changed)
+            settings.relativeTo = static_cast<AdoCpp::RelativeToCamera>(selected), parseUpdateLevel(0);
     }
     // TODO
 }
 void LiveCharting::renderSMiscellaneous() const
 {
-    auto& settings = game->level.getSettings();
+    auto& settings = game->level.settings;
     ImGui::Checkbox("Stick to floors##MiscSettings", &settings.stickToFloors);
 }
 void LiveCharting::renderSDecorations() const
 {
-    // auto& settings = game->level.getSettings(); // TODO MAYBE I WILL NEVER DO THIS owo
+    // auto& settings = game->level.settings; // TODO MAYBE I WILL NEVER DO THIS owo
 }

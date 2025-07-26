@@ -1,4 +1,5 @@
 #include "KeyViewer.h"
+#include <algorithm>
 
 constexpr std::array<sf::Vector2u, 10> posArray10 = {{
     {0, 0},

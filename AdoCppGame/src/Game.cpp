@@ -2,7 +2,6 @@
 #include <imgui-SFML.h>
 
 #include "Game.h"
-#include "AssetManager.h"
 #include "State.h"
 #include <State/Charting.h>
 #include <IconsFontAwesome6.h>
@@ -26,8 +25,7 @@ Game::Game() :
 	FPS = 120;
 	window.setFramerateLimit(FPS);
 	//window.setVerticalSyncEnabled(true);
-	[[maybe_unused]] AssetManager mgr;
-	font = AssetManager::GetFont("SourceHanSansSC.otf");
+	font = sf::Font("assets/font/SourceHanSansSC.otf");
 	if (!ImGui::SFML::Init(window, false))
     {
         std::cerr << "Error! ImGui::SFML::Init() returns false.";

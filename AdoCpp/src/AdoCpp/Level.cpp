@@ -1,6 +1,7 @@
 #include "Level.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -268,20 +269,20 @@ namespace AdoCpp
         return doc;
     }
 
-    void Level::parse(const bool basic, const bool force)
+    void Level::parse(const size_t floorStart, const bool basic, const bool force)
     {
-        if (parsed && !force && nonBasicParsed)
+        if (parsed && !force && !onlyBasic)
             return;
         assert(tiles.size() >= 2 && "AdoCpp::Level class must have at least two tiles to parse");
-        parsed = true, nonBasicParsed = false;
-        parseTiles();
+        parsed = true, onlyBasic = basic;
+        parseTiles(floorStart);
         parseSetSpeed();
         if (basic)
         {
             tiles[0].beat = tiles[0].seconds = -std::numeric_limits<double>::infinity();
+            parsed = true;
             return;
         }
-        nonBasicParsed = true;
         std::vector<Event::DynamicEvent*> dynamicEvents;
         std::vector<std::vector<Event::Modifiers::RepeatEvents*>> vecRe{tiles.size()};
         parseDynamicEvents(dynamicEvents, vecRe);
@@ -291,17 +292,19 @@ namespace AdoCpp
         parseMoveTrackData();
 
         tiles[0].beat = tiles[0].seconds = -std::numeric_limits<double>::infinity();
+        parsed = true;
     }
     void Level::update()
     {
         assert(parsed && "AdoCpp::Level class is not parsed");
-        for (auto& tile : tiles)
+        for (size_t i = 0; i < tiles.size(); i++)
         {
+            auto& tile = tiles[i];
             tile.pos.o2c(), tile.scale.o2c(), tile.rotation.o2c(), tile.opacity = 100;
             tile.trackColorType.o2c(), tile.trackColor.o2c(), tile.secondaryTrackColor.o2c(),
                 tile.trackColorAnimDuration.o2c(), tile.trackStyle.o2c(), tile.trackColorPulse.o2c(),
                 tile.trackPulseLength.o2c();
-            tile.color = tile.trackColor.o;
+            updateTileColor(0, i);
         }
     }
     void Level::update(const double seconds)
@@ -400,7 +403,7 @@ namespace AdoCpp
         parsed = false;
         tiles.emplace(tiles.begin() + floor, angle); // NOLINT(*-narrowing-conversions)
     }
-    auto Level::changeTileAngle(const size_t floor, const double angle) -> void
+    void Level::changeTileAngle(const size_t floor, const double angle)
     {
         parsed = false;
         tiles[floor].angle = degrees(angle);
@@ -830,20 +833,6 @@ namespace AdoCpp
     {
         assert(parsed && "AdoCpp::Level class is not parsed");
         return {m_camera.position, m_camera.rotation, m_camera.zoom};
-    }
-
-    Settings& Level::getSettings() { return settings; }
-    const Settings& Level::getSettings() const { return settings; }
-    const std::vector<Tile>& Level::getTiles() const { return tiles; }
-    Angle& Level::getTileAngle(const size_t floor)
-    {
-        parsed = false;
-        return tiles[floor].angle;
-    }
-    std::vector<std::shared_ptr<Event::Event>>& Level::getTileEvents(const size_t floor)
-    {
-        parsed = false;
-        return tiles[floor].events;
     }
 
     void Level::parseTiles(const size_t beginFloor)
@@ -1298,7 +1287,7 @@ namespace AdoCpp
             tile.color = tile.trackColor.c;
             break;
         case TrackColorType::Stripes:
-            tile.color = (i % 2 == 0) ? tile.trackColor.c : tile.secondaryTrackColor.c;
+            tile.color = i % 2 == 0 ? tile.trackColor.c : tile.secondaryTrackColor.c;
             break;
         case TrackColorType::Glow:
             {

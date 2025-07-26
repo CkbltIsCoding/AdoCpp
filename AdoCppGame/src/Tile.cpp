@@ -1,5 +1,4 @@
 #include "Tile.h"
-
 #include <map>
 
 TileShape::TileShape(const double l_lastAngle, const double l_angle, const double l_nextAngle)
@@ -109,6 +108,9 @@ void TileShape::update()
     }
     Polygon::update();
 }
+void TileShape2::update()
+{
+}
 TileSprite::TileSprite(double lastAngleDeg, double angleDeg, double nextAngleDeg)
 {
     m_needToUpdate = true;
@@ -197,8 +199,8 @@ void TileSystem::parse()
 {
     double lastAngle, nextAngle;
     m_tileSprites.clear();
-    auto& tiles = m_level.getTiles();
-    const auto& settings = m_level.getSettings();
+    auto& tiles = m_level.tiles;
+    const auto& settings = m_level.settings;
     for (size_t i = 0; i < tiles.size(); i++)
     {
         const double angle = tiles[i].angle.deg();
@@ -240,7 +242,7 @@ void TileSystem::parse()
 // ReSharper disable once CppMemberFunctionMayBeConst
 void TileSystem::update()
 {
-    auto& tiles = m_level.getTiles();
+    auto& tiles = m_level.tiles;
     for (size_t i = 0; i < m_tileSprites.size(); i++)
     {
         // ReSharper disable CppCStyleCast
@@ -273,7 +275,7 @@ void TileSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
         if (i == 0)
             flag = true;
         auto& sprite = m_tileSprites[i];
-        const auto& tile = m_level.getTiles()[i];
+        const auto& tile = m_level.tiles[i];
 
         if (currentViewRect.findIntersection(sprite.getGlobalBoundsFaster()) && tile.scale.c.x != 0 &&
             tile.scale.c.y != 0)
@@ -288,12 +290,12 @@ void TileSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
     if (m_activeTileIndex && m_tilePlaceMode)
     {
         const auto& selectedTile = m_tileSprites[*m_activeTileIndex];
-        const std::map<const char*, float> keyMap = {{"D", 0},   {"E", 45},  {"W", 90},  {"Q", 135},
-                                                     {"A", 180}, {"Z", 225}, {"X", 270}, {"C", 315}};
-        const std::map<const char*, float> shiftKeyMap = {{"J", 30},  {"Y", 60},  {"T", 120}, {"H", 150},
-                                                          {"N", 210}, {"V", 240}, {"B", 300}, {"M", 330}};
-        const std::map<const char*, float> shiftGraveKeyMap = {{"J", 15},  {"Y", 75},  {"T", 105}, {"H", 165},
-                                                               {"N", 195}, {"V", 255}, {"B", 285}, {"M", 345}};
+        const std::map<const char*, float> keyMap = {{"D", 0.f},   {"E", 45.f},  {"W", 90.f},  {"Q", 135.f},
+                                                     {"A", 180.f}, {"Z", 225.f}, {"X", 270.f}, {"C", 315.f}};
+        const std::map<const char*, float> shiftKeyMap = {{"J", 30.f},  {"Y", 60.f},  {"T", 120.f}, {"H", 150.f},
+                                                          {"N", 210.f}, {"V", 240.f}, {"B", 300.f}, {"M", 330.f}};
+        const std::map<const char*, float> shiftGraveKeyMap = {{"J", 15.f},  {"Y", 75.f},  {"T", 105.f}, {"H", 165.f},
+                                                               {"N", 195.f}, {"V", 255.f}, {"B", 285.f}, {"M", 345.f}};
         const sf::Vector2f tilePos = selectedTile.getPosition();
         for (const auto& [key, value] : (m_tilePlaceMode == 1       ? keyMap
                                              : m_tilePlaceMode == 2 ? shiftKeyMap

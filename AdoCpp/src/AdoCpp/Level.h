@@ -7,11 +7,12 @@
 #include <rapidjson/error/en.h>
 #include <rapidjson/istreamwrapper.h>
 #include <vector>
+#include <list>
 
-#include "DynamicValue.h"
 #include "Event.h"
 #include "Math/Vector2.h"
 #include "Utils.h"
+#include "Tile.h"
 
 namespace AdoCpp
 {
@@ -66,147 +67,11 @@ namespace AdoCpp
     };
 
     /**
-     * @brief Tile struct used for storing tile datas.
-     */
-    struct Tile
-    {
-        /**
-         * Default constructor.
-         */
-        Tile() = default;
-        /**
-         * Default deconstructor.
-         */
-        ~Tile() = default;
-
-        /**
-         * @brief The tile's angle.
-         */
-        Angle angle{};
-        /**
-         * @brief The event ptrs of the tile.
-         */
-        std::vector<std::shared_ptr<Event::Event>> events;
-
-        /**
-         * @brief The orbit of the planets when one of them lands on the tile.
-         */
-        Orbit orbit = Clockwise;
-        /**
-         * @brief The tile's beat.
-         */
-        double beat = 0;
-        /**
-         * @brief The tile's seconds.
-         */
-        double seconds = 0;
-        /**
-         * @brief The current opacity of the tile.
-         */
-        double opacity = 100;
-        /**
-         * @brief Whether the planets will stick to this tile.
-         */
-        bool stickToFloors = false;
-
-        /**
-         * @brief The position of the tile in editor.
-         */
-        Vector2lf editorPos;
-        /**
-         * @brief The position of the tile.
-         */
-        DynamicValue<Vector2lf> pos{};
-        /**
-         * @brief The scale of the tile.
-         */
-        DynamicValue<Vector2lf> scale{{100, 100}};
-        /**
-         * @brief The rotation of the tile.
-         */
-        DynamicValue<double> rotation{};
-
-        /**
-         *
-         */
-        DynamicValue<TrackColorType> trackColorType;
-        /**
-         * @brief The tile's color.
-         */
-        DynamicValue<Color> trackColor{Color(0xdebb7b)};
-        /**
-         * @brief The tile's secondary color.
-         */
-        DynamicValue<Color> secondaryTrackColor{Color(0xffffff)};
-        /**
-         *
-         */
-        DynamicValue<double> trackColorAnimDuration;
-        /**
-         * @brief The tile's style.
-         */
-        DynamicValue<TrackStyle> trackStyle{TrackStyle::Standard};
-        /**
-         *
-         */
-        DynamicValue<TrackColorPulse> trackColorPulse{TrackColorPulse::None};
-        /**
-         *
-         */
-        DynamicValue<uint32_t> trackPulseLength{10};
-        /**
-         * The tile's color.
-         */
-        Color color;
-
-
-        size_t trackAnimationFloor = 0;
-        TrackAnimation trackAnimation = TrackAnimation::None;
-        double beatsAhead = 0;
-        TrackDisappearAnimation trackDisappearAnimation = TrackDisappearAnimation::None;
-        double beatsBehind = 0;
-
-        Hitsound hitsound = Hitsound::Kick;
-        double hitsoundVolume = 100;
-        Hitsound midspinHitsound = Hitsound::Kick;
-        double midspinHitsoundVolume = 100;
-
-        struct MoveTrackData
-        {
-            size_t floor;
-            double angleOffset;
-            double beat;
-            double seconds;
-            RelativeIndex startTile;
-            RelativeIndex endTile;
-            double duration;
-            OptionalPoint positionOffset;
-            double xEndSec;
-            double yEndSec;
-            std::optional<double> rotationOffset;
-            double rotEndSec;
-            OptionalPoint scale;
-            double scXEndSec;
-            double scYEndSec;
-            std::optional<double> opacity;
-            double opEndSec;
-            Easing ease;
-        };
-        std::vector<MoveTrackData> moveTrackDatas;
-
-        /**
-         * @brief Construct a tile.
-         * @param angle The angle of the tile.
-         */
-        explicit Tile(const double angle) : angle(degrees(angle)) {}
-    };
-
-    /**
      * @brief Settings struct.
      */
     struct Settings
     {
-        int version = 114514;
+        int version = 15;
         std::string artist;
         std::string song;
         std::string author;
@@ -340,7 +205,7 @@ namespace AdoCpp
         /**
          * @brief Parse the level.
          */
-        void parse(bool basic = false, bool force = false);
+        void parse(size_t floorStart = 0, bool basic = false, bool force = false);
 
         /**
          * @brief Update the level.
@@ -541,21 +406,6 @@ namespace AdoCpp
          */
         void updateCamera(double seconds, size_t floor);
 
-        [[nodiscard]] Settings& getSettings();
-        [[nodiscard]] const Settings& getSettings() const;
-        [[nodiscard]] const std::vector<Tile>& getTiles() const;
-
-        [[nodiscard]] Angle& getTileAngle(size_t floor);
-        [[nodiscard]] std::vector<std::shared_ptr<Event::Event>>& getTileEvents(size_t floor);
-
-        /**
-         * @brief Whether the level has been parsed.
-         */
-        bool parsed = false;
-        bool nonBasicParsed = false;
-
-    protected:
-
         /**
          * @brief The level's settings.
          */
@@ -566,10 +416,16 @@ namespace AdoCpp
          */
         std::vector<Tile> tiles;
 
-    public:
+    protected: // I do not know if I should use private or protected
+        /**
+         * @brief Whether the level has been parsed.
+         */
+        bool parsed = false;
+        bool onlyBasic = false;
+
+    private:
         void parseTiles(size_t beginFloor = 0);
         void parseSetSpeed();
-    private:
         void parseDynamicEvents(std::vector<Event::DynamicEvent*>& dynamicEvents,
                                 std::vector<std::vector<Event::Modifiers::RepeatEvents*>>& vecRe);
         void parseAnimateTrack();

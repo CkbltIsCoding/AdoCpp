@@ -3,6 +3,7 @@ include(${PROJECT_SOURCE_DIR}/GetSFML.cmake)
 include(${PROJECT_SOURCE_DIR}/GetSelbaWard.cmake)
 include(${PROJECT_SOURCE_DIR}/GetImGui.cmake)
 include(${PROJECT_SOURCE_DIR}/GetExprtk.cmake)
+include(${PROJECT_SOURCE_DIR}/GetPmp.cmake)
 
 find_package(SFML REQUIRED COMPONENTS System Window Graphics Audio)
 find_package(SelbaWard REQUIRED)
@@ -22,7 +23,6 @@ add_executable(
 
         src/main.cpp
         src/Game.h src/Game.cpp
-        src/AssetManager.h src/AssetManager.cpp
         src/State.h
         src/State/Charting.h src/State/Charting.cpp
         src/State/Playing.h src/State/Playing.cpp
@@ -44,7 +44,7 @@ endif ()
 target_compile_options(AdoCppGame
         PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/bigobj>
-        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<BOOL:${GNU_BIG_OBJ_FLAG_ENABLE}>>:-Wa,-mbig-obj>
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<BOOL:${GNU_BIG_OBJ_FLAG_ENABLE}>>:-Os -Wa,-mbig-obj>
 )
 
 # copy assets

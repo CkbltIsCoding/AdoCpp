@@ -5,7 +5,7 @@
 #include <SFML/Graphics.hpp>
 #include <SelbaWard/Polygon.hpp>
 #include <SelbaWard/Spline.hpp>
-// #include <cmath>
+#include <cmath>
 
 class TileShape final : public sw::Polygon
 {
@@ -25,7 +25,7 @@ class TileShape final : public sw::Polygon
 
 public:
     TileShape() = default;
-    TileShape(double l_lastAngle, double l_angle, const double l_nextAngle);
+    TileShape(double l_lastAngle, double l_angle, double l_nextAngle);
     ~TileShape() override = default;
     // void update2()
     // {
@@ -42,6 +42,18 @@ public:
     void setNextAngle(double l_nextAngle) { m_nextAngle = l_nextAngle; }
     void setCircleInterpolationLevel(int l_interpolationLevel) { m_interpolationLevel = l_interpolationLevel; }
 
+private:
+    double m_lastAngle{}, m_angle{}, m_nextAngle{};
+    int m_interpolationLevel{16};
+};
+
+class TileShape2 final : public sf::Shape
+{
+public:
+    TileShape2() = default;
+    TileShape2(double l_lastAngle, double l_angle, double l_nextAngle);
+    ~TileShape2() override = default;
+    void update();
 private:
     double m_lastAngle{}, m_angle{}, m_nextAngle{};
     int m_interpolationLevel{16};

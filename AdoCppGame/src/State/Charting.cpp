@@ -12,118 +12,92 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <implot.h>
-#include <rapidjson/prettywriter.h>
 #include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/prettywriter.h>
 
 constexpr ImGuiWindowFlags ADOCPPGAME_FLAGS =
     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
 
 static std::map<std::string, char*> buffers;
-void ImGuiInputFilename(const char* text, const char* id, const char* hint, std::string* pathPtr)
+static bool ImGuiInputFilename(const char* text, const char* hint, std::string* pathPtr)
 {
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint(id, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
+    if (ImGui::Button(" " ICON_FA_FOLDER " "))
+    {
+        IGFD::FileDialogConfig config;
+        config.path = ".";
+        config.flags = ImGuiFileDialogFlags_Modal;
+        ImGuiFileDialog::Instance()->OpenDialog("ImGuiInputFilename", "Choose an file", ".adofai", config);
+    }
+    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
+    ImGui::SameLine();
+    if (ImGuiFileDialog::Instance()->Display("ImGuiInputFilename"))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            *pathPtr = ImGuiFileDialog::Instance()->GetFilePathName();
+            val = true;
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+    return val;
 }
 
-void ImGuiInputStdString(const char* text, const char* id, std::string* strPtr)
+static void ImGuiInputDouble(const char* text, double* doublePtr)
 {
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputText(id, strPtr);
-}
+    if (!buffers.contains(text))
+        buffers[text] = new char[1145]{}, sprintf_s(buffers[text], 1145, "%g", *doublePtr);
 
-void ImGuiInputDouble(const char* text, const char* id, double* doublePtr)
-{
-    if (!buffers.contains(id))
-        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *doublePtr);
-
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputText(id, buffers[id], 1145, ImGuiInputTextFlags_CharsDecimal);
+    ImGui::InputText(text, buffers[text], 1145, ImGuiInputTextFlags_CharsDecimal);
     if (ImGui::IsItemDeactivatedAfterEdit())
     {
         exprtk::expression<double> expression;
         exprtk::parser<double> parser;
-        parser.compile(buffers[id], expression);
+        parser.compile(buffers[text], expression);
         *doublePtr = expression.value();
-        sprintf_s(buffers[id], 1145, "%g", *doublePtr);
+        sprintf_s(buffers[text], 1145, "%g", *doublePtr);
     }
     if (!ImGui::IsItemActive())
-        sprintf_s(buffers[id], 1145, "%g", *doublePtr);
+        sprintf_s(buffers[text], 1145, "%g", *doublePtr);
 }
 
 
-void ImGuiInputFloat(const char* text, const char* id, float* floatPtr)
+static void ImGuiInputFloat(const char* text, float* floatPtr)
 {
-    if (!buffers.contains(id))
-        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+    if (!buffers.contains(text))
+        buffers[text] = new char[1145]{}, sprintf_s(buffers[text], 1145, "%g", *floatPtr);
 
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputText(id, buffers[id], 1145, ImGuiInputTextFlags_CharsDecimal);
+    ImGui::InputText(text, buffers[text], 1145, ImGuiInputTextFlags_CharsDecimal);
     if (ImGui::IsItemDeactivatedAfterEdit())
     {
         exprtk::expression<float> expression;
         exprtk::parser<float> parser;
-        parser.compile(buffers[id], expression);
+        parser.compile(buffers[text], expression);
         *floatPtr = expression.value();
-        sprintf_s(buffers[id], 1145, "%g", *floatPtr);
+        sprintf_s(buffers[text], 1145, "%g", *floatPtr);
     }
     if (!ImGui::IsItemActive())
-        sprintf_s(buffers[id], 1145, "%g", *floatPtr);
-}
-
-void ImGuiInputBool(const char* text, const char* id, bool* boolPtr)
-{
-    ImGui::Text(text);
-    const float w = ImGui::GetColumnWidth();
-    ImGui::SetNextItemWidth(w / 2);
-    if (ImGui::Button("Enabled"))
-        *boolPtr = true;
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(w / 2);
-    if (ImGui::Button("Disabled"))
-        *boolPtr = false;
+        sprintf_s(buffers[text], 1145, "%g", *floatPtr);
 }
 
 static std::map<std::string, float*> colorBuffers;
-void ImGuiInputColor(const char* text, const char* id, AdoCpp::Color* colorPtr)
+static bool ImGuiInputColor(const char* text, AdoCpp::Color* colorPtr)
 {
-    if (!colorBuffers.contains(id))
-        colorBuffers[id] = new float[4];
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::ColorEdit4(text, colorBuffers[id]);
+    if (!colorBuffers.contains(text))
+        colorBuffers[text] = new float[4];
+    const bool val = ImGui::ColorEdit4(text, colorBuffers[text]);
     if (ImGui::IsItemEdited())
         *colorPtr = AdoCpp::Color(
-            static_cast<uint8_t>(colorBuffers[id][0] * 255), static_cast<uint8_t>(colorBuffers[id][1] * 255),
-            static_cast<uint8_t>(colorBuffers[id][2] * 255), static_cast<uint8_t>(colorBuffers[id][3] * 255));
+            static_cast<uint8_t>(colorBuffers[text][0] * 255), static_cast<uint8_t>(colorBuffers[text][1] * 255),
+            static_cast<uint8_t>(colorBuffers[text][2] * 255), static_cast<uint8_t>(colorBuffers[text][3] * 255));
     if (!ImGui::IsItemActive())
     {
-        colorBuffers[id][0] = static_cast<float>(colorPtr->r) / 255.f;
-        colorBuffers[id][1] = static_cast<float>(colorPtr->g) / 255.f;
-        colorBuffers[id][2] = static_cast<float>(colorPtr->b) / 255.f;
-        colorBuffers[id][3] = static_cast<float>(colorPtr->a) / 255.f;
+        colorBuffers[text][0] = static_cast<float>(colorPtr->r) / 255.f;
+        colorBuffers[text][1] = static_cast<float>(colorPtr->g) / 255.f;
+        colorBuffers[text][2] = static_cast<float>(colorPtr->b) / 255.f;
+        colorBuffers[text][3] = static_cast<float>(colorPtr->a) / 255.f;
     }
-}
-
-void ImGuiInputUint32(const char* text, const char* id, uint32_t* uint32Ptr)
-{
-    if (!buffers.contains(id))
-        buffers[id] = new char[1145]{}, sprintf_s(buffers[id], 1145, "%u", *uint32Ptr);
-
-    ImGui::Text(text);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputText(id, buffers[id], 1145, ImGuiInputTextFlags_CharsDecimal);
-    if (ImGui::IsItemDeactivatedAfterEdit())
-    {
-        *uint32Ptr = std::stoul(buffers[id]);
-        sprintf_s(buffers[id], 1145, "%u", *uint32Ptr);
-    }
-    if (!ImGui::IsItemActive())
-        sprintf_s(buffers[id], 1145, "%u", *uint32Ptr);
+    return val;
 }
 
 
@@ -138,9 +112,7 @@ void StateCharting::init(Game* l_game)
 
 void StateCharting::cleanup() {}
 
-void StateCharting::pause()
-{
-}
+void StateCharting::pause() {}
 
 void StateCharting::resume()
 {
@@ -195,7 +167,7 @@ void StateCharting::handleEvent(const sf::Event event)
         {
             if (mbp->button == sf::Mouse::Button::Left)
             {
-                for (size_t i = 0; i < game->level.getTiles().size(); i++)
+                for (size_t i = 0; i < game->level.tiles.size(); i++)
                 {
                     game->window.setView(game->view);
                     const auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
@@ -272,8 +244,7 @@ void StateCharting::renderFilenameBar()
             }
             if (ImGui::Button(addedHitsound ? "Re-add hitsound" : "Add hitsound", ImVec2(-1, 0)))
             {
-                future =
-                    std::async(std::launch::async, addHitsound, game->origMusicPath, game->level.getTiles(), &progress);
+                future = std::async(std::launch::async, addHitsound, game->origMusicPath, game->level.tiles, &progress);
                 ImGui::OpenPopup("Adding hitsound...");
             }
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
@@ -374,18 +345,16 @@ void StateCharting::renderSettings() const
     const float width = ImGui::GetFontSize() * 15, height = ImGui::GetFontSize() * 30;
     ImGui::SetNextWindowSize(ImVec2(width, height));
     ImGui::SetNextWindowPos(ImVec2(0, static_cast<float>(game->windowSize.y) / 2.f - height / 2.f));
-    if (ImGui::Begin("LeftSettings", nullptr, ADOCPPGAME_FLAGS))
+    if (ImGui::Begin("Settings", nullptr, ADOCPPGAME_FLAGS))
     {
-        static float leftSettingsTabContentWidth;
-        leftSettingsTabContentWidth = width / 5 * 4;
+        const float settingsTabContentWidth = width / 5 * 4;
         static size_t selectedTab = 0;
         static const std::array<std::string, 7> titles = {
             "Song Settings",   "Level Settings",         "Track Settings", "Background Settings",
             "Camera Settings", "Miscellaneous Settings", "Decorations"};
-        if (ImGui::BeginChild("LeftSettings/TabContent", ImVec2(leftSettingsTabContentWidth, 0)))
+        if (ImGui::BeginChild("Settings/TabContent", ImVec2(settingsTabContentWidth, 0)))
         {
-            ImGui::SetCursorPosX(leftSettingsTabContentWidth / 2 -
-                                 ImGui::CalcTextSize(titles[selectedTab].c_str()).x / 2);
+            ImGui::SetCursorPosX(settingsTabContentWidth / 2 - ImGui::CalcTextSize(titles[selectedTab].c_str()).x / 2);
             ImGui::Text(titles[selectedTab].c_str());
             switch (selectedTab)
             {
@@ -416,14 +385,14 @@ void StateCharting::renderSettings() const
         }
         ImGui::EndChild();
         ImGui::SameLine();
-        if (ImGui::BeginChild("LeftSettings/TabBtns"))
+        if (ImGui::BeginChild("Settings/TabBtns"))
         {
-            if (ImGui::BeginTable("LeftSettings/TabBtns/Table", 1))
+            if (ImGui::BeginTable("Settings/TabBtns/Table", 1))
             {
                 for (size_t i = 0; i < 7; i++)
                 {
                     ImGui::TableNextRow(), ImGui::TableNextColumn();
-                    ImGui::PushID(("LeftSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
+                    ImGui::PushID(("Settings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
                     if (ImGui::Button(titles[i].c_str(), ImVec2(-1, 0)))
                         selectedTab = i;
                     ImGui::PopID();
@@ -441,26 +410,26 @@ void StateCharting::renderEventSettings() const
     const float width = ImGui::GetFontSize() * 15, height = ImGui::GetFontSize() * 30;
     if (windowOpen)
     {
-        const auto& tile = game->level.getTiles()[*game->activeTileIndex];
+        const auto& tile = game->level.tiles[*game->activeTileIndex];
         ImGui::SetNextWindowSize(ImVec2(width, height));
         ImGui::SetNextWindowPos(ImVec2(static_cast<float>(game->windowSize.x) - width,
                                        static_cast<float>(game->windowSize.y) / 2.f - height / 2.f));
-        if (ImGui::Begin("RightSettings", nullptr, ADOCPPGAME_FLAGS))
+        if (ImGui::Begin("EventSettings", nullptr, ADOCPPGAME_FLAGS))
         {
-            static float rightSettingsTabBtnsWidth, rightSettingsTabContentWidth;
-            rightSettingsTabBtnsWidth = width / 5, rightSettingsTabContentWidth = width - rightSettingsTabBtnsWidth;
+            static float tabButtonsWidth, rightSettingsTabContentWidth;
+            tabButtonsWidth = width / 5, rightSettingsTabContentWidth = width - tabButtonsWidth;
             static std::optional<size_t> tileIndex;
             static size_t selectedTab = 0;
             if (game->activeTileIndex != tileIndex)
                 tileIndex = game->activeTileIndex, selectedTab = 0;
-            if (ImGui::BeginChild("RightSettings/TabBtns", ImVec2(rightSettingsTabBtnsWidth, 0)))
+            if (ImGui::BeginChild("EventSettings/TabBtns", ImVec2(tabButtonsWidth, 0)))
             {
-                if (ImGui::BeginTable("RightSettings/TabBtns/Table", 1))
+                if (ImGui::BeginTable("EventSettings/TabBtns/Table", 1))
                 {
                     for (size_t i = 0; i < tile.events.size(); i++)
                     {
                         ImGui::TableNextRow(), ImGui::TableNextColumn();
-                        ImGui::PushID(("RightSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
+                        ImGui::PushID(("EventSettings/TabBtns/Table/TabBtn" + std::to_string(i)).c_str());
                         if (ImGui::Button(tile.events[i]->name(), ImVec2(-1, 0)))
                             selectedTab = i;
                         ImGui::PopID();
@@ -470,7 +439,7 @@ void StateCharting::renderEventSettings() const
             }
             ImGui::EndChild();
             ImGui::SameLine();
-            if (ImGui::BeginChild("RightSettings/TabContent"))
+            if (ImGui::BeginChild("EventSettings/TabContent"))
             {
                 if (!tile.events.empty())
                 {
@@ -512,119 +481,127 @@ void StateCharting::renderEventSettings() const
 }
 void StateCharting::renderSSong() const
 {
-    auto& settings = game->level.getSettings();
-#define ADOCPPGAME_P "LeftSettings/TabContent/SongSettings/"
-    ImGuiInputFilename("Song Filename", ADOCPPGAME_P "SongFilename", "No files selected", &settings.songFilename);
-    ImGuiInputDouble("BPM", ADOCPPGAME_P "BPM", &settings.bpm);
-    ImGuiInputDouble("Volume", ADOCPPGAME_P "Volume", &settings.volume);
-    ImGuiInputDouble("Offset", ADOCPPGAME_P "Offset", &settings.offset);
-    ImGuiInputDouble("Pitch", ADOCPPGAME_P "Pitch", &settings.pitch);
+    auto& settings = game->level.settings;
+    if (ImGuiInputFilename("Song Filename", "No files selected", &settings.songFilename))
+        parseUpdateLevel(0);
+    if (ImGui::InputDouble("BPM##SongSettings", &settings.bpm, 0, 0, "%g"))
+        parseUpdateLevel(0);
+    if (ImGui::InputDouble("Volume##SongSettings", &settings.volume, 0, 0, "%g"))
+        parseUpdateLevel(0);
+    if (ImGui::InputDouble("Offset##SongSettings", &settings.offset, 0, 0, "%g"))
+        parseUpdateLevel(0);
+    if (ImGui::InputDouble("Pitch##SongSettings", &settings.pitch, 0, 0, "%g"))
+        parseUpdateLevel(0);
     {
         static int selected;
         selected = static_cast<int>(settings.hitsound);
-        ImGui::Text("Hitsound");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/Hitsound", AdoCpp::cstrHitsound[selected]))
+        bool changed = false;
+        if (ImGui::BeginCombo("Hitsound", AdoCpp::cstrHitsound[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrHitsound); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrHitsound[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.hitsound = static_cast<AdoCpp::Hitsound>(selected);
+        if (changed)
+            settings.hitsound = static_cast<AdoCpp::Hitsound>(selected), parseUpdateLevel(0);
     }
-    ImGuiInputDouble("Hitsound Volume", ADOCPPGAME_P "HitSoundVolume", &settings.hitsoundVolume);
-    ImGuiInputDouble("Countdown Ticks", ADOCPPGAME_P "CountdownTicks", &settings.countdownTicks);
-#undef ADOCPPGAME_P
+    if (ImGui::InputDouble("Hitsound Volume##SongSettings", &settings.hitsoundVolume, 0, 0, "%g"))
+        parseUpdateLevel(0);
+    if (ImGui::InputDouble("Countdown Ticks##SongSettings", &settings.countdownTicks, 0, 0, "%g"))
+        parseUpdateLevel(0);
 }
 void StateCharting::renderSLevel() const
 {
-    auto& settings = game->level.getSettings();
-#define ADOCPPGAME_P "LeftSettings/TabContent/LevelSettings/"
-    ImGuiInputStdString("Artist", ADOCPPGAME_P "Artist", &settings.artist);
-    ImGuiInputStdString("Song", ADOCPPGAME_P "Song", &settings.song);
-    ImGuiInputStdString("Author", ADOCPPGAME_P "Author", &settings.author);
-    ImGuiInputBool("Separate countdown time", ADOCPPGAME_P "SeparateCountdownTime", &settings.separateCountdownTime);
-#undef ADOCPPGAME_P
+    auto& settings = game->level.settings;
+    if (ImGui::InputText("Artist##LevelSettings", &settings.artist))
+        parseUpdateLevel(0);
+    if (ImGui::InputText("Song##LevelSettings", &settings.song))
+        parseUpdateLevel(0);
+    if (ImGui::InputText("Author##LevelSettings", &settings.author))
+        parseUpdateLevel(0);
+    if (ImGui::Checkbox("Separate Countdown Time##LevelSettings", &settings.separateCountdownTime))
+        parseUpdateLevel(0);
 }
 void StateCharting::renderSTrack() const
 {
-    auto& settings = game->level.getSettings();
-#define ADOCPPGAME_P "LeftSettings/TabContent/TrackSettings/"
+    auto& settings = game->level.settings;
     {
         static int selected;
         selected = static_cast<int>(settings.trackColorType);
-        ImGui::Text("Track color type");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/TrackColorType", AdoCpp::cstrTrackColorType[selected]))
+        bool changed = false;
+        if (ImGui::BeginCombo("Track Color Type##TrackSettings", AdoCpp::cstrTrackColorType[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackColorType); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrTrackColorType[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.trackColorType = static_cast<AdoCpp::TrackColorType>(selected);
+        if (changed)
+            settings.trackColorType = static_cast<AdoCpp::TrackColorType>(selected), parseUpdateLevel(0);
     }
 
-    ImGuiInputColor("Track color", ADOCPPGAME_P "TrackColor", &settings.trackColor);
-    ImGuiInputColor("Secondary track color", ADOCPPGAME_P "SecondaryTrackColor", &settings.trackColor);
-    ImGuiInputDouble("Track color animation duration", ADOCPPGAME_P "TrackColorAnimDuration",
-                     &settings.trackColorAnimDuration);
+    if (ImGuiInputColor("Track Color##TrackSettings", &settings.trackColor))
+        parseUpdateLevel(0);
+    if (ImGuiInputColor("Secondary Track Color##TrackSettings", &settings.trackColor))
+        parseUpdateLevel(0);
+    if (ImGui::InputDouble("Track Color Animation Duration##TrackSettings", &settings.trackColorAnimDuration, 0, 0,
+                           "%g"))
+        parseUpdateLevel(0);
     {
         static int selected;
         selected = static_cast<int>(settings.trackColorPulse) + 1;
-        ImGui::Text("Track color pulse");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/TrackColorPulse", AdoCpp::cstrTrackColorPulse[selected]))
+        bool changed = false;
+        if (ImGui::BeginCombo("Track Color Pulse##TrackSettings", AdoCpp::cstrTrackColorPulse[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackColorPulse); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrTrackColorPulse[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.trackColorPulse = static_cast<AdoCpp::TrackColorPulse>(selected - 1);
+        if (changed)
+            settings.trackColorPulse = static_cast<AdoCpp::TrackColorPulse>(selected - 1), parseUpdateLevel(0);
     }
-    ImGuiInputUint32("Track pulse length", ADOCPPGAME_P "TrackPulseLength", &settings.trackPulseLength);
+    if (ImGui::InputScalar("Track Pulse Length##TrackSettings", ImGuiDataType_U32, &settings.trackPulseLength))
+        parseUpdateLevel(0);
     {
         static int selected;
         selected = static_cast<int>(settings.trackStyle);
-        ImGui::Text("Track style");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/TrackStyle", AdoCpp::cstrTrackStyle[selected]))
+        bool changed = false;
+        if (ImGui::BeginCombo("Track Style##TrackSettings", AdoCpp::cstrTrackStyle[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackStyle); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrTrackStyle[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.trackStyle = static_cast<AdoCpp::TrackStyle>(selected);
+        if (changed)
+            settings.trackStyle = static_cast<AdoCpp::TrackStyle>(selected), parseUpdateLevel(0);
     }
     {
         static int selected;
         selected = static_cast<int>(settings.trackAnimation);
-        ImGui::Text("Track animation");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/TrackAnimation", AdoCpp::cstrTrackAnimation[selected]))
+        if (ImGui::BeginCombo("Track Animation##TrackSettings", AdoCpp::cstrTrackAnimation[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackAnimation); n++)
             {
@@ -638,74 +615,70 @@ void StateCharting::renderSTrack() const
         }
         settings.trackAnimation = static_cast<AdoCpp::TrackAnimation>(selected);
     }
-    ImGuiInputDouble("Beats ahead", ADOCPPGAME_P "BeatsAhead", &settings.beatsAhead);
+    if (ImGui::InputDouble("Beats ahead##TrackSettings", &settings.beatsAhead, 0, 0, "%g"))
+        parseUpdateLevel(0);
     {
         static int selected;
         selected = static_cast<int>(settings.trackDisappearAnimation);
-        ImGui::Text("Track disappear animation");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/TrackDisappearAnimation",
+        bool changed = false;
+        if (ImGui::BeginCombo("Track Disappear Animation##TrackSettings",
                               AdoCpp::cstrTrackDisappearAnimation[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrTrackDisappearAnimation); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrTrackDisappearAnimation[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.trackDisappearAnimation = static_cast<AdoCpp::TrackDisappearAnimation>(selected);
+        if (changed)
+            settings.trackDisappearAnimation = static_cast<AdoCpp::TrackDisappearAnimation>(selected),
+            parseUpdateLevel(0);
     }
-    ImGuiInputDouble("Beats behind", ADOCPPGAME_P "BeatsBehind", &settings.beatsBehind);
-#undef ADOCPPGAME_P
+    if (ImGui::InputDouble("Beats behind##TrackSettings", &settings.beatsBehind, 0, 0, "%g"))
+        parseUpdateLevel(0);
 }
 void StateCharting::renderSBackground() const
 {
-    auto& settings = game->level.getSettings();
-#define ADOCPPGAME_P "LeftSettings/TabContent/BackgroundSettings/"
-    ImGuiInputColor("Background color", ADOCPPGAME_P "BackgroundColor", &settings.backgroundColor);
-#undef ADOCPPGAME_P
+    auto& settings = game->level.settings;
+    if (ImGuiInputColor("Background color##BackgroundSettings", &settings.backgroundColor))
+        parseUpdateLevel(0);
 }
 void StateCharting::renderSCamera() const
 {
-    auto& settings = game->level.getSettings();
-#define ADOCPPGAME_P "LeftSettings/TabContent/CameraSettings/"
+    auto& settings = game->level.settings;
     {
         static int selected;
         selected = static_cast<int>(settings.relativeTo);
-        ImGui::Text("Relative to");
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::BeginCombo("##" ADOCPPGAME_P "/RelativeTo", AdoCpp::cstrRelativeToCamera[selected]))
+        bool changed = false;
+        if (ImGui::BeginCombo("Relative To##CameraSettings", AdoCpp::cstrRelativeToCamera[selected]))
         {
             for (int n = 0; n < IM_ARRAYSIZE(AdoCpp::cstrRelativeToCamera); n++)
             {
                 const bool is_selected = selected == n;
                 if (ImGui::Selectable(AdoCpp::cstrRelativeToCamera[n], is_selected))
-                    selected = n;
+                    selected = n, changed = true;
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
-        settings.relativeTo = static_cast<AdoCpp::RelativeToCamera>(selected);
+        if (changed)
+            settings.relativeTo = static_cast<AdoCpp::RelativeToCamera>(selected), parseUpdateLevel(0);
     }
-#undef ADOCPPGAME_P
+    // TODO
 }
 void StateCharting::renderSMiscellaneous() const
 {
-    auto& settings = game->level.getSettings();
-#define ADOCPPGAME_P "LeftSettings/TabContent/MiscellaneousSettings/"
-    ImGuiInputBool("Stick to floors", ADOCPPGAME_P "StickToFloors", &settings.stickToFloors);
-#undef ADOCPPGAME_P
+    auto& settings = game->level.settings;
+    ImGui::Checkbox("Stick to floors##MiscSettings", &settings.stickToFloors);
 }
 void StateCharting::renderSDecorations() const
 {
-    auto& settings = game->level.getSettings(); // TODO MAYBE I WILL NEVER DO THIS owo
-#define ADOCPPGAME_P "LeftSettings/TabContent/Decorations/"
-#undef ADOCPPGAME_P
+    // auto& settings = game->level.settings; // TODO MAYBE I WILL NEVER DO THIS owo
 }
 
 void StateCharting::newLevel()
@@ -716,8 +689,7 @@ void StateCharting::newLevel()
     game->level.update();
     game->tileSystem.parse();
     game->tileSystem.update();
-    game->origMusicPath = game->musicPath =
-        game->levelPath.parent_path().append(game->level.getSettings().songFilename);
+    game->origMusicPath = game->musicPath = game->levelPath.parent_path().append(game->level.settings.songFilename);
     if (!game->musicPath.empty())
     {
         if (!game->music.openFromFile(game->musicPath))
@@ -729,4 +701,11 @@ void StateCharting::newLevel()
     game->view.setCenter({0.f, 0.f});
     game->view.setRotation(sf::degrees(0));
     game->zoom = {1.f, 1.f};
+}
+void StateCharting::parseUpdateLevel(const size_t floor) const
+{
+    game->level.parse(floor, true, true);
+    game->level.update();
+    game->tileSystem.parse();
+    game->tileSystem.update();
 }

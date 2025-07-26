@@ -3,6 +3,7 @@
 #include <AdoCpp.h>
 #include <SFML/Graphics.hpp>
 #include <array>
+#include <cmath>
 
 class TooEarlySprite final : public sf::Drawable, public sf::Transformable
 {

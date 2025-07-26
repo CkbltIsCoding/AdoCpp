@@ -1,5 +1,16 @@
 #pragma once
+#include <memory>
+#include <optional>
 #include <stdexcept>
+#include <vector>
+#include <cstring>
+
+#include "Color.h"
+#include "DynamicValue.h"
+#include "Easing.h"
+#include "Math/Angle.h"
+#include "Math/Vector2.h"
+#include "Utils.h"
 
 namespace AdoCpp
 {
@@ -184,4 +195,145 @@ namespace AdoCpp
                 return static_cast<Hitsound>(i);
         throw std::invalid_argument(cstr);
     }
+
+    namespace Event
+    {
+        class Event;
+    }
+
+    /**
+     * @brief Tile struct used for storing tile datas.
+     */
+    struct Tile
+    {
+        /**
+         * Default constructor.
+         */
+        Tile() = default;
+        /**
+         * Default deconstructor.
+         */
+        ~Tile() = default;
+
+        /**
+         * @brief The tile's angle.
+         */
+        Angle angle{};
+        /**
+         * @brief The event ptrs of the tile.
+         */
+        std::vector<std::shared_ptr<Event::Event>> events;
+
+        /**
+         * @brief The orbit of the planets when one of them lands on the tile.
+         */
+        Orbit orbit = Clockwise;
+        /**
+         * @brief The tile's beat.
+         */
+        double beat = 0;
+        /**
+         * @brief The tile's seconds.
+         */
+        double seconds = 0;
+        /**
+         * @brief The current opacity of the tile.
+         */
+        double opacity = 100;
+        /**
+         * @brief Whether the planets will stick to this tile.
+         */
+        bool stickToFloors = false;
+
+        /**
+         * @brief The position of the tile in editor.
+         */
+        Vector2lf editorPos;
+        /**
+         * @brief The position of the tile.
+         */
+        DynamicValue<Vector2lf> pos{};
+        /**
+         * @brief The scale of the tile.
+         */
+        DynamicValue<Vector2lf> scale{{100, 100}};
+        /**
+         * @brief The rotation of the tile.
+         */
+        DynamicValue<double> rotation{};
+
+        /**
+         *
+         */
+        DynamicValue<TrackColorType> trackColorType;
+        /**
+         * @brief The tile's color.
+         */
+        DynamicValue<Color> trackColor{Color(0xdebb7b)};
+        /**
+         * @brief The tile's secondary color.
+         */
+        DynamicValue<Color> secondaryTrackColor{Color(0xffffff)};
+        /**
+         *
+         */
+        DynamicValue<double> trackColorAnimDuration;
+        /**
+         * @brief The tile's style.
+         */
+        DynamicValue<TrackStyle> trackStyle{TrackStyle::Standard};
+        /**
+         *
+         */
+        DynamicValue<TrackColorPulse> trackColorPulse{TrackColorPulse::None};
+        /**
+         *
+         */
+        DynamicValue<uint32_t> trackPulseLength{10};
+        /**
+         * The tile's color.
+         */
+        Color color;
+
+
+        size_t trackAnimationFloor = 0;
+        TrackAnimation trackAnimation = TrackAnimation::None;
+        double beatsAhead = 0;
+        TrackDisappearAnimation trackDisappearAnimation = TrackDisappearAnimation::None;
+        double beatsBehind = 0;
+
+        Hitsound hitsound = Hitsound::Kick;
+        double hitsoundVolume = 100;
+        Hitsound midspinHitsound = Hitsound::Kick;
+        double midspinHitsoundVolume = 100;
+
+        struct MoveTrackData
+        {
+            size_t floor;
+            double angleOffset;
+            double beat;
+            double seconds;
+            RelativeIndex startTile;
+            RelativeIndex endTile;
+            double duration;
+            OptionalPoint positionOffset;
+            double xEndSec;
+            double yEndSec;
+            std::optional<double> rotationOffset;
+            double rotEndSec;
+            OptionalPoint scale;
+            double scXEndSec;
+            double scYEndSec;
+            std::optional<double> opacity;
+            double opEndSec;
+            Easing ease;
+        };
+        std::vector<MoveTrackData> moveTrackDatas;
+
+        /**
+         * @brief Construct a tile.
+         * @param angle The angle of the tile.
+         */
+        explicit Tile(const double angle) : angle(degrees(angle)) {}
+    };
 } // namespace AdoCpp

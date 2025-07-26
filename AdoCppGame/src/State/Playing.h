@@ -1,6 +1,5 @@
 #pragma once
 
-#include "AssetManager.h"
 #include "HitErrorMeter.h"
 #include "HitText.h"
 #include "KeyViewer.h"
@@ -30,7 +29,8 @@ private:
     static StatePlaying m_statePlaying;
     sf::CircleShape planet1, planet2;
     size_t nowTileIndex{}, playerTileIndex{};
-    HitTextSystem hitTextSystem{AssetManager::GetFont("Maplestory OTF Bold.otf")};
+    sf::Font fontHts{"assets/font/Maplestory OTF Bold.otf"};
+    HitTextSystem hitTextSystem{fontHts};
     HitErrorMeterSystem hitErrorMeterSystem;
     KeyViewerSystem keyViewerSystem;
     int keyInputCnt{};

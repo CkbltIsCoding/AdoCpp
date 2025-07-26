@@ -24,21 +24,21 @@ int main()
     // or "AdoCpp::Level level; level.fromFile(PATH);"
     
     // 2. Get some information of the level.
-    std::cout << level.getSettings().artist << " - "
-              << level.getSettings().song << std::endl;
+    std::cout << level.settings.artist << " - "
+              << level.settings.song << std::endl;
     
     // 3. Parse the level.
     level.parse();
     
     // 4. Get some information of the tiles.
-    for (const auto& tile : level.getTiles())
+    for (const auto& tile : level.tiles)
         std::cout << tile.seconds << std::endl;
         
     // 5. Update the level.
     level.update(10); // the 10th second
     
     // 6. Get more information of the tiles.
-    for (const auto& tile : level.getTiles())
+    for (const auto& tile : level.tiles)
     {
         // ".o" means "original value".
         // Actually, you can get the original value
@@ -52,21 +52,13 @@ int main()
     }
     
     // 7. Modify the level.
-    const auto twirl = new AdoCpp::Event::GamePlay::Twirl();
-    twirl->floor = 1;
-    level.addEvent(twirl, 0);
-    /* events of the 0th tile: {...}         (NOT modified)
-       events of the 1st tile: {(new)Twirl, ...} (modified)
-       events of the 2nd tile: {...}         (NOT modified)
-       ...                                   (NOT modified)
-     */
-
-    // After modifying, the level is not parsed.
-    assert(level.isParsed() == false);
+    level.tiles[2].angle = AdoCpp::degrees(114.514); // Change the angle of the tile.
+    const auto twirl = std::make_shared<AdoCpp::Event::GamePlay::Twirl>();
+    twirl->floor = 2;
+    level.tiles[2].events.push_back(twirl); // Add an event to the tile.
 
     // 8. Export the level as JSON (needn't parse).
     rapidjson::Document doc = level.intoJson();
-    /* ... */
     
     return 0;
 }

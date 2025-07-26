@@ -18,7 +18,7 @@ void StatePlaying::init(Game* _game)
     hitTextSystem.clear();
     hitErrorMeterSystem.setScale({4, 4});
     hitErrorMeterSystem.clear();
-    keyViewerSystem.setKeyLimiterAuto(_game->keyLimiter);
+    keyViewerSystem.setKeyLimiterAuto(game->keyLimiter);
     keyViewerSystem.setScale({6, 6});
     keyViewerSystem.setReleasedColor({255, 100, 100, 63});
     keyViewerSystem.setRainColorByRow({255, 100, 100, 255}, 0);
@@ -29,14 +29,14 @@ void StatePlaying::init(Game* _game)
     if (game->activeTileIndex.value_or(0) == 0)
     {
         playerTileIndex = 0;
-        const auto& settings = game->level.getSettings();
+        const auto& settings = game->level.settings;
         beat = -settings.countdownTicks;
         seconds = beat * AdoCpp::bpm2crotchet(settings.bpm);
     }
     else
     {
         playerTileIndex = *game->activeTileIndex;
-        beat = game->level.getTiles()[playerTileIndex].beat;
+        beat = game->level.tiles[playerTileIndex].beat;
         seconds = game->level.beat2seconds(beat);
     }
     game->window.setKeyRepeatEnabled(false);
@@ -94,8 +94,8 @@ void StatePlaying::handleEvent(const sf::Event event)
 
 void StatePlaying::update()
 {
-    auto& tiles = game->level.getTiles();
-    const auto& settings = game->level.getSettings();
+    auto& tiles = game->level.tiles;
+    const auto& settings = game->level.settings;
 
     // ReSharper disable CppFunctionalStyleCast
     // Time
@@ -244,7 +244,7 @@ void StatePlaying::update()
 
 void StatePlaying::render()
 {
-    auto& tiles = game->level.getTiles();
+    auto& tiles = game->level.tiles;
 
     // render the world
     game->window.setView(game->view);

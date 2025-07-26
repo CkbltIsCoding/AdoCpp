@@ -24,6 +24,7 @@ public:
     void renderSCamera() const;
     void renderSMiscellaneous() const;
     void renderSDecorations() const;
+    void parseUpdateLevel(size_t floor) const;
 
 	void newLevel();
 
