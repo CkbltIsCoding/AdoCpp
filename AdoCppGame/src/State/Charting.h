@@ -39,4 +39,5 @@ protected:
 private:
 	static StateCharting m_stateCharting;
 	bool addedHitsound{};
+    bool dragging{};
 };

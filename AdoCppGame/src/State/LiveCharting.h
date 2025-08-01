@@ -47,4 +47,5 @@ private:
     std::optional<sf::Sound> music;
     std::optional<std::vector<double>> samples;
     bool render_needToUpdateOscillogram{};
+    bool dragging{};
 };

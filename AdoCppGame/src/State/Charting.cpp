@@ -138,49 +138,59 @@ void StateCharting::handleEvent(const sf::Event event)
                 game->pushState(LiveCharting::instance());
         }
     }
+    static sf::Vector2f draggingPosition;
     if (!ImGui::GetIO().WantCaptureMouse)
     {
-        if (const auto* mws = event.getIf<sf::Event::MouseWheelScrolled>())
+        if (const auto mws = event.getIf<sf::Event::MouseWheelScrolled>())
         {
-            static sf::Vector2f d;
-            if (mws->wheel == sf::Mouse::Wheel::Vertical)
-                d = {0, mws->delta * game->zoom.y};
+            if (mws->delta > 0)
+                game->zoom /= 1.5f;
             else
-                d = {-mws->delta * game->zoom.y, 0};
-            if (sf::Keyboard::isKeyPressed(LControl) || sf::Keyboard::isKeyPressed(RControl))
-            {
-                if (d.x > 0 || d.y > 0)
-                    game->zoom /= 1.5f;
-                else
-                    game->zoom *= 1.5f;
-            }
-            else if (sf::Keyboard::isKeyPressed(LShift) || sf::Keyboard::isKeyPressed(RShift))
-            {
-                game->view.move({-d.y, -d.x});
-            }
-            else
-            {
-                game->view.move(d);
-            }
+                game->zoom *= 1.5f;
         }
-        if (const auto* mbp = event.getIf<sf::Event::MouseButtonPressed>())
+        if (const auto mbp = event.getIf<sf::Event::MouseButtonPressed>())
         {
             if (mbp->button == sf::Mouse::Button::Left)
             {
+                bool active = false;
+                game->window.setView(game->view);
+                const auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
                 for (size_t i = 0; i < game->level.tiles.size(); i++)
                 {
-                    game->window.setView(game->view);
-                    const auto mouseCoords = game->window.mapPixelToCoords(mbp->position);
                     if (game->tileSystem[i].isPointInside(mouseCoords))
                     {
                         game->activeTileIndex = i;
-                        return;
+                        active = true;
+                        break;
                     }
                 }
-                game->activeTileIndex = std::nullopt;
+                if (!active)
+                {
+                    game->activeTileIndex = std::nullopt;
+                    dragging = true;
+                    const sf::Vector2f center = game->view.getCenter();
+                    game->view.setCenter({0, 0});
+                    game->window.setView(game->view);
+                    draggingPosition = game->window.mapPixelToCoords(mbp->position);
+                    game->view.setCenter(center);
+                }
+            }
+        }
+        if (const auto mm = event.getIf<sf::Event::MouseMoved>())
+        {
+            if (dragging)
+            {
+                const sf::Vector2f center = game->view.getCenter();
+                game->view.setCenter({0, 0});
+                game->window.setView(game->view);
+                const sf::Vector2f now = game->window.mapPixelToCoords(mm->position), delta = now - draggingPosition;
+                draggingPosition = now;
+                game->view.setCenter(center - delta);
             }
         }
     }
+    else
+        dragging = false;
 }
 
 void StateCharting::update()
@@ -189,6 +199,9 @@ void StateCharting::update()
     game->view.setSize({w / (w + h) * 16 * game->zoom.x, -h / (w + h) * 16 * game->zoom.y});
     game->tileSystem.setActiveTileIndex(game->activeTileIndex);
     game->tileSystem.update();
+
+    if (!sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+        dragging = false;
 }
 
 void StateCharting::render()
