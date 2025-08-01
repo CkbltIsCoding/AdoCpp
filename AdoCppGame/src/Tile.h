@@ -3,8 +3,6 @@
 
 #include <AdoCpp.h>
 #include <SFML/Graphics.hpp>
-#include <SelbaWard/Polygon.hpp>
-#include <SelbaWard/Spline.hpp>
 #include <cmath>
 
 class TileShape final : public sf::Drawable, public sf::Transformable
@@ -23,7 +21,7 @@ public:
     void setAngle(double l_angle) { m_angle = l_angle; }
     double getNextAngle() const { return m_nextAngle; }
     void setNextAngle(double l_nextAngle) { m_nextAngle = l_nextAngle; }
-    void setCircleInterpolationLevel(int l_interpolationLevel) { m_interpolationLevel = l_interpolationLevel; }
+    void setCircleInterpolationLevel(int32_t l_interpolationLevel) { m_interpolationLevel = l_interpolationLevel; }
     bool isPointInside(sf::Vector2f point) const;
     void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     sf::Color getFillColor() const;
@@ -33,9 +31,9 @@ public:
 
 private:
     double m_lastAngle{}, m_angle{}, m_nextAngle{};
-    int m_interpolationLevel{16};
-    sf::VertexArray m_vertices{};
-    std::vector<bool> m_borders{};
+    int32_t m_interpolationLevel{32};
+    sf::VertexArray m_fillVertices{};
+    sf::VertexArray m_outlineVertices{};
     sf::FloatRect m_bounds{};
     sf::Color m_fillColor{}, m_outlineColor{};
 };
@@ -116,15 +114,15 @@ private:
     sf::CircleShape m_twirlShape;
     sf::CircleShape m_speedShape;
 
-    bool m_needToUpdate;
-    bool m_twirl;
-    bool m_active;
-    int m_speed;
+    bool m_needToUpdate{};
+    bool m_twirl{};
+    bool m_active{};
+    int m_speed{};
     sf::Color m_trackColor;
-    AdoCpp::TrackStyle m_trackStyle;
-    float m_opacity;
-    double m_angleDeg;
-    double m_nextAngleDeg;
+    AdoCpp::TrackStyle m_trackStyle{AdoCpp::TrackStyle::Standard};
+    float m_opacity{};
+    double m_angleDeg{};
+    double m_nextAngleDeg{};
 };
 
 class TileSystem final : public sf::Drawable
@@ -143,6 +141,6 @@ private:
     AdoCpp::Level& m_level;
     std::optional<size_t> m_activeTileIndex;
     mutable std::vector<TileSprite> m_tileSprites;
-    int m_tilePlaceMode;
+    int m_tilePlaceMode{};
     sf::Font font{"assets/font/Maplestory OTF Bold.otf"};
 };

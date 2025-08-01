@@ -1,5 +1,6 @@
 #include "KeyViewer.h"
 #include <algorithm>
+#include <ranges>
 
 constexpr std::array<sf::Vector2u, 10> posArray10 = {{
     {0, 0},
@@ -140,7 +141,14 @@ void KeyViewerSystem::setRainColorByRow(const sf::Color rainColor, unsigned int 
 }
 
 // ReSharper disable once CppMemberFunctionMayBeStatic
-void KeyViewerSystem::update() {}
+void KeyViewerSystem::update()
+{
+    for (auto& v : m_keyPressed | std::views::values)
+    {
+        while (v.size() >= 2 && (m_clock.getElapsedTime() - v.front().time).asSeconds() > 10)
+            v.erase(v.begin());
+    }
+}
 
 KeyViewerSystem::Key& KeyViewerSystem::operator[](const size_t index) { return m_keys[index]; }
 

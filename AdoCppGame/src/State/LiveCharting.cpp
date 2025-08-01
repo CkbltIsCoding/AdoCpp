@@ -22,8 +22,8 @@ static bool ImGuiInputFilename(const IGFD::FileDialogConfig& fdConfig, const cha
     {
         ImGuiFileDialog::Instance()->OpenDialog(buffer, fdTitle, filter, fdConfig);
     }
-    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
     ImGui::SameLine();
+    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
     if (ImGuiFileDialog::Instance()->Display(buffer))
     {
         if (ImGuiFileDialog::Instance()->IsOk())
@@ -724,7 +724,7 @@ void LiveCharting::renderSSong() const
     IGFD::FileDialogConfig cfg;
     cfg.path = game->levelPath.parent_path().string();
     cfg.flags = ImGuiFileDialogFlags_Modal;
-    if (ImGuiInputFilename(cfg, "Select a file", "Song Filename", ".ogg", "No files selected", &settings.songFilename))
+    if (ImGuiInputFilename(cfg, "Select a file", ".ogg", "Song Filename", "No files selected", &settings.songFilename))
         parseUpdateLevel(0);
     if (ImGui::InputDouble("BPM##SongSettings", &settings.bpm, 0, 0, "%g"))
         parseUpdateLevel(0);

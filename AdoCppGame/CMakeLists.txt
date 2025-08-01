@@ -3,7 +3,6 @@ include(${PROJECT_SOURCE_DIR}/GetSFML.cmake)
 include(${PROJECT_SOURCE_DIR}/GetSelbaWard.cmake)
 include(${PROJECT_SOURCE_DIR}/GetImGui.cmake)
 include(${PROJECT_SOURCE_DIR}/GetExprtk.cmake)
-include(${PROJECT_SOURCE_DIR}/GetPmp.cmake)
 
 find_package(SFML REQUIRED COMPONENTS System Window Graphics Audio)
 find_package(SelbaWard REQUIRED)

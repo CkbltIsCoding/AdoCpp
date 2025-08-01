@@ -1,5 +1,7 @@
 #include "Tile.h"
 #include <map>
+// #include <boost/geometry.hpp>
+// #include <earcut.hpp>
 
 static constexpr float PI = 3.14159265358979323846, outline = 0.02f;
 
@@ -56,24 +58,17 @@ static bool pointIsInsideTriangle(const std::vector<sf::Vector2f>& points, const
 }
 
 // Thanks for StArray's code
-static void createCircle(sf::Vector3f center, const float r, bool isBorder, std::vector<sf::Vector3f>& vertices,
-                         std::vector<size_t>& m_triangles, std::vector<bool>& borders, int resolution)
+static void createCircle(const sf::Vector3f center, const float r, std::vector<sf::Vector3f>& vertices,
+                         std::vector<size_t>& m_triangles, const uint32_t resolution = 32)
 {
-    if (resolution <= 0)
-    {
-        resolution = 32; // Default value if not provided
-    }
-
-    const int centerIndex = vertices.size();
-    vertices.push_back(sf::Vector3f(center));
-    borders.push_back(isBorder);
+    const size_t centerIndex = vertices.size();
+    vertices.push_back(center);
 
     for (int i = 0; i < resolution; i++)
     {
-        const float angle = 2.f * PI * i / resolution;
-        sf::Vector3f vertex = sf::Vector3f(cos(angle) * r, sin(angle) * r, 0) + center;
+        const float angle = 2.f * PI * static_cast<float>(i) / static_cast<float>(resolution);
+        sf::Vector3f vertex = sf::Vector3f(std::cos(angle) * r, std::sin(angle) * r, 0) + center;
         vertices.push_back(vertex);
-        borders.push_back(isBorder);
     }
 
     for (int i = 1; i < resolution; i++)
@@ -90,17 +85,19 @@ static void createCircle(sf::Vector3f center, const float r, bool isBorder, std:
 }
 
 // Thanks for StArray's code
+// ReSharper disable CppDFAConstantParameter
 static void createTileMesh(float width, float length, sf::Angle startAngle, sf::Angle endAngle,
-                           sf::VertexArray& m_vertices, std::vector<size_t>& m_triangles, std::vector<bool>& m_borders)
+                           // ReSharper restore CppDFAConstantParameter
+                           const uint32_t m_interpolationLevel, sf::VertexArray& m_fillVertices,
+                           sf::VertexArray& m_outlineVertices)
 {
     startAngle = startAngle.wrapUnsigned(), endAngle = endAngle.wrapUnsigned();
-    std::vector<sf::Vector3f> vertices;
-    std::vector<bool> borders;
-    m_triangles.clear();
+    std::vector<sf::Vector3f> fillVertices, outlineVertices;
+    std::vector<size_t> fillTriangles, outlineTriangles;
 
     // region basic process
-    const float m11 = cos(startAngle.asRadians()), m12 = sin(startAngle.asRadians()), m21 = cos(endAngle.asRadians()),
-                m22 = sin(endAngle.asRadians());
+    const float m11 = std::cos(startAngle.asRadians()), m12 = std::sin(startAngle.asRadians()),
+                m21 = std::cos(endAngle.asRadians()), m22 = std::sin(endAngle.asRadians());
     float a[2]{};
 
     if ((startAngle - endAngle).wrapUnsigned() >= (endAngle - startAngle).wrapUnsigned())
@@ -120,152 +117,130 @@ static void createTileMesh(float width, float length, sf::Angle startAngle, sf::
         // region angle < 2.0943952
         float x;
         if (angle < 0.08726646f)
-        {
             x = 1.f;
-        }
         else if (angle < 0.5235988f)
-        {
-            x = std::lerp(1.f, 0.83f, pow((angle - 0.08726646f) / 0.43633235f, 0.5f));
-        }
+            x = std::lerp(1.f, 0.83f, std::pow((angle - 0.08726646f) / 0.43633235f, 0.5f));
         else if (angle < 0.7853982f)
-        {
-            x = std::lerp(0.83f, 0.77f, pow((angle - 0.5235988f) / 0.2617994f, 1.f));
-        }
+            x = std::lerp(0.83f, 0.77f, std::pow((angle - 0.5235988f) / 0.2617994f, 1.f));
         else if (angle < 1.5707964f)
-        {
-            x = std::lerp(0.77f, 0.15f, pow((angle - 0.7853982f) / 0.7853982f, 0.7f));
-        }
+            x = std::lerp(0.77f, 0.15f, std::pow((angle - 0.7853982f) / 0.7853982f, 0.7f));
         else
-        {
-            x = std::lerp(0.15f, 0.f, pow((angle - 1.5707964f) / 0.5235988f, 0.5f));
-        }
+            x = std::lerp(0.15f, 0.f, std::pow((angle - 1.5707964f) / 0.5235988f, 0.5f));
         float distance;
         float radius;
         if (x == 1.f)
-        {
-            distance = 0.f;
-            radius = width;
-        }
+            radius = width, distance = 0.f;
         else
-        {
-            radius = std::lerp(0.f, width, x);
-            distance = (width - radius) / sin(angle / 2.f);
-        }
-        float circlex = -distance * cos(mid);
-        float circley = -distance * sin(mid);
+            radius = std::lerp(0.f, width, x), distance = (width - radius) / std::sin(angle / 2.f);
+
+        float circlex = -distance * std::cos(mid), circley = -distance * std::sin(mid);
+        // endregion
+        // region outline
         width += outline;
         length += outline;
         radius += outline;
-        createCircle(sf::Vector3f(circlex, circley, 0), radius, true, vertices, m_triangles, borders, 0);
+        createCircle(sf::Vector3f(circlex, circley, 0), radius, outlineVertices, outlineTriangles, m_interpolationLevel);
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(-radius * sin(a[1]) + circlex, radius * cos(a[1]) + circley, 0));
-            vertices.push_back(sf::Vector3f(circlex, circley, 0));
-            vertices.push_back(sf::Vector3f(radius * sin(a[0]) + circlex, -radius * cos(a[0]) + circley, 0));
-            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
-            vertices.push_back(sf::Vector3f());
-            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count + 4);
-            for (int i = 0; i < 6; i++)
-                borders.push_back(true);
+            const size_t count = outlineVertices.size();
+            outlineVertices.emplace_back(-radius * std::sin(a[1]) + circlex, radius * std::cos(a[1]) + circley, 0);
+            outlineVertices.emplace_back(circlex, circley, 0);
+            outlineVertices.emplace_back(radius * std::sin(a[0]) + circlex, -radius * std::cos(a[0]) + circley, 0);
+            outlineVertices.emplace_back(width * std::sin(a[0]), -width * std::cos(a[0]), 0);
+            outlineVertices.emplace_back();
+            outlineVertices.emplace_back(-width * std::sin(a[1]), width * std::cos(a[1]), 0);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 5);
+            outlineTriangles.push_back(count + 4);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 5);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 3);
+            outlineTriangles.push_back(count + 4);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 3);
+            outlineTriangles.push_back(count + 4);
         }
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
-            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
-            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
-            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+            const size_t count = outlineVertices.size();
+            outlineVertices.emplace_back(length * m11 + width * m12, length * m12 - width * m11, 0);
+            outlineVertices.emplace_back(length * m11 - width * m12, length * m12 + width * m11, 0);
+            outlineVertices.emplace_back(-width * m12, width * m11, 0);
+            outlineVertices.emplace_back(width * m12, -width * m11, 0);
 
-            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
-            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
-            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
-            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 7);
-            m_triangles.push_back(count + 4);
-            for (int i = 0; i < 8; i++)
-                borders.push_back(true);
+            outlineVertices.emplace_back(length * m21 + width * m22, length * m22 - width * m21, 0);
+            outlineVertices.emplace_back(length * m21 - width * m22, length * m22 + width * m21, 0);
+            outlineVertices.emplace_back(-width * m22, width * m21, 0);
+            outlineVertices.emplace_back(width * m22, -width * m21, 0);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 3);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 4);
+            outlineTriangles.push_back(count + 5);
+            outlineTriangles.push_back(count + 6);
+            outlineTriangles.push_back(count + 6);
+            outlineTriangles.push_back(count + 7);
+            outlineTriangles.push_back(count + 4);
         }
         // endregion
-        // region outline
+        // region fill
         width -= outline * 2.f;
         length -= outline * 2.f;
         radius -= outline * 2.f;
         if (radius < 0)
         {
             radius = 0;
-            circlex = -width / sin(angle / 2.f) * cos(mid);
-            circley = -width / sin(angle / 2.f) * sin(mid);
+            circlex = -width / std::sin(angle / 2.f) * std::cos(mid);
+            circley = -width / std::sin(angle / 2.f) * std::sin(mid);
         }
-        createCircle(sf::Vector3f(circlex, circley, 0), radius, false, vertices, m_triangles, borders, 0);
+        createCircle(sf::Vector3f(circlex, circley, 0), radius, fillVertices, fillTriangles, m_interpolationLevel);
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(-radius * sin(a[1]) + circlex, radius * cos(a[1]) + circley, 0));
-            vertices.push_back(sf::Vector3f(circlex, circley, 0));
-            vertices.push_back(sf::Vector3f(radius * sin(a[0]) + circlex, -radius * cos(a[0]) + circley, 0));
-            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
-            vertices.push_back(sf::Vector3f());
-            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count + 4);
-            for (int i = 0; i < 6; i++)
-                borders.push_back(false);
+            const size_t count = fillVertices.size();
+            fillVertices.emplace_back(-radius * std::sin(a[1]) + circlex, radius * std::cos(a[1]) + circley, 0);
+            fillVertices.emplace_back(circlex, circley, 0);
+            fillVertices.emplace_back(radius * std::sin(a[0]) + circlex, -radius * std::cos(a[0]) + circley, 0);
+            fillVertices.emplace_back(width * std::sin(a[0]), -width * std::cos(a[0]), 0);
+            fillVertices.emplace_back();
+            fillVertices.emplace_back(-width * std::sin(a[1]), width * std::cos(a[1]), 0);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 5);
+            fillTriangles.push_back(count + 4);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 5);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 3);
+            fillTriangles.push_back(count + 4);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 3);
+            fillTriangles.push_back(count + 4);
         }
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
-            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
-            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
-            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+            const size_t count = fillVertices.size();
+            fillVertices.emplace_back(length * m11 + width * m12, length * m12 - width * m11, 0);
+            fillVertices.emplace_back(length * m11 - width * m12, length * m12 + width * m11, 0);
+            fillVertices.emplace_back(-width * m12, width * m11, 0);
+            fillVertices.emplace_back(width * m12, -width * m11, 0);
 
-            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
-            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
-            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
-            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 7);
-            m_triangles.push_back(count + 4);
-            for (int i = 0; i < 8; i++)
-                borders.push_back(false);
+            fillVertices.emplace_back(length * m21 + width * m22, length * m22 - width * m21, 0);
+            fillVertices.emplace_back(length * m21 - width * m22, length * m22 + width * m21, 0);
+            fillVertices.emplace_back(-width * m22, width * m21, 0);
+            fillVertices.emplace_back(width * m22, -width * m21, 0);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 3);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 4);
+            fillTriangles.push_back(count + 5);
+            fillTriangles.push_back(count + 6);
+            fillTriangles.push_back(count + 6);
+            fillTriangles.push_back(count + 7);
+            fillTriangles.push_back(count + 4);
         }
         // endregion
     }
@@ -275,98 +250,90 @@ static void createTileMesh(float width, float length, sf::Angle startAngle, sf::
         width += outline;
         length += outline;
 
-        float circlex = -width / sin(angle / 2.f) * cos(mid);
-        float circley = -width / sin(angle / 2.f) * sin(mid);
+        float circlex = -width / std::sin(angle / 2.f) * std::cos(mid);
+        float circley = -width / std::sin(angle / 2.f) * std::sin(mid);
 
         {
-            const size_t count = 0;
-            vertices.push_back(sf::Vector3f(circlex, circley, 0));
-            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
-            vertices.push_back(sf::Vector3f());
-            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            for (int i = 0; i < 4; i++)
-                borders.push_back(true);
+            constexpr size_t count = 0;
+            outlineVertices.emplace_back(circlex, circley, 0);
+            outlineVertices.emplace_back(width * std::sin(a[0]), -width * std::cos(a[0]), 0);
+            outlineVertices.emplace_back();
+            outlineVertices.emplace_back(-width * std::sin(a[1]), width * std::cos(a[1]), 0);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 3);
+            outlineTriangles.push_back(count);
         }
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
-            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
-            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
-            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+            const size_t count = outlineVertices.size();
+            outlineVertices.emplace_back(length * m11 + width * m12, length * m12 - width * m11, 0);
+            outlineVertices.emplace_back(length * m11 - width * m12, length * m12 + width * m11, 0);
+            outlineVertices.emplace_back(-width * m12, width * m11, 0);
+            outlineVertices.emplace_back(width * m12, -width * m11, 0);
 
-            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
-            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
-            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
-            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 7);
-            m_triangles.push_back(count + 4);
-            for (int i = 0; i < 8; i++)
-                borders.push_back(true);
+            outlineVertices.emplace_back(length * m21 + width * m22, length * m22 - width * m21, 0);
+            outlineVertices.emplace_back(length * m21 - width * m22, length * m22 + width * m21, 0);
+            outlineVertices.emplace_back(-width * m22, width * m21, 0);
+            outlineVertices.emplace_back(width * m22, -width * m21, 0);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 3);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 4);
+            outlineTriangles.push_back(count + 5);
+            outlineTriangles.push_back(count + 6);
+            outlineTriangles.push_back(count + 6);
+            outlineTriangles.push_back(count + 7);
+            outlineTriangles.push_back(count + 4);
         }
         // endregion
         // region fill
         width -= outline * 2.f;
         length -= outline * 2.f;
 
-        circlex = -width / sin(angle / 2.f) * cos(mid);
-        circley = -width / sin(angle / 2.f) * sin(mid);
+        circlex = -width / std::sin(angle / 2.f) * std::cos(mid);
+        circley = -width / std::sin(angle / 2.f) * std::sin(mid);
 
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(circlex, circley, 0));
-            vertices.push_back(sf::Vector3f(width * sin(a[0]), -width * cos(a[0]), 0));
-            vertices.push_back(sf::Vector3f());
-            vertices.push_back(sf::Vector3f(-width * sin(a[1]), width * cos(a[1]), 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            for (int i = 0; i < 4; i++)
-                borders.push_back(false);
+            const size_t count = fillVertices.size();
+            fillVertices.emplace_back(circlex, circley, 0);
+            fillVertices.emplace_back(width * std::sin(a[0]), -width * std::cos(a[0]), 0);
+            fillVertices.emplace_back();
+            fillVertices.emplace_back(-width * std::sin(a[1]), width * std::cos(a[1]), 0);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 3);
+            fillTriangles.push_back(count);
         }
         {
-            const size_t count = vertices.size();
-            vertices.push_back(sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
-            vertices.push_back(sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
-            vertices.push_back(sf::Vector3f(-width * m12, width * m11, 0));
-            vertices.push_back(sf::Vector3f(width * m12, -width * m11, 0));
+            const size_t count = fillVertices.size();
+            fillVertices.emplace_back(length * m11 + width * m12, length * m12 - width * m11, 0);
+            fillVertices.emplace_back(length * m11 - width * m12, length * m12 + width * m11, 0);
+            fillVertices.emplace_back(-width * m12, width * m11, 0);
+            fillVertices.emplace_back(width * m12, -width * m11, 0);
 
-            vertices.push_back(sf::Vector3f(length * m21 + width * m22, length * m22 - width * m21, 0));
-            vertices.push_back(sf::Vector3f(length * m21 - width * m22, length * m22 + width * m21, 0));
-            vertices.push_back(sf::Vector3f(-width * m22, width * m21, 0));
-            vertices.push_back(sf::Vector3f(width * m22, -width * m21, 0));
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 4);
-            m_triangles.push_back(count + 5);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 6);
-            m_triangles.push_back(count + 7);
-            m_triangles.push_back(count + 4);
-            for (int i = 0; i < 8; i++)
-                borders.push_back(false);
+            fillVertices.emplace_back(length * m21 + width * m22, length * m22 - width * m21, 0);
+            fillVertices.emplace_back(length * m21 - width * m22, length * m22 + width * m21, 0);
+            fillVertices.emplace_back(-width * m22, width * m21, 0);
+            fillVertices.emplace_back(width * m22, -width * m21, 0);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 3);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 4);
+            fillTriangles.push_back(count + 5);
+            fillTriangles.push_back(count + 6);
+            fillTriangles.push_back(count + 6);
+            fillTriangles.push_back(count + 7);
+            fillTriangles.push_back(count + 4);
         }
         // endregion
     }
@@ -378,184 +345,235 @@ static void createTileMesh(float width, float length, sf::Angle startAngle, sf::
         length += outline;
 
         const sf::Vector3f midpoint{-m11 * 0.04f, -m12 * 0.04f, 0};
-        createCircle(midpoint, width, true, vertices, m_triangles, borders, 0);
+        createCircle(midpoint, width, outlineVertices, outlineTriangles, m_interpolationLevel);
 
         {
-            const size_t count = vertices.size();
-            vertices.push_back(midpoint + sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
-            vertices.push_back(midpoint + sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
-            vertices.push_back(midpoint + sf::Vector3f(-width * m12, width * m11, 0));
-            vertices.push_back(midpoint + sf::Vector3f(width * m12, -width * m11, 0));
+            const size_t count = outlineVertices.size();
+            outlineVertices.push_back(midpoint +
+                                      sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            outlineVertices.push_back(midpoint +
+                                      sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            outlineVertices.push_back(midpoint + sf::Vector3f(-width * m12, width * m11, 0));
+            outlineVertices.push_back(midpoint + sf::Vector3f(width * m12, -width * m11, 0));
 
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            for (int i = 0; i < 4; i++)
-                borders.push_back(true);
+            outlineTriangles.push_back(count);
+            outlineTriangles.push_back(count + 1);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 2);
+            outlineTriangles.push_back(count + 3);
+            outlineTriangles.push_back(count);
         }
         // endregion
         // region fill
         width -= outline * 2.f;
         length -= outline * 2.f;
-        createCircle(midpoint, width, false, vertices, m_triangles, borders, 0);
+        createCircle(midpoint, width, fillVertices, fillTriangles, m_interpolationLevel);
         {
-            const size_t count = vertices.size();
-            vertices.push_back(midpoint + (sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0)));
-            vertices.push_back(midpoint + (sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0)));
-            vertices.push_back(midpoint + (sf::Vector3f(-width * m12, width * m11, 0)));
-            vertices.push_back(midpoint + (sf::Vector3f(width * m12, -width * m11, 0)));
+            const size_t count = fillVertices.size();
+            fillVertices.push_back(midpoint + sf::Vector3f(length * m11 + width * m12, length * m12 - width * m11, 0));
+            fillVertices.push_back(midpoint + sf::Vector3f(length * m11 - width * m12, length * m12 + width * m11, 0));
+            fillVertices.push_back(midpoint + sf::Vector3f(-width * m12, width * m11, 0));
+            fillVertices.push_back(midpoint + sf::Vector3f(width * m12, -width * m11, 0));
 
-            m_triangles.push_back(count);
-            m_triangles.push_back(count + 1);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 2);
-            m_triangles.push_back(count + 3);
-            m_triangles.push_back(count);
-            for (int i = 0; i < 4; i++)
-                borders.push_back(false);
+            fillTriangles.push_back(count);
+            fillTriangles.push_back(count + 1);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 2);
+            fillTriangles.push_back(count + 3);
+            fillTriangles.push_back(count);
         }
         // endregion
     }
-    m_vertices.clear();
-    m_vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
-    m_borders.clear();
-    for (size_t i = 0; i < m_triangles.size(); i++)
-    {
-        const size_t idx = m_triangles[i];
-        m_vertices.append(sf::Vertex(sf::Vector2f(vertices[idx].x, vertices[idx].y)));
-        m_borders.push_back(borders[idx]);
-    }
+
+    // using namespace bg = boost::geometry;
+    // using point_t = bg::model::point<double, 2, bg::cs::cartesian>;
+    // using polygon_t = bg::model::polygon<point_t>;
+    // using mpolygon_t = bg::model::multi_polygon<polygon_t>;
+    // mpolygon_t fillPolygon, outlinePolygon;
+    //
+    // for (size_t i = 0; i < fillVertices.size(); i += 3)
+    // {
+    //     const size_t idx1 = fillTriangles[i], idx2 = fillTriangles[i + 1], idx3 = fillTriangles[i + 2];
+    //     const sf::Vector3f v1 = fillVertices[idx1], v2 = fillVertices[idx2], v3 = fillVertices[idx3];
+    //     polygon_t polygon({{v1.x, v1.y},{v2.x, v2.y},{v3.x, v3.y}});
+    //     if (i != 0)
+    //     {
+    //         mpolygon_t tmp;
+    //         bg::union_(fillPolygon, polygon, tmp);
+    //         fillPolygon = tmp;
+    //     }
+    // }
+    // for (size_t i = 0; i < outlineVertices.size(); i += 3)
+    // {
+    //     const size_t idx1 = outlineTriangles[i], idx2 = outlineTriangles[i + 1], idx3 = outlineTriangles[i + 2];
+    //     const sf::Vector3f v1 = outlineVertices[idx1], v2 = outlineVertices[idx2], v3 = outlineVertices[idx3];
+    //     polygon_t polygon({{v1.x, v1.y},{v2.x, v2.y},{v3.x, v3.y}});
+    //     if (i != 0)
+    //     {
+    //         mpolygon_t tmp;
+    //         bg::union_(outlinePolygon, polygon, tmp);
+    //         outlinePolygon = tmp;
+    //     }
+    // }
+    // {
+    //     mpolygon_t tmp;
+    //     bg::difference(outlinePolygon, fillPolygon, tmp);
+    //     outlinePolygon = tmp;
+    // }
+    // {
+    //
+    // }
+    // using Coord = double;
+    //
+    // using N = uint32_t;
+    //
+    // using Point = std::array<Coord, 2>;
+    // std::vector<std::vector<Point>> polygon;
+    //
+    // // Fill polygon structure with actual data. Any winding order works.
+    // // The first polyline defines the main polygon.
+    // polygon.push_back({{100, 0}, {100, 100}, {0, 100}, {0, 0}});
+    // // Following polylines define holes.
+    // polygon.push_back({{75, 25}, {75, 75}, {25, 75}, {25, 25}});
+    //
+    // // Run tessellation
+    // // Returns array of indices that refer to the vertices of the input polygon.
+    // // e.g: the index 6 would refer to {25, 75} in this example.
+    // // Three subsequent indices form a triangle. Output triangles are clockwise.
+    // std::vector<N> indices = mapbox::earcut<N>(polygon);
+
+    m_fillVertices.clear(), m_outlineVertices.clear();
+    m_fillVertices.setPrimitiveType(sf::PrimitiveType::Triangles);
+    m_outlineVertices.setPrimitiveType(sf::PrimitiveType::Triangles);
+    for (const size_t idx : fillTriangles)
+        m_fillVertices.append(sf::Vertex(sf::Vector2f(fillVertices[idx].x, fillVertices[idx].y)));
+    for (const size_t idx : outlineTriangles)
+        m_outlineVertices.append(sf::Vertex(sf::Vector2f(outlineVertices[idx].x, outlineVertices[idx].y)));
 }
 // Thanks for StArray's code
-static void createMidSpinMesh(float width, sf::Angle a1, sf::VertexArray& m_vertices, std::vector<size_t>& m_triangles,
-                              std::vector<bool>& m_borders)
+// ReSharper disable once CppDFAConstantParameter
+static void createMidSpinMesh(float width, sf::Angle a1, uint32_t m_interpolationLevel, sf::VertexArray& m_fillVertices,
+                              sf::VertexArray& m_outlineVertices)
 {
     a1 = a1.wrapUnsigned();
     float length = width;
-    const float m1 = cos(a1.asRadians()), m2 = sin(a1.asRadians());
+    const float m1 = std::cos(a1.asRadians()), m2 = std::sin(a1.asRadians());
 
     // region outline
-    std::vector<sf::Vector3f> vertices;
-    std::vector<bool> borders;
-    m_triangles.clear();
+    std::vector<sf::Vector3f> fillVertices, outlineVertices;
+    std::vector<size_t> fillTriangles, outlineTriangles;
     const sf::Vector3f midpoint{-m1 * 0.04f, -m2 * 0.04f, 0};
     width += outline;
     length += outline;
     {
         constexpr size_t count = 0;
-        vertices.push_back(midpoint + sf::Vector3f(length * m1 + width * m2, length * m2 - width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(length * m1 - width * m2, length * m2 + width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(-width * m1, -width * m2, 0));
-        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
-        m_triangles.push_back(count);
-        m_triangles.push_back(count + 1);
-        m_triangles.push_back(count + 2);
-        m_triangles.push_back(count + 2);
-        m_triangles.push_back(count + 3);
-        m_triangles.push_back(count);
-        m_triangles.push_back(count + 4);
-        m_triangles.push_back(count + 5);
-        m_triangles.push_back(count + 6);
-        for (int i = 0; i < 7; i++)
-            borders.push_back(true);
+        outlineVertices.push_back(midpoint + sf::Vector3f(length * m1 + width * m2, length * m2 - width * m1, 0));
+        outlineVertices.push_back(midpoint + sf::Vector3f(length * m1 - width * m2, length * m2 + width * m1, 0));
+        outlineVertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        outlineVertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        outlineVertices.push_back(midpoint + sf::Vector3f(-width * m1, -width * m2, 0));
+        outlineVertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        outlineVertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        outlineTriangles.push_back(count);
+        outlineTriangles.push_back(count + 1);
+        outlineTriangles.push_back(count + 2);
+        outlineTriangles.push_back(count + 2);
+        outlineTriangles.push_back(count + 3);
+        outlineTriangles.push_back(count);
+        outlineTriangles.push_back(count + 4);
+        outlineTriangles.push_back(count + 5);
+        outlineTriangles.push_back(count + 6);
     }
     // endregion
     // region fill
     width -= outline * 2;
     length -= outline * 2;
     {
-        const size_t count = vertices.size();
-        vertices.push_back(midpoint + sf::Vector3f(length * m1 + width * m2, length * m2 - width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(length * m1 - width * m2, length * m2 + width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(-width * m1, -width * m2, 0));
-        vertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
-        vertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
-        m_triangles.push_back(count);
-        m_triangles.push_back(count + 1);
-        m_triangles.push_back(count + 2);
-        m_triangles.push_back(count + 2);
-        m_triangles.push_back(count + 3);
-        m_triangles.push_back(count);
-        m_triangles.push_back(count + 4);
-        m_triangles.push_back(count + 5);
-        m_triangles.push_back(count + 6);
-        for (int i = 0; i < 7; i++)
-            borders.push_back(false);
+        const size_t count = fillVertices.size();
+        fillVertices.push_back(midpoint + sf::Vector3f(length * m1 + width * m2, length * m2 - width * m1, 0));
+        fillVertices.push_back(midpoint + sf::Vector3f(length * m1 - width * m2, length * m2 + width * m1, 0));
+        fillVertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        fillVertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        fillVertices.push_back(midpoint + sf::Vector3f(-width * m1, -width * m2, 0));
+        fillVertices.push_back(midpoint + sf::Vector3f(width * m2, -width * m1, 0));
+        fillVertices.push_back(midpoint + sf::Vector3f(-width * m2, width * m1, 0));
+        fillTriangles.push_back(count);
+        fillTriangles.push_back(count + 1);
+        fillTriangles.push_back(count + 2);
+        fillTriangles.push_back(count + 2);
+        fillTriangles.push_back(count + 3);
+        fillTriangles.push_back(count);
+        fillTriangles.push_back(count + 4);
+        fillTriangles.push_back(count + 5);
+        fillTriangles.push_back(count + 6);
     }
     // endregion
 
-    m_vertices.clear();
-    m_vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
-    m_borders.clear();
-    for (size_t i = 0; i < m_triangles.size(); i++)
-    {
-        const size_t idx = m_triangles[i];
-        m_vertices.append(sf::Vertex(sf::Vector2f(vertices[idx].x, vertices[idx].y)));
-        m_borders.push_back(borders[idx]);
-    }
+    m_fillVertices.clear(), m_outlineVertices.clear();
+    m_fillVertices.setPrimitiveType(sf::PrimitiveType::Triangles);
+    m_outlineVertices.setPrimitiveType(sf::PrimitiveType::Triangles);
+    for (const size_t idx : fillTriangles)
+        m_fillVertices.append(sf::Vertex(sf::Vector2f(fillVertices[idx].x, fillVertices[idx].y)));
+    for (const size_t idx : outlineTriangles)
+        m_outlineVertices.append(sf::Vertex(sf::Vector2f(outlineVertices[idx].x, outlineVertices[idx].y)));
 }
 
 TileShape::TileShape(const double l_lastAngle, const double l_angle, const double l_nextAngle)
 {
     m_lastAngle = l_lastAngle, m_angle = l_angle, m_nextAngle = l_nextAngle;
-    m_interpolationLevel = 16;
 }
 void TileShape::update()
 {
-    std::vector<size_t> m_triangles{};
+    constexpr float width = 0.275f, length = 0.5f;
+    const auto angle = static_cast<float>(m_angle), nextAngle = static_cast<float>(m_nextAngle),
+               lastAngle = static_cast<float>(m_lastAngle);
     if (m_nextAngle == 999)
-        createMidSpinMesh(0.275f, sf::degrees(m_angle + 180), m_vertices, m_triangles, m_borders);
+        createMidSpinMesh(width, sf::degrees(angle + 180), m_interpolationLevel, m_fillVertices, m_outlineVertices);
     else
     {
-        const sf::Angle startAngle = sf::degrees(m_angle == 999 ? m_lastAngle : m_angle + 180).wrapUnsigned(),
-                        endAngle = sf::degrees(m_nextAngle).wrapUnsigned();
-        createTileMesh(0.275f, 0.5f, startAngle, endAngle, m_vertices, m_triangles, m_borders);
+        const sf::Angle startAngle = sf::degrees(m_angle == 999 ? lastAngle : angle + 180).wrapUnsigned(),
+                        endAngle = sf::degrees(nextAngle).wrapUnsigned();
+        createTileMesh(width, length, startAngle, endAngle, m_interpolationLevel, m_fillVertices, m_outlineVertices);
     }
-    m_bounds = m_vertices.getBounds();
+    m_bounds = m_outlineVertices.getBounds();
 }
 sf::FloatRect TileShape::getLocalBounds() const { return m_bounds; }
 sf::FloatRect TileShape::getGlobalBounds() const { return getTransform().transformRect(getLocalBounds()); }
 bool TileShape::isPointInside(const sf::Vector2f point) const
 {
-    for (size_t i = 0; i < m_vertices.getVertexCount(); i += 3)
-    {
-        if (pointIsInsideTriangle({m_vertices[i].position, m_vertices[i + 1].position, m_vertices[i + 2].position},
-                                  point))
+    for (size_t i = 0; i < m_fillVertices.getVertexCount(); i += 3)
+        if (pointIsInsideTriangle(
+                {m_fillVertices[i].position, m_fillVertices[i + 1].position, m_fillVertices[i + 2].position}, point))
             return true;
-    }
+    for (size_t i = 0; i < m_outlineVertices.getVertexCount(); i += 3)
+        if (pointIsInsideTriangle(
+                {m_outlineVertices[i].position, m_outlineVertices[i + 1].position, m_outlineVertices[i + 2].position},
+                point))
+            return true;
     return false;
 }
 void TileShape::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
     states.transform *= getTransform();
     states.texture = nullptr;
-    target.draw(m_vertices, states);
+    target.draw(m_outlineVertices, states);
+    target.draw(m_fillVertices, states);
 }
 sf::Color TileShape::getFillColor() const { return m_fillColor; }
 void TileShape::setFillColor(const sf::Color color)
 {
     m_fillColor = color;
-    for (size_t i = 0; i < m_borders.size(); i++)
-        if (!m_borders[i])
-            m_vertices[i].color = m_fillColor;
+    for (size_t i = 0; i < m_fillVertices.getVertexCount(); i++)
+        m_fillVertices[i].color = m_fillColor;
 }
 sf::Color TileShape::getOutlineColor() const { return m_outlineColor; }
 void TileShape::setOutlineColor(const sf::Color color)
 {
     m_outlineColor = color;
-    for (size_t i = 0; i < m_borders.size(); i++)
-        if (m_borders[i])
-            m_vertices[i].color = m_outlineColor;
+    for (size_t i = 0; i < m_outlineVertices.getVertexCount(); i++)
+        m_outlineVertices[i].color = m_outlineColor;
 }
-TileSprite::TileSprite(double lastAngleDeg, double angleDeg, double nextAngleDeg)
+TileSprite::TileSprite(const double lastAngleDeg, const double angleDeg, const double nextAngleDeg)
 {
     m_needToUpdate = true;
     m_twirl = false;
@@ -609,8 +627,8 @@ void TileSprite::update()
         m_color = m_trackColor, m_borderColor = sf::Color::Transparent;
         break;
     }
-    m_color.a = static_cast<std::uint8_t>(m_color.a * m_opacity / 100),
-    m_borderColor.a = static_cast<std::uint8_t>(m_borderColor.a * m_opacity / 100);
+    m_color.a = static_cast<std::uint8_t>(static_cast<float>(m_color.a) * m_opacity / 100),
+    m_borderColor.a = static_cast<std::uint8_t>(static_cast<float>(m_borderColor.a) * m_opacity / 100);
     if (m_active)
         m_color.r = m_color.r / 2, m_color.g = m_color.g / 2 + 255 / 2, m_color.b = m_color.b / 2,
         m_borderColor.r = m_borderColor.r / 2, m_borderColor.g = m_borderColor.g / 2 + 255 / 2,
@@ -730,8 +748,10 @@ void TileSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
             target.draw(m_tileSprites[i]);
         }
     }
+    // ReSharper disable once CppDFAConstantConditions
     if (m_activeTileIndex && m_tilePlaceMode)
     {
+        // ReSharper disable once CppDFAUnreachableCode
         const auto& selectedTile = m_tileSprites[*m_activeTileIndex];
         const std::map<const char*, float> keyMap = {{"D", 0.f},   {"E", 45.f},  {"W", 90.f},  {"Q", 135.f},
                                                      {"A", 180.f}, {"Z", 225.f}, {"X", 270.f}, {"C", 315.f}};
