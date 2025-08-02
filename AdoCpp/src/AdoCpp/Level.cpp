@@ -203,8 +203,15 @@ namespace AdoCpp
 
         for (const auto& eventData : document["actions"].GetArray())
         {
-            if (auto event = std::shared_ptr<Event::Event>(Event::newEvent(eventData)))
-                tiles[event->floor].events.push_back(event);
+            try
+            {
+                if (auto event = std::shared_ptr<Event::Event>(Event::newEvent(eventData)))
+                    tiles[event->floor].events.push_back(event);
+            }
+            catch (std::exception& e)
+            {
+                std::cout << e.what() << std::endl;
+            }
         }
     }
 

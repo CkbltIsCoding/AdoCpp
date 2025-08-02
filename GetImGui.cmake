@@ -8,6 +8,7 @@ FetchContent_Declare(
         GIT_TAG v${IMGUI_VERSION}
 )
 FetchContent_MakeAvailable(ImGui)
+
 message(STATUS "Getting ImGui-SFML...")
 set(IMGUI_DIR ${imgui_SOURCE_DIR})
 option(IMGUI_SFML_IMGUI_DEMO "Build imgui_demo.cpp" ON)
