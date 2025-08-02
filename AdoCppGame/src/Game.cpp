@@ -22,8 +22,8 @@ Game::Game() :
 
 	settings.antiAliasingLevel = 8;
 	createWindow();
-	FPS = 120;
-	window.setFramerateLimit(FPS);
+	// FPS = 120;
+	// window.setFramerateLimit(FPS);
 	//window.setVerticalSyncEnabled(true);
 	font = sf::Font("assets/font/SourceHanSansSC.otf");
 	if (!ImGui::SFML::Init(window, false))

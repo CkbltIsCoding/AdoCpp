@@ -19,6 +19,116 @@ constexpr ImGuiWindowFlags ADOCPPGAME_FLAGS =
     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
 
+const char* GetKeyName(const int vKey)
+{
+    static char keyName[256];
+
+    // if (vKey == VK_ESCAPE)
+    // {
+    //     return "None";
+    // }
+
+    switch (vKey)
+    {
+        // clang-format off
+        // Mouse buttons
+    case VK_LBUTTON: return "Mouse 1";
+    case VK_RBUTTON: return "Mouse 2";
+    case VK_MBUTTON: return "Mouse 3";
+    case VK_XBUTTON1: return "Mouse 4";
+    case VK_XBUTTON2: return "Mouse 5";
+
+        // Special keys
+    case VK_BACK: return "Backspace";
+    case VK_TAB: return "Tab";
+    case VK_RETURN: return "Enter";
+    case VK_PAUSE: return "Pause";
+    case VK_CAPITAL: return "Caps Lock";
+    // case VK_ESCAPE: return "Escape";
+    case VK_SPACE: return "Space";
+    case VK_PRIOR: return "Page Up";
+    case VK_NEXT: return "Page Down";
+    case VK_END: return "End";
+    case VK_HOME: return "Home";
+    case VK_LEFT: return "Left";
+    case VK_UP: return "Up";
+    case VK_RIGHT: return "Right";
+    case VK_DOWN: return "Down";
+    case VK_SNAPSHOT: return "Print Screen";
+    case VK_INSERT: return "Insert";
+    case VK_DELETE: return "Delete";
+
+        // Windows keys
+    case VK_LWIN: return "Left Win";
+    case VK_RWIN: return "Right Win";
+    case VK_APPS: return "Menu";
+
+        // Numpad specific
+    case VK_NUMPAD0: return "Num 0";
+    case VK_NUMPAD1: return "Num 1";
+    case VK_NUMPAD2: return "Num 2";
+    case VK_NUMPAD3: return "Num 3";
+    case VK_NUMPAD4: return "Num 4";
+    case VK_NUMPAD5: return "Num 5";
+    case VK_NUMPAD6: return "Num 6";
+    case VK_NUMPAD7: return "Num 7";
+    case VK_NUMPAD8: return "Num 8";
+    case VK_NUMPAD9: return "Num 9";
+    case VK_MULTIPLY: return "Num *";
+    case VK_ADD: return "Num +";
+    case VK_SEPARATOR: return "Separator";
+    case VK_SUBTRACT: return "Num -";
+    case VK_DECIMAL: return "Num .";
+    case VK_DIVIDE: return "Num /";
+    case VK_NUMLOCK: return "Num Lock";
+
+        // Function keys
+    case VK_F1: return "F1";
+    case VK_F2: return "F2";
+    case VK_F3: return "F3";
+    case VK_F4: return "F4";
+    case VK_F5: return "F5";
+    case VK_F6: return "F6";
+    case VK_F7: return "F7";
+    case VK_F8: return "F8";
+    case VK_F9: return "F9";
+    case VK_F10: return "F10";
+    case VK_F11: return "F11";
+    case VK_F12: return "F12";
+
+        // Modifier
+    case VK_LSHIFT: return "Left Shift";
+    case VK_RSHIFT: return "Right Shift";
+    case VK_LCONTROL: return "Left Ctrl";
+    case VK_RCONTROL: return "Right Ctrl";
+    case VK_LMENU: return "Left Alt";
+    case VK_RMENU: return "Right Alt";
+
+        // Media keys
+    case VK_VOLUME_MUTE: return "Vol Mute";
+    case VK_VOLUME_DOWN: return "Vol Down";
+    case VK_VOLUME_UP: return "Vol Up";
+    case VK_MEDIA_NEXT_TRACK: return "Next Track";
+    case VK_MEDIA_PREV_TRACK: return "Prev Track";
+    case VK_MEDIA_STOP: return "Media Stop";
+    case VK_MEDIA_PLAY_PAUSE: return "Play/Pause";
+        // clang-format on
+
+    default:
+        // For standard keys (letters, numbers, etc.)
+        const UINT scanCode = MapVirtualKey(vKey, MAPVK_VK_TO_VSC);
+        if (GetKeyNameTextA(scanCode << 16, keyName, sizeof(keyName)))
+        {
+            return keyName;
+        }
+
+        // If we still don't have a name, return the hex value
+        snprintf(keyName, sizeof(keyName), "Key 0x%X", vKey);
+        return keyName;
+    }
+}
+
+
 static std::map<std::string, char*> buffers;
 static bool ImGuiInputFilename(const char* text, const char* hint, std::string* pathPtr)
 {
@@ -489,6 +599,47 @@ void StateCharting::renderEventSettings() const
             ImGui::TreePop();
         }
         ImGui::SliderFloat("InputOffsetSlider", &game->inputOffset, -250, 250, "%.0f");
+        static size_t index;
+        if (ImGui::TreeNode("Keystroke Settings"))
+        {
+            for (size_t j, i = j = 0; i < game->keyLimiter.size(); i++, j++)
+            {
+                ImGui::PushID(j);
+                if (ImGui::Button("Remove##Keystroke"))
+                {
+                    game->keyLimiter.erase(game->keyLimiter.begin() + i);
+                    i--;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(sf::Keyboard::getDescription(game->keyLimiter[i]).toAnsiString().c_str()))
+                {
+                    index = i;
+                    ImGui::OpenPopup("Change hotkey##aaa");
+                }
+                if (ImGui::BeginPopupModal("Change hotkey##aaa", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::Text("Press any key...");
+                    for (size_t k = 0; k < sf::Keyboard::ScancodeCount; k++)
+                    {
+                        const auto scan = static_cast<sf::Keyboard::Scan>(k);
+                        if (sf::Keyboard::isKeyPressed(scan))
+                        {
+                            game->keyLimiter[index] = scan;
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopID();
+            }
+            if (ImGui::Button("Add Key", {-1, 0}))
+            {
+                game->keyLimiter.push_back(sf::Keyboard::Scan::A);
+            }
+            const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            ImGui::TreePop();
+        }
     }
     ImGui::End();
 }
