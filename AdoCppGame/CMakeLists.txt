@@ -1,11 +1,9 @@
 #include(${PROJECT_SOURCE_DIR}/GetRapidJSON.cmake)
 include(${PROJECT_SOURCE_DIR}/GetSFML.cmake)
-include(${PROJECT_SOURCE_DIR}/GetSelbaWard.cmake)
 include(${PROJECT_SOURCE_DIR}/GetImGui.cmake)
 include(${PROJECT_SOURCE_DIR}/GetExprtk.cmake)
 
 find_package(SFML REQUIRED COMPONENTS System Window Graphics Audio)
-find_package(SelbaWard REQUIRED)
 
 add_executable(
         AdoCppGame
@@ -73,7 +71,6 @@ target_link_libraries(
         SFML::Window
         SFML::Graphics
         SFML::Audio
-        SelbaWard::SelbaWard
 
         ImGui-SFML::ImGui-SFML
 )
