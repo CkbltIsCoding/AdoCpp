@@ -78,6 +78,7 @@ void KeyViewerSystem::setKeyLimiter(const std::vector<sf::Keyboard::Scan>& keyLi
 }
 void KeyViewerSystem::setKeyLimiterAuto(const std::vector<sf::Keyboard::Scan>& keyLimiter)
 {
+    m_keys.clear();
     for (size_t i = 0; i < keyLimiter.size(); i++)
     {
         sf::Vector2u pos;

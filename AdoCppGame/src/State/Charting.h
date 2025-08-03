@@ -15,8 +15,9 @@ public:
 	void update() override;
 	void render() override;
     void renderFilenameBar();
-    void renderSettings() const;
+    void renderLevelSettings() const;
     void renderEventSettings() const;
+    void renderControlPad() const;
     void renderSSong() const;
     void renderSLevel() const;
     void renderSTrack() const;

@@ -288,7 +288,7 @@ void LiveCharting::render()
     game->window.setView(defaultView);
 
     renderAudioWindow();
-    renderSettings();
+    renderLevelSettings();
     renderEventBar();
     renderEventSettings();
 }
@@ -296,9 +296,9 @@ void LiveCharting::renderAudioWindow()
 {
     constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground;
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(game->windowSize.x, -1));
-    if (ImGui::Begin("AudioWindow", nullptr, flags)) // FIXME
+    ImGui::SetNextWindowPos({0, 0});
+    ImGui::SetNextWindowSize({static_cast<float>(game->windowSize.x), -1});
+    if (ImGui::Begin("AudioWindow", nullptr, flags))
     {
         if (ImPlot::BeginPlot("Audio"))
         {
@@ -407,13 +407,13 @@ void LiveCharting::renderAudioWindow()
     }
     ImGui::End();
 }
-void LiveCharting::renderSettings() const
+void LiveCharting::renderLevelSettings() const
 {
     constexpr ImGuiWindowFlags flags =
         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
     const float width = ImGui::GetFontSize() * 20, height = ImGui::GetFontSize() * 20;
-    ImGui::SetNextWindowPos(ImVec2(0, static_cast<float>(game->windowSize.y) - height));
-    ImGui::SetNextWindowSize(ImVec2(width, height));
+    ImGui::SetNextWindowPos({0, static_cast<float>(game->windowSize.y) - height});
+    ImGui::SetNextWindowSize({width, height});
     if (ImGui::Begin("Settings", nullptr, flags))
     {
         static constexpr std::array<const char* const, 7> tabBarTitles = {
@@ -421,6 +421,9 @@ void LiveCharting::renderSettings() const
         static constexpr std::array<const char* const, 7> titles = {
             "Song Settings",   "Level Settings",         "Track Settings", "Background Settings",
             "Camera Settings", "Miscellaneous Settings", "Decorations"};
+        static constexpr std::array funcs = {&renderSSong,       &renderSLevel,  &renderSTrack,
+                                             &renderSBackground, &renderSCamera, &renderSMiscellaneous,
+                                             &renderSDecorations};
         if (ImGui::BeginTabBar("EventTabBar", ImGuiTabBarFlags_FittingPolicyScroll))
         {
             for (int i = 0; i < 7; ++i)
@@ -429,32 +432,7 @@ void LiveCharting::renderSettings() const
                 {
                     ImGui::SetCursorPosX(ImGui::GetWindowSize().x / 2 - ImGui::CalcTextSize(titles[i]).x / 2);
                     ImGui::Text(titles[i]);
-                    switch (i)
-                    {
-                    case 0:
-                        renderSSong();
-                        break;
-                    case 1:
-                        renderSLevel();
-                        break;
-                    case 2:
-                        renderSTrack();
-                        break;
-                    case 3:
-                        renderSBackground();
-                        break;
-                    case 4:
-                        renderSCamera();
-                        break;
-                    case 5:
-                        renderSMiscellaneous();
-                        break;
-                    case 6:
-                        renderSDecorations();
-                        break;
-                    default:
-                        break;
-                    }
+                    (this->*funcs[i])();
                     ImGui::EndTabItem();
                 }
             }
@@ -468,11 +446,11 @@ void LiveCharting::renderEventBar() const
     constexpr ImGuiWindowFlags flags =
         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
     const float barWidth = ImGui::GetFontSize() * 20, barHeight = ImGui::GetFontSize() * 5;
-    ImGui::SetNextWindowPos(ImVec2(game->windowSize.x / 2.f - barWidth / 2.f, game->windowSize.y - barHeight));
-    ImGui::SetNextWindowSize(ImVec2(barWidth, barHeight));
+    ImGui::SetNextWindowPos({game->windowSize.x / 2.f - barWidth / 2.f, game->windowSize.y - barHeight});
+    ImGui::SetNextWindowSize({barWidth, barHeight});
     if (game->activeTileIndex)
     {
-        if (ImGui::Begin("EventBar", nullptr, flags)) // FIXME
+        if (ImGui::Begin("EventBar", nullptr, flags))
         {
             if (ImGui::BeginTabBar("EventTabBar"))
             {
@@ -534,8 +512,8 @@ void LiveCharting::renderEventSettings() const
         constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
         const float width = ImGui::GetFontSize() * 20, height = ImGui::GetFontSize() * 20;
-        ImGui::SetNextWindowPos(ImVec2(game->windowSize.x - width, game->windowSize.y - height));
-        ImGui::SetNextWindowSize(ImVec2(width, height));
+        ImGui::SetNextWindowPos({game->windowSize.x - width, game->windowSize.y - height});
+        ImGui::SetNextWindowSize({width, height});
         if (ImGui::Begin("Event", nullptr, flags)) // FIXME
         {
             if (ImGui::BeginTabBar("EventTabBar",
@@ -931,6 +909,7 @@ void LiveCharting::renderSMiscellaneous() const
     auto& settings = game->level.settings;
     ImGui::Checkbox("Stick to floors##MiscSettings", &settings.stickToFloors);
 }
+// ReSharper disable once CppMemberFunctionMayBeStatic
 void LiveCharting::renderSDecorations() const
 {
     // auto& settings = game->level.settings; // TODO MAYBE I WILL NEVER DO THIS owo

@@ -14,7 +14,7 @@ public:
     void update() override;
     void render() override;
     void renderAudioWindow();
-    void renderSettings() const;
+    void renderLevelSettings() const;
     void renderSSong() const;
     void renderSLevel() const;
     void renderSTrack() const;

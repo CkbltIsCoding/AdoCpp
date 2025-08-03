@@ -1,6 +1,6 @@
 #include "Playing.h"
-#include <imgui.h>
 #include <imgui-SFML.h>
+#include <imgui.h>
 
 StatePlaying StatePlaying::m_statePlaying;
 
@@ -99,55 +99,91 @@ void StatePlaying::update()
 
     // ReSharper disable CppFunctionalStyleCast
     // Time
-    if (waiting && keyInputCnt > 0)
+    if (game->syncWithMusic)
     {
-        // Start the music/timer
-        waiting = false;
-        keyInputCnt--;
-
-        spareClock.restart();
-        if (game->activeTileIndex.value_or(0) != 0)
+        if (waiting && keyInputCnt > 0)
         {
-            const float beginTimer = static_cast<float>(game->level.beat2seconds(tiles[*game->activeTileIndex].beat)) -
-                game->inputOffset / 1000;
+            // Start the music/timer
+            waiting = false;
+            keyInputCnt--;
 
-            if (musicPlayable()) // FIXME
-                game->music.setPlayingOffset(sf::seconds(std::max(0.f, beginTimer)));
+            spareClock.restart();
+            if (game->activeTileIndex.value_or(0) != 0)
+            {
+                const float beginTimer =
+                    static_cast<float>(game->level.beat2seconds(tiles[*game->activeTileIndex].beat)) -
+                    game->inputOffset / 1000;
+
+                if (musicPlayable())
+                    game->music.setPlayingOffset(sf::seconds(std::max(0.f, beginTimer)));
+                else
+                    spareClockOffset =
+                        game->level.beat2seconds(tiles[*game->activeTileIndex].beat) - game->inputOffset / 1000;
+
+                if (musicPlayable())
+                    seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
+                else
+                    seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
+                beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
+            }
             else
-                spareClockOffset =
-                    game->level.beat2seconds(tiles[*game->activeTileIndex].beat) - game->inputOffset / 1000;
-
+            {
+                seconds =
+                    (std::min)(-settings.countdownTicks * AdoCpp::bpm2crotchet(settings.bpm), -settings.offset / 1000) +
+                    game->inputOffset / 1000,
+                beat = game->level.seconds2beat(seconds);
+                if (!musicPlayable())
+                    spareClockOffset = -game->inputOffset / 1000;
+            }
+        }
+        if (!waiting)
+        {
             if (musicPlayable())
-                seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
+            {
+                if (game->music.getStatus() == sf::Music::Status::Stopped)
+                {
+                    seconds += spareClock.restart().asSeconds();
+                    if (!isMusicPlayed && seconds >= game->inputOffset / 1000)
+                        game->music.play(), spareClock.reset(), isMusicPlayed = true;
+                }
+                else
+                    seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
+            }
             else
                 seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
             beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
         }
-        else
-        {
-            seconds = (std::min)(0.0, -settings.countdownTicks * AdoCpp::bpm2crotchet(settings.bpm)) +
-                game->inputOffset / 1000,
-            beat = game->level.seconds2beat(seconds);
-            if (!musicPlayable())
-                spareClockOffset = -game->inputOffset / 1000;
-        }
     }
-    if (!waiting)
+    else
     {
-        if (musicPlayable())
+        if (waiting && keyInputCnt > 0)
         {
-            if (game->music.getStatus() == sf::Music::Status::Stopped)
+            // Start the music/timer
+            waiting = false;
+            keyInputCnt--;
+
+            if (game->activeTileIndex.value_or(0) != 0)
             {
-                seconds += spareClock.restart().asSeconds();
-                if (!isMusicPlayed && seconds >= game->inputOffset / 1000)
-                    game->music.play(), spareClock.reset(), isMusicPlayed = true;
+                const float beginTimer =
+                    static_cast<float>(game->level.beat2seconds(tiles[*game->activeTileIndex].beat)) -
+                    game->inputOffset / 1000;
+                if (musicPlayable())
+                    game->music.setPlayingOffset(sf::seconds(std::max(0.f, beginTimer)));
+                seconds = game->level.beat2seconds(tiles[*game->activeTileIndex].beat);
             }
             else
-                seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
+                seconds =
+                    (std::min)(-settings.countdownTicks * AdoCpp::bpm2crotchet(settings.bpm), -settings.offset / 1000);
+            spareClock.restart();
         }
-        else
-            seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
-        beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
+        if (!waiting)
+        {
+            seconds += spareClock.restart().asSeconds();
+            beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
+            if (musicPlayable() && game->music.getStatus() == sf::Music::Status::Stopped && !isMusicPlayed &&
+                seconds >= game->inputOffset / 1000)
+                game->music.play(), isMusicPlayed = true;
+        }
     }
 
     // Update the level

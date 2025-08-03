@@ -18,117 +18,6 @@
 constexpr ImGuiWindowFlags ADOCPPGAME_FLAGS =
     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
-
-const char* GetKeyName(const int vKey)
-{
-    static char keyName[256];
-
-    // if (vKey == VK_ESCAPE)
-    // {
-    //     return "None";
-    // }
-
-    switch (vKey)
-    {
-        // clang-format off
-        // Mouse buttons
-    case VK_LBUTTON: return "Mouse 1";
-    case VK_RBUTTON: return "Mouse 2";
-    case VK_MBUTTON: return "Mouse 3";
-    case VK_XBUTTON1: return "Mouse 4";
-    case VK_XBUTTON2: return "Mouse 5";
-
-        // Special keys
-    case VK_BACK: return "Backspace";
-    case VK_TAB: return "Tab";
-    case VK_RETURN: return "Enter";
-    case VK_PAUSE: return "Pause";
-    case VK_CAPITAL: return "Caps Lock";
-    // case VK_ESCAPE: return "Escape";
-    case VK_SPACE: return "Space";
-    case VK_PRIOR: return "Page Up";
-    case VK_NEXT: return "Page Down";
-    case VK_END: return "End";
-    case VK_HOME: return "Home";
-    case VK_LEFT: return "Left";
-    case VK_UP: return "Up";
-    case VK_RIGHT: return "Right";
-    case VK_DOWN: return "Down";
-    case VK_SNAPSHOT: return "Print Screen";
-    case VK_INSERT: return "Insert";
-    case VK_DELETE: return "Delete";
-
-        // Windows keys
-    case VK_LWIN: return "Left Win";
-    case VK_RWIN: return "Right Win";
-    case VK_APPS: return "Menu";
-
-        // Numpad specific
-    case VK_NUMPAD0: return "Num 0";
-    case VK_NUMPAD1: return "Num 1";
-    case VK_NUMPAD2: return "Num 2";
-    case VK_NUMPAD3: return "Num 3";
-    case VK_NUMPAD4: return "Num 4";
-    case VK_NUMPAD5: return "Num 5";
-    case VK_NUMPAD6: return "Num 6";
-    case VK_NUMPAD7: return "Num 7";
-    case VK_NUMPAD8: return "Num 8";
-    case VK_NUMPAD9: return "Num 9";
-    case VK_MULTIPLY: return "Num *";
-    case VK_ADD: return "Num +";
-    case VK_SEPARATOR: return "Separator";
-    case VK_SUBTRACT: return "Num -";
-    case VK_DECIMAL: return "Num .";
-    case VK_DIVIDE: return "Num /";
-    case VK_NUMLOCK: return "Num Lock";
-
-        // Function keys
-    case VK_F1: return "F1";
-    case VK_F2: return "F2";
-    case VK_F3: return "F3";
-    case VK_F4: return "F4";
-    case VK_F5: return "F5";
-    case VK_F6: return "F6";
-    case VK_F7: return "F7";
-    case VK_F8: return "F8";
-    case VK_F9: return "F9";
-    case VK_F10: return "F10";
-    case VK_F11: return "F11";
-    case VK_F12: return "F12";
-
-        // Modifier
-    case VK_LSHIFT: return "Left Shift";
-    case VK_RSHIFT: return "Right Shift";
-    case VK_LCONTROL: return "Left Ctrl";
-    case VK_RCONTROL: return "Right Ctrl";
-    case VK_LMENU: return "Left Alt";
-    case VK_RMENU: return "Right Alt";
-
-        // Media keys
-    case VK_VOLUME_MUTE: return "Vol Mute";
-    case VK_VOLUME_DOWN: return "Vol Down";
-    case VK_VOLUME_UP: return "Vol Up";
-    case VK_MEDIA_NEXT_TRACK: return "Next Track";
-    case VK_MEDIA_PREV_TRACK: return "Prev Track";
-    case VK_MEDIA_STOP: return "Media Stop";
-    case VK_MEDIA_PLAY_PAUSE: return "Play/Pause";
-        // clang-format on
-
-    default:
-        // For standard keys (letters, numbers, etc.)
-        const UINT scanCode = MapVirtualKey(vKey, MAPVK_VK_TO_VSC);
-        if (GetKeyNameTextA(scanCode << 16, keyName, sizeof(keyName)))
-        {
-            return keyName;
-        }
-
-        // If we still don't have a name, return the hex value
-        snprintf(keyName, sizeof(keyName), "Key 0x%X", vKey);
-        return keyName;
-    }
-}
-
-
 static std::map<std::string, char*> buffers;
 static bool ImGuiInputFilename(const char* text, const char* hint, std::string* pathPtr)
 {
@@ -139,8 +28,8 @@ static bool ImGuiInputFilename(const char* text, const char* hint, std::string* 
         config.flags = ImGuiFileDialogFlags_Modal;
         ImGuiFileDialog::Instance()->OpenDialog("ImGuiInputFilename", "Choose an file", ".adofai", config);
     }
-    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
     ImGui::SameLine();
+    bool val = ImGui::InputTextWithHint(text, hint, pathPtr, ImGuiInputTextFlags_ElideLeft);
     if (ImGuiFileDialog::Instance()->Display("ImGuiInputFilename"))
     {
         if (ImGuiFileDialog::Instance()->IsOk())
@@ -332,8 +221,9 @@ void StateCharting::render()
 #endif // NDEBUG
 
     renderFilenameBar();
-    renderSettings();
+    renderLevelSettings();
     renderEventSettings();
+    renderControlPad();
 }
 void StateCharting::renderFilenameBar()
 {
@@ -463,7 +353,7 @@ void StateCharting::renderFilenameBar()
     }
     ImGui::End();
 }
-void StateCharting::renderSettings() const
+void StateCharting::renderLevelSettings() const
 {
     const float width = ImGui::GetFontSize() * 15, height = ImGui::GetFontSize() * 30;
     ImGui::SetNextWindowSize(ImVec2(width, height));
@@ -475,36 +365,14 @@ void StateCharting::renderSettings() const
         static const std::array<std::string, 7> titles = {
             "Song Settings",   "Level Settings",         "Track Settings", "Background Settings",
             "Camera Settings", "Miscellaneous Settings", "Decorations"};
+        static constexpr std::array funcs = {&renderSSong,       &renderSLevel,  &renderSTrack,
+                                             &renderSBackground, &renderSCamera, &renderSMiscellaneous,
+                                             &renderSDecorations};
         if (ImGui::BeginChild("Settings/TabContent", ImVec2(settingsTabContentWidth, 0)))
         {
             ImGui::SetCursorPosX(settingsTabContentWidth / 2 - ImGui::CalcTextSize(titles[selectedTab].c_str()).x / 2);
             ImGui::Text(titles[selectedTab].c_str());
-            switch (selectedTab)
-            {
-            case 0:
-                renderSSong();
-                break;
-            case 1:
-                renderSLevel();
-                break;
-            case 2:
-                renderSTrack();
-                break;
-            case 3:
-                renderSBackground();
-                break;
-            case 4:
-                renderSCamera();
-                break;
-            case 5:
-                renderSMiscellaneous();
-                break;
-            case 6:
-                renderSDecorations();
-                break;
-            default:
-                break;
-            }
+            (this->*funcs[selectedTab])();
         }
         ImGui::EndChild();
         ImGui::SameLine();
@@ -539,8 +407,7 @@ void StateCharting::renderEventSettings() const
                                        static_cast<float>(game->windowSize.y) / 2.f - height / 2.f));
         if (ImGui::Begin("EventSettings", nullptr, ADOCPPGAME_FLAGS))
         {
-            static float tabButtonsWidth, rightSettingsTabContentWidth;
-            tabButtonsWidth = width / 5, rightSettingsTabContentWidth = width - tabButtonsWidth;
+            const float tabButtonsWidth = width / 5, rightSettingsTabContentWidth = width - tabButtonsWidth;
             static std::optional<size_t> tileIndex;
             static size_t selectedTab = 0;
             if (game->activeTileIndex != tileIndex)
@@ -582,10 +449,12 @@ void StateCharting::renderEventSettings() const
         }
         ImGui::End();
     }
-
+}
+void StateCharting::renderControlPad() const
+{
     if (ImGui::Begin("ControlPad"))
     {
-        if (ImGui::TreeNode("DifficultySelect"))
+        if (ImGui::TreeNode("Select Difficulty"))
         {
             using AdoCpp::Difficulty;
 
@@ -598,20 +467,22 @@ void StateCharting::renderEventSettings() const
 
             ImGui::TreePop();
         }
-        ImGui::SliderFloat("InputOffsetSlider", &game->inputOffset, -250, 250, "%.0f");
+        ImGui::SliderFloat("Input Offset", &game->inputOffset, -250, 250, "%.0f");
+        ImGui::Checkbox("Timer Sync With Music", &game->syncWithMusic);
         static size_t index;
         if (ImGui::TreeNode("Keystroke Settings"))
         {
             for (size_t j, i = j = 0; i < game->keyLimiter.size(); i++, j++)
             {
                 ImGui::PushID(j);
-                if (ImGui::Button("Remove##Keystroke"))
+                if (ImGui::Button(" " ICON_FA_TRASH_CAN " ##Keystroke"))
                 {
                     game->keyLimiter.erase(game->keyLimiter.begin() + i);
                     i--;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button(sf::Keyboard::getDescription(game->keyLimiter[i]).toAnsiString().c_str()))
+                std::string desc = sf::Keyboard::getDescription(game->keyLimiter[i]).toAnsiString();
+                if (ImGui::Button(desc.c_str(), {ImGui::GetFontSize() * 10, 0}))
                 {
                     index = i;
                     ImGui::OpenPopup("Change hotkey##aaa");
@@ -632,7 +503,7 @@ void StateCharting::renderEventSettings() const
                 }
                 ImGui::PopID();
             }
-            if (ImGui::Button("Add Key", {-1, 0}))
+            if (ImGui::Button(" " ICON_FA_PLUS " ##KeystrokeAddKey"))
             {
                 game->keyLimiter.push_back(sf::Keyboard::Scan::A);
             }
