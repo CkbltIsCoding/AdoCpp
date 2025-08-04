@@ -30,6 +30,8 @@ add_executable(
         src/KeyViewer.h src/KeyViewer.cpp
         src/AudioProcessing.h
         src/ImGuiConfig.h
+
+        src/resource.rc
 )
 
 set_property(TARGET AdoCppGame PROPERTY CXX_STANDARD 20)

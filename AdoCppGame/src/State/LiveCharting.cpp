@@ -421,9 +421,9 @@ void LiveCharting::renderLevelSettings() const
         static constexpr std::array<const char* const, 7> titles = {
             "Song Settings",   "Level Settings",         "Track Settings", "Background Settings",
             "Camera Settings", "Miscellaneous Settings", "Decorations"};
-        static constexpr std::array funcs = {&renderSSong,       &renderSLevel,  &renderSTrack,
-                                             &renderSBackground, &renderSCamera, &renderSMiscellaneous,
-                                             &renderSDecorations};
+        static constexpr std::array funcs = {&LiveCharting::renderSSong,       &LiveCharting::renderSLevel,  &LiveCharting::renderSTrack,
+                                             &LiveCharting::renderSBackground, &LiveCharting::renderSCamera, &LiveCharting::renderSMiscellaneous,
+                                             &LiveCharting::renderSDecorations};
         if (ImGui::BeginTabBar("EventTabBar", ImGuiTabBarFlags_FittingPolicyScroll))
         {
             for (int i = 0; i < 7; ++i)

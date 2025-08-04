@@ -365,9 +365,9 @@ void StateCharting::renderLevelSettings() const
         static const std::array<std::string, 7> titles = {
             "Song Settings",   "Level Settings",         "Track Settings", "Background Settings",
             "Camera Settings", "Miscellaneous Settings", "Decorations"};
-        static constexpr std::array funcs = {&renderSSong,       &renderSLevel,  &renderSTrack,
-                                             &renderSBackground, &renderSCamera, &renderSMiscellaneous,
-                                             &renderSDecorations};
+        static constexpr std::array funcs = {&StateCharting::renderSSong,       &StateCharting::renderSLevel,  &StateCharting::renderSTrack,
+                                             &StateCharting::renderSBackground, &StateCharting::renderSCamera, &StateCharting::renderSMiscellaneous,
+                                             &StateCharting::renderSDecorations};
         if (ImGui::BeginChild("Settings/TabContent", ImVec2(settingsTabContentWidth, 0)))
         {
             ImGui::SetCursorPosX(settingsTabContentWidth / 2 - ImGui::CalcTextSize(titles[selectedTab].c_str()).x / 2);

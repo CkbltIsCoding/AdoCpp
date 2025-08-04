@@ -22,13 +22,21 @@ Game::Game() :
 
 	settings.antiAliasingLevel = 8;
 	createWindow();
-	// FPS = 120;
+    if (sf::Image icon; icon.loadFromFile("assets/image/AdoCppIcon.ico"))
+    {
+        window.setIcon(icon.getSize(), icon.getPixelsPtr());
+    }
+    else
+    {
+        std::cerr << "Error loading icons\n";
+    }
+	FPS = 0; // unlimited
 	// window.setFramerateLimit(FPS);
 	//window.setVerticalSyncEnabled(true);
 	font = sf::Font("assets/font/SourceHanSansSC.otf");
 	if (!ImGui::SFML::Init(window, false))
     {
-        std::cerr << "Error! ImGui::SFML::Init() returns false.";
+        std::cerr << "Error! ImGui::SFML::Init() returns false.\n";
         exit(-1);
     }
     const ImGuiIO& io = ImGui::GetIO();
