@@ -22,7 +22,7 @@ Game::Game() :
 
 	settings.antiAliasingLevel = 8;
 	createWindow();
-    if (sf::Image icon; icon.loadFromFile("assets/image/AdoCppIcon.ico"))
+    if (sf::Image icon; icon.loadFromFile("assets/image/AdoCppIcon.png"))
     {
         window.setIcon(icon.getSize(), icon.getPixelsPtr());
     }
