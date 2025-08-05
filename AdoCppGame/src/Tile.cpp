@@ -591,12 +591,6 @@ TileSprite::TileSprite(const double lastAngleDeg, const double angleDeg, const d
         m_twirlShape.setOutlineThickness(0.05f);
         m_twirlShape.setFillColor(sf::Color::Transparent);
         m_twirlShape.setOutlineColor(sf::Color::Magenta);
-        if (m_nextAngleDeg == 999)
-        {
-            sf::Vector2f v(1, 0);
-            v = v.rotatedBy(sf::degrees(static_cast<float>(m_angleDeg)));
-            m_twirlShape.setPosition(v);
-        }
     }
     {
         m_speedShape.setOrigin({0.15f, 0.15f});
