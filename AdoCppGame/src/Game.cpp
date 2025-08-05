@@ -31,7 +31,7 @@ Game::Game() :
         std::cerr << "Error loading icons\n";
     }
 	FPS = 0; // unlimited
-	// window.setFramerateLimit(FPS);
+	window.setFramerateLimit(FPS);
 	//window.setVerticalSyncEnabled(true);
 	font = sf::Font("assets/font/SourceHanSansSC.otf");
 	if (!ImGui::SFML::Init(window, false))

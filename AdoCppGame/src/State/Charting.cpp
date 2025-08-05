@@ -365,8 +365,9 @@ void StateCharting::renderLevelSettings() const
         static const std::array<std::string, 7> titles = {
             "Song Settings",   "Level Settings",         "Track Settings", "Background Settings",
             "Camera Settings", "Miscellaneous Settings", "Decorations"};
-        static constexpr std::array funcs = {&StateCharting::renderSSong,       &StateCharting::renderSLevel,  &StateCharting::renderSTrack,
-                                             &StateCharting::renderSBackground, &StateCharting::renderSCamera, &StateCharting::renderSMiscellaneous,
+        static constexpr std::array funcs = {&StateCharting::renderSSong,       &StateCharting::renderSLevel,
+                                             &StateCharting::renderSTrack,      &StateCharting::renderSBackground,
+                                             &StateCharting::renderSCamera,     &StateCharting::renderSMiscellaneous,
                                              &StateCharting::renderSDecorations};
         if (ImGui::BeginChild("Settings/TabContent", ImVec2(settingsTabContentWidth, 0)))
         {
@@ -467,10 +468,16 @@ void StateCharting::renderControlPad() const
 
             ImGui::TreePop();
         }
-        ImGui::SliderFloat("Input Offset", &game->inputOffset, -250, 250, "%.0f");
+        ImGui::InputFloat("Input Offset", &game->inputOffset, 1, 10, "%0.f");
+        {
+            constexpr uint32_t step = 1, stepFast = 10;
+            ImGui::InputScalar("FPS Limit", ImGuiDataType_U32, &game->FPS, &step, &stepFast);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                game->window.setFramerateLimit(game->FPS);
+        }
         ImGui::Checkbox("Timer Sync With Music", &game->syncWithMusic);
-        static size_t index;
-        if (ImGui::TreeNode("Keystroke Settings"))
+
+        if (static size_t index; ImGui::TreeNode("Keystroke Settings"))
         {
             for (size_t j, i = j = 0; i < game->keyLimiter.size(); i++, j++)
             {
