@@ -33,7 +33,7 @@ public:
     float fps;
     unsigned int FPS;
     float planetRadiusPx = 50;
-    float inputOffset = -100;
+    float inputOffset = -120;
     bool syncWithMusic = false;
 
     std::array<float, 60> arrFps;
