@@ -50,8 +50,8 @@ public:
 
     double getAngle() const { return m_angleDeg; }
 
-    bool getTwirl() const { return m_twirl; }
-    void setTwirl(bool twirl)
+    int getTwirl() const { return m_twirl; }
+    void setTwirl(const int twirl)
     {
         if (m_twirl == twirl)
             return;
@@ -59,7 +59,7 @@ public:
         m_needToUpdate = true;
     }
     int getSpeed() const { return m_speed; }
-    void setSpeed(int speed)
+    void setSpeed(const int speed)
     {
         if (m_speed == speed)
             return;
@@ -115,8 +115,8 @@ private:
     sf::CircleShape m_speedShape;
 
     bool m_needToUpdate{};
-    bool m_twirl{};
     bool m_active{};
+    int m_twirl{};
     int m_speed{};
     sf::Color m_trackColor;
     AdoCpp::TrackStyle m_trackStyle{AdoCpp::TrackStyle::Standard};

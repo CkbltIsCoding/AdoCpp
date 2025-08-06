@@ -139,7 +139,8 @@ static void createTileMesh(float width, float length, sf::Angle startAngle, sf::
         width += outline;
         length += outline;
         radius += outline;
-        createCircle(sf::Vector3f(circlex, circley, 0), radius, outlineVertices, outlineTriangles, m_interpolationLevel);
+        createCircle(sf::Vector3f(circlex, circley, 0), radius, outlineVertices, outlineTriangles,
+                     m_interpolationLevel);
         {
             const size_t count = outlineVertices.size();
             outlineVertices.emplace_back(-radius * std::sin(a[1]) + circlex, radius * std::cos(a[1]) + circley, 0);
@@ -590,7 +591,6 @@ TileSprite::TileSprite(const double lastAngleDeg, const double angleDeg, const d
         m_twirlShape.setRadius(0.1f);
         m_twirlShape.setOutlineThickness(0.05f);
         m_twirlShape.setFillColor(sf::Color::Transparent);
-        m_twirlShape.setOutlineColor(sf::Color::Magenta);
     }
     {
         m_speedShape.setOrigin({0.15f, 0.15f});
@@ -632,7 +632,9 @@ void TileSprite::update()
     // if (m_shape.getOutlineColor() != m_borderColor)
     m_shape.setOutlineColor(m_borderColor);
     const auto alpha = static_cast<std::uint8_t>(m_opacity / 100 * 255);
-    m_twirlShape.setOutlineColor(sf::Color::Magenta * sf::Color(255, 255, 255, alpha));
+    if (m_twirl)
+        m_twirlShape.setOutlineColor((m_twirl == 1 ? sf::Color(255, 0, 127) : sf::Color(127, 0, 255)) *
+                                     sf::Color(255, 255, 255, alpha));
     if (m_speed)
         m_speedShape.setFillColor((m_speed == 1 ? sf::Color::Red : sf::Color::Blue) * sf::Color(255, 255, 255, alpha));
 }
@@ -643,7 +645,6 @@ void TileSprite::draw(sf::RenderTarget& target, sf::RenderStates states) const
     states.transform *= getTransform();
     states.texture = nullptr;
     target.draw(m_shape, states);
-    // target.draw(m_outline, states);
     if (m_twirl)
         target.draw(m_twirlShape, states);
     if (m_speed)
@@ -679,7 +680,7 @@ void TileSystem::parse()
         {
             if (const auto twirl = std::dynamic_pointer_cast<AdoCpp::Event::GamePlay::Twirl>(event))
             {
-                m_tileSprites[twirl->floor].setTwirl(true);
+                m_tileSprites[twirl->floor].setTwirl(m_level.getAngle(twirl->floor + 1) < 180 ? 1 : 2);
             }
             else if (const auto setSpeed = std::dynamic_pointer_cast<AdoCpp::Event::GamePlay::SetSpeed>(event))
             {
