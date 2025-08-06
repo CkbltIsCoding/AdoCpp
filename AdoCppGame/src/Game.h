@@ -31,10 +31,10 @@ public:
     bool running;
     sf::Time deltaTime;
     float fps;
-    unsigned int FPS;
-    float planetRadiusPx = 50;
-    float inputOffset = -120;
-    bool syncWithMusic = false;
+    unsigned int fpsLimit;
+    float planetRadiusPx;
+    float inputOffset;
+    bool syncWithMusic;
 
     std::array<float, 60> arrFps;
     float avgFps, minFps, maxFps;
@@ -43,12 +43,12 @@ public:
     sf::View view;
     sf::Vector2f zoom;
     sf::Font font;
-    sf::Text textFps{font};
+    sf::Text textFps;
 
     sf::Music music;
 
     AdoCpp::Level level;
-    AdoCpp::Difficulty difficulty = AdoCpp::Difficulty::Strict;
+    AdoCpp::Difficulty difficulty;
     std::filesystem::path levelPath, musicPath, origMusicPath;
 
     TileSystem tileSystem;
@@ -66,8 +66,8 @@ public:
 
     std::vector<State*> states;
     std::optional<size_t> activeTileIndex;
-    bool autoplay = false;
-    bool fullscreen = false;
+    bool autoplay;
+    bool fullscreen;
 
     sf::Clock deltaClock;
 };

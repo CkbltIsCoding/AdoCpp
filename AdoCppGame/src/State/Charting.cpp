@@ -471,9 +471,9 @@ void StateCharting::renderControlPad() const
         ImGui::InputFloat("Input Offset", &game->inputOffset, 1, 10, "%0.f");
         {
             constexpr uint32_t step = 1, stepFast = 10;
-            ImGui::InputScalar("FPS Limit", ImGuiDataType_U32, &game->FPS, &step, &stepFast);
+            ImGui::InputScalar("FPS Limit", ImGuiDataType_U32, &game->fpsLimit, &step, &stepFast);
             if (ImGui::IsItemDeactivatedAfterEdit())
-                game->window.setFramerateLimit(game->FPS);
+                game->window.setFramerateLimit(game->fpsLimit);
         }
         ImGui::Checkbox("Timer Sync With Music", &game->syncWithMusic);
 
