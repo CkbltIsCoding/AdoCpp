@@ -1,4 +1,5 @@
 #include "Game.h"
+#include <iostream>
 
 #ifdef NDEBUG
 // NO CMD
@@ -7,7 +8,19 @@
 
 int main()
 {
-	Game game;
-	game.run();
+#ifdef NDEBUG
+    try
+    {
+        Game game;
+        game.run();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Fatal Error: " << e.what() << std::endl;
+    }
+#else
+    Game game;
+    game.run();
+#endif
 	return 0;
 }

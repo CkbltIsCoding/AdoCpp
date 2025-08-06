@@ -736,7 +736,7 @@ void StateCharting::newLevel()
     {
         if (!game->music.openFromFile(game->musicPath))
         {
-            std::cerr << "Warning: failed to load music from file \"" << game->musicPath
+            std::cerr << "Warning: Failed to load music from file \"" << game->musicPath
                       << "\". Maybe the file does not exist or it is not a music file.";
         }
     }

@@ -51,13 +51,13 @@ inline std::filesystem::path addHitsound(std::filesystem::path path, const std::
         *progress = 2;
     if (!newSb.loadFromSamples(samples, origSb.getSampleCount(), origSb.getChannelCount(), origSb.getSampleRate(),
                                origSb.getChannelMap()))
-        throw std::runtime_error("Couldn't load sound");
+        throw std::runtime_error("Failed to load sound.");
     std::string ext = path.extension().string();
     if (ext == ".mp3")
         ext = ".wav";
     path.replace_extension().concat("-hitsound").concat(ext);
     if (!newSb.saveToFile(path))
-        throw std::runtime_error("Couldn't save sound");
+        throw std::runtime_error("Failed to save sound.");
     delete samples;
     return path;
 }

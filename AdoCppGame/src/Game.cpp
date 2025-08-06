@@ -10,8 +10,8 @@
 
 Game::Game() :
     running(true), fps(), planetRadiusPx(50), inputOffset(-120), syncWithMusic(false), arrFps(), avgFps(), minFps(),
-    maxFps(), textFps(font), difficulty(AdoCpp::Difficulty::Strict), tileSystem(level),
-    autoplay(false), fullscreen(false)
+    maxFps(), textFps(font), difficulty(AdoCpp::Difficulty::Strict), tileSystem(level), autoplay(false),
+    fullscreen(false)
 {
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, ".UTF-8");
@@ -24,7 +24,7 @@ Game::Game() :
     }
     else
     {
-        std::cerr << "Error loading icons\n";
+        std::cerr << "Error: Failed to load the icon.\n";
     }
     fpsLimit = 0; // unlimited
     window.setFramerateLimit(fpsLimit);
@@ -32,8 +32,7 @@ Game::Game() :
     font = sf::Font("assets/font/SourceHanSansSC.otf");
     if (!ImGui::SFML::Init(window, false))
     {
-        std::cerr << "Error! ImGui::SFML::Init() returns false.\n";
-        exit(-1);
+        throw std::runtime_error("Failed to call ImGui::SFML::Init.");
     }
     const ImGuiIO& io = ImGui::GetIO();
     // io.FontGlobalScale = 2;
@@ -52,8 +51,7 @@ Game::Game() :
 
     if (!ImGui::SFML::UpdateFontTexture())
     {
-        std::cerr << "Error! ImGui::SFML::UpdateFontTexture() returns false.";
-        exit(-1);
+        throw std::runtime_error("Failed to update font texture.");
     }
 
     auto& style = ImGui::GetStyle();
@@ -162,8 +160,7 @@ void Game::createWindow()
     constexpr auto title = "A dance of C++";
     if (fullscreen)
         windowSize = sf::VideoMode::getFullscreenModes()[0].size,
-        window.create(sf::VideoMode::getFullscreenModes()[0], title, sf::Style::None, sf::State::Fullscreen,
-                      settings);
+        window.create(sf::VideoMode::getFullscreenModes()[0], title, sf::Style::None, sf::State::Fullscreen, settings);
     else
         windowSize = {800, 600},
         window.create(sf::VideoMode(windowSize), title, sf::Style::Default, sf::State::Windowed, settings);

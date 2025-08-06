@@ -80,7 +80,6 @@ AdoCppGame uses following software and libraries as its dependencies:
 - CMake as a general build tool
 - AdoCpp to parse ADOFAI files
 - SFML as a game engine
-- Selbaward to draw polygons with SFML
 - ImGui as a GUI library
 - ImGui-SFML to use ImGui with SFML
 - ImGuiFileDialog to select files
