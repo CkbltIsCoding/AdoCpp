@@ -88,3 +88,18 @@ AdoCppGame uses following software and libraries as its dependencies:
 
 Notice that AdoCppGame is still under development
 and it is a little buggy.
+
+## Usage
+
+When you open AdoCppGame, the game will be in charting state.
+
+Keybind for changing the state:
+```
+Charting --[`]-> LiveCharting
+LiveCharting --[Esc]-> Charting
+Charting --[Space]-> Playing
+Playing --[Esc]--> Charting
+```
+
+`F11` is for toggling fullscreen.  
+`F12` is for toggling autoplay.
