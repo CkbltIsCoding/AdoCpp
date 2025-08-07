@@ -293,7 +293,8 @@ namespace AdoCpp
         std::vector<Event::DynamicEvent*> dynamicEvents;
         std::vector<std::vector<Event::Modifiers::RepeatEvents*>> vecRe{tiles.size()};
         parseDynamicEvents(dynamicEvents, vecRe);
-        parseAnimateTrack();
+        if (!m_disableAnimateTrack)
+            parseAnimateTrack();
         parseRepeatEvents(dynamicEvents, vecRe);
         m_processedDynamicEvents.sort([](const auto& a, const auto& b) { return a->beat < b->beat; }); // stable sort
         parseMoveTrackData();
@@ -783,6 +784,13 @@ namespace AdoCpp
         m_camera.rotation = rot;
         m_camera.zoom = zoom;
         m_camera.lastSeconds = seconds;
+    }
+    bool Level::disableAnimateTrack() const { return m_disableAnimateTrack; }
+    void Level::disableAnimateTrack(const bool disable)
+    {
+        if (m_disableAnimateTrack != disable)
+            parsed = false;
+        m_disableAnimateTrack = disable;
     }
 
     double Level::getTiming(const size_t floor, const double seconds) const

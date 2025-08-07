@@ -406,6 +406,9 @@ namespace AdoCpp
          */
         void updateCamera(double seconds, size_t floor);
 
+        bool disableAnimateTrack() const;
+        void disableAnimateTrack(bool disable);
+
         /**
          * @brief The level's settings.
          */
@@ -422,6 +425,7 @@ namespace AdoCpp
          */
         bool parsed = false;
         bool onlyBasic = false;
+        bool m_disableAnimateTrack = false;
 
     private:
         void parseTiles(size_t beginFloor = 0);

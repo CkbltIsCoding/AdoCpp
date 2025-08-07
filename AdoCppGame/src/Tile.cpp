@@ -723,13 +723,13 @@ void TileSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
     sf::Vector2f viewSize(target.getView().getSize());
     viewSize.x = viewSize.y = (std::max)(viewSize.x, viewSize.y) * 1.5f;
     const sf::FloatRect currentViewRect(viewCenter - viewSize / 2.f, viewSize);
-    bool flag = false;
+    bool reachZero = false;
     for (size_t i = m_tileSprites.size() - 1;; i--)
     {
-        if (flag)
+        if (reachZero)
             break;
         if (i == 0)
-            flag = true;
+            reachZero = true;
         auto& sprite = m_tileSprites[i];
         const auto& tile = m_level.tiles[i];
 

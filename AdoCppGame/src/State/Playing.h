@@ -28,7 +28,7 @@ protected:
 private:
     static StatePlaying m_statePlaying;
     sf::CircleShape planet1, planet2;
-    size_t nowTileIndex{}, playerTileIndex{};
+    size_t currentTileIndex{}, playerTileIndex{};
     sf::Font fontHts{"assets/font/Maplestory OTF Bold.otf"};
     HitTextSystem hitTextSystem{fontHts};
     HitErrorMeterSystem hitErrorMeterSystem;

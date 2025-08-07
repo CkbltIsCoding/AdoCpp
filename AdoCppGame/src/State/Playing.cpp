@@ -124,7 +124,7 @@ void StatePlaying::update()
                     seconds = game->music.getPlayingOffset().asSeconds() + game->inputOffset / 1000;
                 else
                     seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
-                beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
+                beat = game->level.seconds2beat(seconds), currentTileIndex = game->level.getFloorByBeat(beat);
             }
             else
             {
@@ -151,7 +151,7 @@ void StatePlaying::update()
             }
             else
                 seconds = spareClock.getElapsedTime().asSeconds() + game->inputOffset / 1000 + spareClockOffset;
-            beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
+            beat = game->level.seconds2beat(seconds), currentTileIndex = game->level.getFloorByBeat(beat);
         }
     }
     else
@@ -179,7 +179,7 @@ void StatePlaying::update()
         if (!waiting)
         {
             seconds += spareClock.restart().asSeconds();
-            beat = game->level.seconds2beat(seconds), nowTileIndex = game->level.getFloorByBeat(beat);
+            beat = game->level.seconds2beat(seconds), currentTileIndex = game->level.getFloorByBeat(beat);
             if (musicPlayable() && game->music.getStatus() == sf::Music::Status::Stopped && !isMusicPlayed &&
                 seconds >= game->inputOffset / 1000)
                 game->music.play(), isMusicPlayed = true;
@@ -195,7 +195,7 @@ void StatePlaying::update()
         if (game->autoplay)
         {
             keyInputCnt = 0;
-            for (size_t i = playerTileIndex; i < nowTileIndex; i++)
+            for (size_t i = playerTileIndex; i < currentTileIndex; i++)
             {
                 if (tiles[i + 1].angle.deg() != 999)
                     keyInputCnt++;
@@ -317,7 +317,7 @@ void StatePlaying::render()
         ImGui::Text("Progress: %.2f%%", progress);
         ImGui::Text("BPM: %.2f", bpm);
         ImGui::Text("KPS: %.2f", kps);
-        ImGui::Text("Floor: %llu", nowTileIndex);
+        ImGui::Text("Floor: %llu", currentTileIndex);
     }
     ImGui::End();
 }

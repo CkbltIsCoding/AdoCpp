@@ -476,7 +476,18 @@ void StateCharting::renderControlPad() const
                 game->window.setFramerateLimit(game->fpsLimit);
         }
         ImGui::Checkbox("Timer Sync With Music", &game->syncWithMusic);
-
+        if (ImGui::TreeNode("Performance"))
+        {
+            if (static bool disableAnimationTrack = game->level.disableAnimateTrack();
+                ImGui::Checkbox("Disable AnimationTrack", &disableAnimationTrack))
+            {
+                game->level.disableAnimateTrack(disableAnimationTrack);
+                game->level.parse();
+                game->level.update();
+                parseUpdateLevel(0);
+            }
+            ImGui::TreePop();
+        }
         if (static size_t index; ImGui::TreeNode("Keystroke Settings"))
         {
             for (size_t j, i = j = 0; i < game->keyLimiter.size(); i++, j++)
@@ -746,7 +757,7 @@ void StateCharting::newLevel()
 }
 void StateCharting::parseUpdateLevel(const size_t floor) const
 {
-    game->level.parse(floor, true, true);
+    game->level.parse(floor, false, true);
     game->level.update();
     game->tileSystem.parse();
     game->tileSystem.update();
