@@ -105,7 +105,7 @@ namespace AdoCpp
     };
     constexpr const char* const cstrTrackDisappearAnimation[] = {
         // TODO
-        "None", "Fade", "Scatter", "Scatter_Far", "Assemble", "Retract", "Shrink_Spin"};
+        "None", "Fade", "Scatter", "Scatter_Far", "Retract", "Shrink_Spin"};
     constexpr const char* trackDisappearAnimation2cstr(const TrackDisappearAnimation& trackDisappearAnimation)
     {
         return cstrTrackDisappearAnimation[static_cast<int>(trackDisappearAnimation)];
