@@ -1,4 +1,6 @@
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 #include <imgui-SFML.h>
 
 #include <IconsFontAwesome6.h>
@@ -9,11 +11,13 @@
 #include "State.h"
 
 Game::Game() :
-    running(true), fps(), planetRadiusPx(50), inputOffset(-120), syncWithMusic(false), arrFps(), avgFps(), minFps(),
+    running(true), fps(), planetRadiusPx(50), inputOffset(-200), syncWithMusic(false), arrFps(), avgFps(), minFps(),
     maxFps(), textFps(font), difficulty(AdoCpp::Difficulty::Strict), tileSystem(level), autoplay(false),
     fullscreen(false)
 {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     setlocale(LC_ALL, ".UTF-8");
 
     settings.antiAliasingLevel = 8;

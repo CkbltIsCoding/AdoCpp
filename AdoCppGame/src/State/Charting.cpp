@@ -482,8 +482,6 @@ void StateCharting::renderControlPad() const
                 ImGui::Checkbox("Disable AnimationTrack", &disableAnimationTrack))
             {
                 game->level.disableAnimateTrack(disableAnimationTrack);
-                game->level.parse();
-                game->level.update();
                 parseUpdateLevel(0);
             }
             ImGui::TreePop();

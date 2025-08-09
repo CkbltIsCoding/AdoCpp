@@ -1083,6 +1083,7 @@ namespace AdoCpp
                          secondsAhead = tiles[i].beatsAhead * spb, secondsBehind = tiles[i].beatsBehind * spb;
             if (i != 0)
             {
+                // TODO complete the track animation & disappear animation
                 switch (tiles[i].trackAnimation)
                 {
                 case TrackAnimation::None:
