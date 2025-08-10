@@ -32,6 +32,8 @@ add_executable(
         src/ImGuiConfig.h
 
         src/resource.rc
+        src/Config.cpp
+        src/Config.h
 )
 
 set_property(TARGET AdoCppGame PROPERTY CXX_STANDARD 20)

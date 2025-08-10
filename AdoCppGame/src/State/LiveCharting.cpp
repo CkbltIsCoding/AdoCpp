@@ -309,7 +309,7 @@ void LiveCharting::renderAudioWindow()
             if (samples)
             {
                 const double audioLengthInSeconds =
-                    static_cast<double>(soundBuffer->getSampleCount() / soundBuffer->getChannelCount()) /
+                    static_cast<double>(soundBuffer->getSampleCount()) / soundBuffer->getChannelCount() /
                     soundBuffer->getSampleRate();
                 ImPlot::SetupAxisLimitsConstraints(ImAxis_X1, -audioLengthInSeconds / 2, audioLengthInSeconds * 3 / 2);
                 const size_t widthPx = ImPlot::GetPlotSize().x;

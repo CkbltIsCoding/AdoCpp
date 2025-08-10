@@ -11,14 +11,15 @@
 #include "State.h"
 
 Game::Game() :
-    running(true), fps(), planetRadiusPx(50), inputOffset(-200), syncWithMusic(false), arrFps(), avgFps(), minFps(),
-    maxFps(), textFps(font), difficulty(AdoCpp::Difficulty::Strict), tileSystem(level), autoplay(false),
-    fullscreen(false)
+    running(true), fps(), planetRadiusPx(50), arrFps(), avgFps(), minFps(), maxFps(), textFps(font), tileSystem(level),
+    autoplay(false), fullscreen(false)
 {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
     setlocale(LC_ALL, ".UTF-8");
+
+    config.load();
 
     settings.antiAliasingLevel = 8;
     createWindow();
@@ -30,8 +31,7 @@ Game::Game() :
     {
         std::cerr << "Error: Failed to load the icon.\n";
     }
-    fpsLimit = 0; // unlimited
-    window.setFramerateLimit(fpsLimit);
+    window.setFramerateLimit(config.fpsLimit);
     // window.setVerticalSyncEnabled(true);
     font = sf::Font("assets/font/SourceHanSansSC.otf");
     if (!ImGui::SFML::Init(window, false))
@@ -68,6 +68,10 @@ Game::Game() :
 
     level.defaultLevel();
     changeState(StateCharting::instance());
+}
+Game::~Game()
+{
+    config.save();
 }
 
 void Game::run()

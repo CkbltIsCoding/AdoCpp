@@ -459,23 +459,23 @@ void StateCharting::renderControlPad() const
         {
             using AdoCpp::Difficulty;
 
-            if (ImGui::Selectable("Lenient", game->difficulty == Difficulty::Lenient))
-                game->difficulty = Difficulty::Lenient;
-            if (ImGui::Selectable("Normal", game->difficulty == Difficulty::Normal))
-                game->difficulty = Difficulty::Normal;
-            if (ImGui::Selectable("Strict", game->difficulty == Difficulty::Strict))
-                game->difficulty = Difficulty::Strict;
+            if (ImGui::Selectable("Lenient", game->config.difficulty == Difficulty::Lenient))
+                game->config.difficulty = Difficulty::Lenient;
+            if (ImGui::Selectable("Normal", game->config.difficulty == Difficulty::Normal))
+                game->config.difficulty = Difficulty::Normal;
+            if (ImGui::Selectable("Strict", game->config.difficulty == Difficulty::Strict))
+                game->config.difficulty = Difficulty::Strict;
 
             ImGui::TreePop();
         }
-        ImGui::InputFloat("Input Offset", &game->inputOffset, 1, 10, "%0.f");
+        ImGui::InputFloat("Input Offset", &game->config.inputOffset, 1, 10, "%0.f");
         {
             constexpr uint32_t step = 1, stepFast = 10;
-            ImGui::InputScalar("FPS Limit", ImGuiDataType_U32, &game->fpsLimit, &step, &stepFast);
+            ImGui::InputScalar("FPS Limit", ImGuiDataType_U32, &game->config.fpsLimit, &step, &stepFast);
             if (ImGui::IsItemDeactivatedAfterEdit())
-                game->window.setFramerateLimit(game->fpsLimit);
+                game->window.setFramerateLimit(game->config.fpsLimit);
         }
-        ImGui::Checkbox("Timer Sync With Music", &game->syncWithMusic);
+        ImGui::Checkbox("Timer Sync With Music", &game->config.syncWithMusic);
         if (ImGui::TreeNode("Performance"))
         {
             if (static bool disableAnimationTrack = game->level.disableAnimateTrack();
@@ -488,16 +488,16 @@ void StateCharting::renderControlPad() const
         }
         if (static size_t index; ImGui::TreeNode("Keystroke Settings"))
         {
-            for (size_t j, i = j = 0; i < game->keyLimiter.size(); i++, j++)
+            for (size_t j, i = j = 0; i < game->config.keyLimiter.size(); i++, j++)
             {
                 ImGui::PushID(j);
                 if (ImGui::Button(" " ICON_FA_TRASH_CAN " ##Keystroke"))
                 {
-                    game->keyLimiter.erase(game->keyLimiter.begin() + i);
+                    game->config.keyLimiter.erase(game->config.keyLimiter.begin() + i);
                     i--;
                 }
                 ImGui::SameLine();
-                std::string desc = sf::Keyboard::getDescription(game->keyLimiter[i]).toAnsiString();
+                std::string desc = sf::Keyboard::getDescription(game->config.keyLimiter[i]).toAnsiString();
                 if (ImGui::Button(desc.c_str(), {ImGui::GetFontSize() * 10, 0}))
                 {
                     index = i;
@@ -511,7 +511,7 @@ void StateCharting::renderControlPad() const
                         const auto scan = static_cast<sf::Keyboard::Scan>(k);
                         if (sf::Keyboard::isKeyPressed(scan))
                         {
-                            game->keyLimiter[index] = scan;
+                            game->config.keyLimiter[index] = scan;
                             ImGui::CloseCurrentPopup();
                         }
                     }
@@ -521,7 +521,7 @@ void StateCharting::renderControlPad() const
             }
             if (ImGui::Button(" " ICON_FA_PLUS " ##KeystrokeAddKey"))
             {
-                game->keyLimiter.push_back(sf::Keyboard::Scan::A);
+                game->config.keyLimiter.push_back(sf::Keyboard::Scan::A);
             }
             const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
