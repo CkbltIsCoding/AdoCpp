@@ -7,6 +7,8 @@ struct Config
     AdoCpp::Difficulty difficulty = AdoCpp::Difficulty::Strict;
     float inputOffset = -200;
     uint32_t fpsLimit = 0;
+    bool blockKeyboardChatter = true;
+    bool hidePerfects = true;
     bool syncWithMusic = false;
     bool disableAnimationTrack = false;
     using enum sf::Keyboard::Scan;

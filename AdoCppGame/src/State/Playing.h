@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+
+
 #include "HitErrorMeter.h"
 #include "HitText.h"
 #include "KeyViewer.h"

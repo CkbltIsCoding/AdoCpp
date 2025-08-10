@@ -26,6 +26,8 @@ void Config::load()
     difficulty = static_cast<AdoCpp::Difficulty>(document["difficulty"].GetInt());
     inputOffset = document["inputOffset"].GetFloat();
     fpsLimit = document["fpsLimit"].GetUint();
+    blockKeyboardChatter = document["blockKeyboardChatter"].GetBool();
+    hidePerfects = document["hidePerfects"].GetBool();
     syncWithMusic = document["syncWithMusic"].GetBool();
     disableAnimationTrack = document["disableAnimationTrack"].GetBool();
     keyLimiter.clear();
@@ -45,6 +47,8 @@ void Config::save()
     doc.AddMember("difficulty", static_cast<int>(difficulty), doc.GetAllocator());
     doc.AddMember("inputOffset", inputOffset, doc.GetAllocator());
     doc.AddMember("fpsLimit", fpsLimit, doc.GetAllocator());
+    doc.AddMember("blockKeyboardChatter", blockKeyboardChatter, doc.GetAllocator());
+    doc.AddMember("hidePerfects", hidePerfects, doc.GetAllocator());
     doc.AddMember("syncWithMusic", syncWithMusic, doc.GetAllocator());
     doc.AddMember("disableAnimationTrack", disableAnimationTrack, doc.GetAllocator());
     {

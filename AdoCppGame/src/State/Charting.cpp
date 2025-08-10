@@ -475,6 +475,8 @@ void StateCharting::renderControlPad() const
             if (ImGui::IsItemDeactivatedAfterEdit())
                 game->window.setFramerateLimit(game->config.fpsLimit);
         }
+        ImGui::Checkbox("Block Keyboard Chatter", &game->config.blockKeyboardChatter);
+        ImGui::Checkbox("Hide Perfects", &game->config.hidePerfects);
         ImGui::Checkbox("Timer Sync With Music", &game->config.syncWithMusic);
         if (ImGui::TreeNode("Performance"))
         {

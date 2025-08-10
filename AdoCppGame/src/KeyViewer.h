@@ -24,7 +24,7 @@ public:
 	void setKeys(const std::vector<Key>& keys);
 	void setKeyLimiter(const std::vector<sf::Keyboard::Scan>& keyLimiter);
     void setKeyLimiterAuto(const std::vector<sf::Keyboard::Scan>& keyLimiter);
-	void press(sf::Keyboard::Scan scan);
+	bool press(sf::Keyboard::Scan scan);
 	void release(sf::Keyboard::Scan scan);
 	void setReleasedColor(sf::Color releasedColor);
 	void setPressedColor(sf::Color pressedColor);

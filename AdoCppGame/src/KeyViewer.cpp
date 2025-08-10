@@ -102,11 +102,19 @@ void KeyViewerSystem::setKeyLimiterAuto(const std::vector<sf::Keyboard::Scan>& k
     }
 }
 
-void KeyViewerSystem::press(const sf::Keyboard::Scan scan)
+bool KeyViewerSystem::press(const sf::Keyboard::Scan scan)
 {
     auto it = m_keyPressed.find(scan);
     if (it != m_keyPressed.end() && (it->second.empty() || !it->second.back().press))
+    {
         it->second.push_back(Stamp(true, m_clock.getElapsedTime()));
+        if (it->second[it->second.size() - 3].press == true
+            && it->second[it->second.size() - 3].time.asMilliseconds() + 70 > it->second.back().time.asMilliseconds())
+            return false; // keyboardChatterBlocker
+        else
+            return true; // keyboardChatterBlocker
+    }
+    return true; // keyboardChatterBlocker
 }
 
 void KeyViewerSystem::release(const sf::Keyboard::Scan scan)

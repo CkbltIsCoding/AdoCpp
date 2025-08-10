@@ -16,6 +16,7 @@ void StatePlaying::init(Game* _game)
     planet2.setOrigin({planet2.getRadius(), planet2.getRadius()});
 
     hitTextSystem.clear();
+    hitTextSystem.hidePerfects = game->config.hidePerfects;
     hitErrorMeterSystem.setScale({4, 4});
     hitErrorMeterSystem.clear();
     keyViewerSystem.setKeyLimiterAuto(game->config.keyLimiter);
@@ -80,7 +81,8 @@ void StatePlaying::handleEvent(const sf::Event event)
                 if (scan == keyPressed->scancode)
                 {
                     keyInputCnt++;
-                    keyViewerSystem.press(scan);
+                    if (!keyViewerSystem.press(scan) && game->config.blockKeyboardChatter)
+                        keyInputCnt--; // keyboardChatterBlocker
                     break;
                 }
             }
