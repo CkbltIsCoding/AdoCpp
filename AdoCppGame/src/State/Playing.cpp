@@ -213,7 +213,7 @@ void StatePlaying::update()
             if (hitMargin == AdoCpp::HitMargin::TooEarly)
             {
                 playerTileIndex--;
-                if (playerTileIndex == 1)
+                if (playerTileIndex == 0)
                     break;
                 AdoCpp::Vector2lf pos;
                 if (AdoCpp::Level::isFirePlanetStatic(playerTileIndex))
