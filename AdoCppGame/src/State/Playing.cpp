@@ -25,6 +25,8 @@ void StatePlaying::init(Game* _game)
     keyViewerSystem.setRainColorByRow({255, 100, 100, 255}, 0);
     keyViewerSystem.setRainColorByRow({255, 255, 255, 191}, 1);
 
+    game->tileSystem.setActiveTileIndex(std::nullopt);
+
     keyInputCnt = 0;
     waiting = true;
     if (game->activeTileIndex.value_or(0) == 0)
