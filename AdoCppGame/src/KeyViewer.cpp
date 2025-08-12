@@ -108,7 +108,7 @@ bool KeyViewerSystem::press(const sf::Keyboard::Scan scan)
     if (it != m_keyPressed.end() && (it->second.empty() || !it->second.back().press))
     {
         it->second.push_back(Stamp(true, m_clock.getElapsedTime()));
-        if (it->second[it->second.size() - 3].press == true
+        if (it->second.size() >= 3 && it->second[it->second.size() - 3].press == true
             && it->second[it->second.size() - 3].time.asMilliseconds() + 70 > it->second.back().time.asMilliseconds())
             return false; // keyboardChatterBlocker
         else
