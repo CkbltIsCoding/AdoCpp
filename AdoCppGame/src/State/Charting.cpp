@@ -333,11 +333,11 @@ void StateCharting::renderFilenameBar()
             {
                 const auto path = ImGuiFileDialog::Instance()->GetFilePathName();
                 std::ofstream ofs(path, std::ios::binary);
-                rapidjson::Document doc = game->level.intoJson();
+                std::unique_ptr<rapidjson::Document> doc = game->level.intoJson();
                 rapidjson::OStreamWrapper osw(ofs);
                 rapidjson::EncodedOutputStream<rapidjson::UTF8<>, rapidjson::OStreamWrapper> eos(osw, true);
                 rapidjson::PrettyWriter writer(eos);
-                doc.Accept(writer);
+                doc->Accept(writer);
             }
             ImGuiFileDialog::Instance()->Close();
         }

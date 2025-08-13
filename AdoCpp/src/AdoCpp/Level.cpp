@@ -11,7 +11,6 @@
 #include "Utils.h"
 #include "rapidjson/document.h"
 
-
 constexpr double positiveRemainder(const double a, const double b)
 {
     assert(b > 0.0 && "Cannot calculate remainder with non-positive divisor");
@@ -70,66 +69,67 @@ namespace AdoCpp
 
         return settings;
     }
-    rapidjson::Value Settings::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::GenericValue<rapidjson::UTF8<>>>
+    Settings::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("version", 15, alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("version", 15, alloc);
         rapidjson::Value vArtist;
         vArtist.SetString(artist.c_str(), artist.length(), alloc);
-        val.AddMember("artist", vArtist, alloc);
+        val->AddMember("artist", vArtist, alloc);
         rapidjson::Value vSong;
         vSong.SetString(artist.c_str(), artist.length(), alloc);
-        val.AddMember("song", vSong, alloc);
+        val->AddMember("song", vSong, alloc);
         rapidjson::Value vAuthor;
         vAuthor.SetString(author.c_str(), author.length(), alloc);
-        val.AddMember("author", vAuthor, alloc);
-        val.AddMember("separateCountdownTime", separateCountdownTime, alloc);
-        val.AddMember("countdownTicks", countdownTicks, alloc);
+        val->AddMember("author", vAuthor, alloc);
+        val->AddMember("separateCountdownTime", separateCountdownTime, alloc);
+        val->AddMember("countdownTicks", countdownTicks, alloc);
         rapidjson::Value vSongFilename;
         vSongFilename.SetString(songFilename.c_str(), songFilename.length(), alloc);
-        val.AddMember("songFilename", vSongFilename, alloc);
-        val.AddMember("bpm", bpm, alloc);
-        val.AddMember("volume", volume, alloc);
-        val.AddMember("offset", offset, alloc);
-        val.AddMember("pitch", pitch, alloc);
-        val.AddMember("hitsound", rapidjson::StringRef(hitsound2cstr(hitsound)), alloc);
-        val.AddMember("hitsoundVolume", hitsoundVolume, alloc);
-        val.AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
+        val->AddMember("songFilename", vSongFilename, alloc);
+        val->AddMember("bpm", bpm, alloc);
+        val->AddMember("volume", volume, alloc);
+        val->AddMember("offset", offset, alloc);
+        val->AddMember("pitch", pitch, alloc);
+        val->AddMember("hitsound", rapidjson::StringRef(hitsound2cstr(hitsound)), alloc);
+        val->AddMember("hitsoundVolume", hitsoundVolume, alloc);
+        val->AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
         rapidjson::Value vTrackColor;
         std::string sTrackColor = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         vTrackColor.SetString(sTrackColor.c_str(), sTrackColor.length(), alloc);
-        val.AddMember("trackColor", vTrackColor, alloc);
+        val->AddMember("trackColor", vTrackColor, alloc);
         rapidjson::Value vSSTC;
         std::string sSSTC = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         vSSTC.SetString(sSSTC.c_str(), sSSTC.length(), alloc);
-        val.AddMember("secondaryTrackColor", vSSTC, alloc);
-        val.AddMember("trackColorAnimDuration", trackColorAnimDuration, alloc);
-        val.AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
-        val.AddMember("trackPulseLength", trackPulseLength, alloc);
-        val.AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
-        val.AddMember("trackAnimation", rapidjson::StringRef(trackAnimation2cstr(trackAnimation)), alloc);
-        val.AddMember("beatsAhead", beatsAhead, alloc);
-        val.AddMember("trackDisappearAnimation",
+        val->AddMember("secondaryTrackColor", vSSTC, alloc);
+        val->AddMember("trackColorAnimDuration", trackColorAnimDuration, alloc);
+        val->AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
+        val->AddMember("trackPulseLength", trackPulseLength, alloc);
+        val->AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
+        val->AddMember("trackAnimation", rapidjson::StringRef(trackAnimation2cstr(trackAnimation)), alloc);
+        val->AddMember("beatsAhead", beatsAhead, alloc);
+        val->AddMember("trackDisappearAnimation",
                       rapidjson::StringRef(trackDisappearAnimation2cstr(trackDisappearAnimation)), alloc);
-        val.AddMember("beatsBehind", beatsBehind, alloc);
+        val->AddMember("beatsBehind", beatsBehind, alloc);
         rapidjson::Value vBGC;
         std::string sBGC = backgroundColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         vBGC.SetString(sBGC.c_str(), sBGC.length(), alloc);
-        val.AddMember("backgroundColor", vBGC, alloc);
-        val.AddMember("stickToFloors", stickToFloors, alloc);
-        // val.AddMember("unscaledSize", unscaledSize, alloc);
-        val.AddMember("relativeTo", rapidjson::StringRef(relativeToCamera2cstr(relativeTo)), alloc);
+        val->AddMember("backgroundColor", vBGC, alloc);
+        val->AddMember("stickToFloors", stickToFloors, alloc);
+        // val->AddMember("unscaledSize", unscaledSize, alloc);
+        val->AddMember("relativeTo", rapidjson::StringRef(relativeToCamera2cstr(relativeTo)), alloc);
         rapidjson::Value vPos(rapidjson::kArrayType);
         vPos.PushBack(position.x, alloc), vPos.PushBack(position.y, alloc);
-        val.AddMember("position", vPos, alloc);
-        val.AddMember("rotation", rotation, alloc);
-        val.AddMember("zoom", zoom, alloc);
+        val->AddMember("position", vPos, alloc);
+        val->AddMember("rotation", rotation, alloc);
+        val->AddMember("zoom", zoom, alloc);
         return val;
     }
-    rapidjson::Document Settings::intoJson() const
+    std::unique_ptr<rapidjson::Document> Settings::intoJson() const
     {
-        rapidjson::Document doc;
-        doc.CopyFrom(intoJson(doc.GetAllocator()), doc.GetAllocator());
+        auto doc = std::make_unique<rapidjson::Document>();
+        doc->CopyFrom(*intoJson(doc->GetAllocator()), doc->GetAllocator());
         return doc;
     }
     void Settings::apply(Tile& tile) const
@@ -238,9 +238,9 @@ namespace AdoCpp
         fromFile(ifs);
         ifs.close();
     }
-    rapidjson::Value Level::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> Level::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
         {
             rapidjson::Value angleData(rapidjson::kArrayType);
             for (size_t i = 1; i < tiles.size(); i++)
@@ -250,29 +250,30 @@ namespace AdoCpp
                 else
                     angleData.PushBack(tile.angle.deg(), alloc);
             }
-            val.AddMember("angleData", angleData, alloc);
+            val->AddMember("angleData", angleData, alloc);
         }
         {
-            val.AddMember("settings", settings.intoJson(alloc), alloc);
+            val->AddMember("settings", *settings.intoJson(alloc), alloc);
         }
         {
             rapidjson::Value actions(rapidjson::kArrayType);
             for (const auto& tile : tiles)
                 for (const auto& event : tile.events)
-                    actions.PushBack(event->intoJson(alloc), alloc);
+                    actions.PushBack(*event->intoJson(alloc), alloc);
 
-            val.AddMember("actions", actions, alloc);
+            val->AddMember("actions", actions, alloc);
         }
         {
-            val.AddMember("decorations", rapidjson::Value(rapidjson::kArrayType), alloc);
+            rapidjson::Value decorations(rapidjson::kArrayType);
+            val->AddMember("decorations", decorations, alloc);
         }
 
         return val;
     }
-    rapidjson::Document Level::intoJson() const
+    std::unique_ptr<rapidjson::Document> Level::intoJson() const
     {
-        rapidjson::Document doc;
-        doc.CopyFrom(intoJson(doc.GetAllocator()), doc.GetAllocator());
+        auto doc = std::make_unique<rapidjson::Document>();
+        doc->CopyFrom(*intoJson(doc->GetAllocator()), doc->GetAllocator());
         return doc;
     }
 
@@ -868,7 +869,7 @@ namespace AdoCpp
                 if (!event->active)
                     continue;
 
-                if (typeid(*event) == typeid(Event::GamePlay::Twirl))
+                if (typeid(*event.get()) == typeid(Event::GamePlay::Twirl))
                     twirls[event->floor] = true;
                 else if (const auto pause                = std::dynamic_pointer_cast<Event::GamePlay::Pause>(event))
                     pauses[pause->floor]                 = pause->duration;
@@ -1345,6 +1346,8 @@ namespace AdoCpp
     {
         for (auto& tile = tiles[i]; const auto& data : tile.moveTrackDatas) // FIXME
         {
+            if (seconds < data.seconds)
+                break;
             const double bpm = getBpmForDynamicEvent(data.floor, data.angleOffset), spb = bpm2crotchet(bpm);
             auto calcX = [&seconds, &data, &spb](const double endSec)
             { return data.duration != 0.0 ? (std::min(seconds, endSec) - data.seconds) / spb / data.duration : 1.0; };

@@ -20,26 +20,26 @@ namespace AdoCpp::Event::Visual
             zoom = data["zoom"].GetDouble();
         ease = cstr2easing(data["ease"].GetString());
     }
-    rapidjson::Value MoveCamera::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> MoveCamera::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
-        autoRemoveDecimalPart(val, "duration", duration, alloc);
+            val->AddMember("active", active, alloc);
+        autoRemoveDecimalPart(*val, "duration", duration, alloc);
         if (relativeTo)
-            val.AddMember("relativeTo", rapidjson::StringRef(relativeToCamera2cstr(*relativeTo)), alloc);
+            val->AddMember("relativeTo", rapidjson::StringRef(relativeToCamera2cstr(*relativeTo)), alloc);
         // ReSharper disable once CppLocalVariableMayBeConst
         if (auto op = optionalPoint2json(position, alloc); op)
-            val.AddMember("position", *op, alloc);
+            val->AddMember("position", *op, alloc);
         if (rotation)
-            autoRemoveDecimalPart(val, "rotation", *rotation, alloc);
+            autoRemoveDecimalPart(*val, "rotation", *rotation, alloc);
         if (zoom)
-            autoRemoveDecimalPart(val, "zoom", *zoom, alloc);
-        val.AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
-        autoRemoveDecimalPart(val, "angleOffset", angleOffset, alloc);
-        addTag(val, eventTag, alloc);
+            autoRemoveDecimalPart(*val, "zoom", *zoom, alloc);
+        val->AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
+        autoRemoveDecimalPart(*val, "angleOffset", angleOffset, alloc);
+        addTag(*val, eventTag, alloc);
         return val;
     }
 } // namespace AdoCpp::Event::Visual

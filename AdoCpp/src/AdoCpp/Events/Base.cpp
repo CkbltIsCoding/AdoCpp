@@ -7,10 +7,10 @@ namespace AdoCpp::Event
         floor = data["floor"].GetUint64();
         active = !data.HasMember("active") || toBool(data["active"]);
     }
-    rapidjson::Document Event::intoJson() const
+    std::unique_ptr<rapidjson::Document> Event::intoJson() const
     {
-        rapidjson::Document doc;
-        doc.CopyFrom(intoJson(doc.GetAllocator()), doc.GetAllocator());
+        auto doc = std::make_unique<rapidjson::Document>();
+        doc->CopyFrom(*intoJson(doc->GetAllocator()), doc->GetAllocator());
         return doc;
     }
     StaticEvent::StaticEvent(const rapidjson::Value& data) : Event(data) {}

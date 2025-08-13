@@ -1,7 +1,8 @@
 #pragma once
+#include <memory>
+#include <rapidjson/document.h>
 #include <string>
 #include <vector>
-#include <rapidjson/document.h>
 #include "AdoCpp/Utils.h"
 
 namespace AdoCpp::Event
@@ -29,8 +30,9 @@ namespace AdoCpp::Event
          * @return The cloned event.
          */
         [[nodiscard]] constexpr virtual Event* clone() const = 0;
-        [[nodiscard]] virtual rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const = 0;
-        [[nodiscard]] rapidjson::Document intoJson() const;
+        [[nodiscard]] virtual std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const = 0;
+        [[nodiscard]] std::unique_ptr<rapidjson::Document> intoJson() const;
     };
 
     /**

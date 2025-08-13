@@ -16,7 +16,8 @@ namespace AdoCpp::Event::Modifiers
         [[nodiscard]] constexpr bool stackable() const noexcept override { return true; }
         [[nodiscard]] constexpr const char* name() const noexcept override { return "RepeatEvents"; }
         [[nodiscard]] constexpr RepeatEvents* clone() const override { return new RepeatEvents(*this); }
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         RepeatType repeatType = RepeatType::Beat;
         size_t repetitions = 1;
         size_t floorCount = 1;

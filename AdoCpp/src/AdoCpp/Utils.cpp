@@ -7,12 +7,11 @@
 
 namespace AdoCpp
 {
-    rapidjson::Value RelativeIndex::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> RelativeIndex::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val;
-        val.SetArray();
-        val.PushBack(index, alloc);
-        val.PushBack(rapidjson::StringRef(relativeToTile2cstr(relativeTo)), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kArrayType);
+        val->PushBack(index, alloc);
+        val->PushBack(rapidjson::StringRef(relativeToTile2cstr(relativeTo)), alloc);
         return val;
     }
     bool toBool(const rapidjson::Value& data)
@@ -26,7 +25,7 @@ namespace AdoCpp
             if (!strcmp(data.GetString(), "Disabled"))
                 return false;
         }
-        throw std::invalid_argument(R"(data is not a boolean or string "Enabled" or string "Disabled")");
+        throw std::invalid_argument(R"(data is not a boolean or a string "Enabled" or a string "Disabled")");
     }
     double includedAngle(const double angleDeg, const double nextAngleDeg)
     {

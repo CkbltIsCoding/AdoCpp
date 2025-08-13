@@ -19,7 +19,8 @@ namespace AdoCpp::Event::GamePlay
         [[nodiscard]] constexpr bool stackable() const noexcept override { return true; }
         [[nodiscard]] constexpr const char* name() const noexcept override { return "SetSpeed"; }
         [[nodiscard]] constexpr SetSpeed* clone() const override { return new SetSpeed(*this); }
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         SpeedType speedType = SpeedType::Bpm;
         double beatsPerMinute = 100;
         double bpmMultiplier = 1;
@@ -32,7 +33,8 @@ namespace AdoCpp::Event::GamePlay
         [[nodiscard]] constexpr bool stackable() const noexcept override { return false; }
         [[nodiscard]] constexpr const char* name() const noexcept override { return "Twirl"; }
         [[nodiscard]] constexpr Twirl* clone() const override { return new Twirl(*this); }
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const override;
     };
     class Pause final : public StaticEvent
     {
@@ -42,7 +44,8 @@ namespace AdoCpp::Event::GamePlay
         [[nodiscard]] constexpr bool stackable() const noexcept override { return false; };
         [[nodiscard]] constexpr const char* name() const noexcept override { return "Pause"; };
         [[nodiscard]] constexpr Pause* clone() const override { return new Pause(*this); }
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         double duration = 0;
         double countdownTicks = 0;
         enum class AngleCorrectionDir
@@ -66,7 +69,8 @@ namespace AdoCpp::Event::GamePlay
         [[nodiscard]] constexpr bool stackable() const noexcept override { return false; }
         [[nodiscard]] constexpr const char* name() const noexcept override { return "SetHitsound"; }
         [[nodiscard]] constexpr SetHitsound* clone() const override { return new SetHitsound(*this); }
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         GameSound gameSound = GameSound::Hitsound;
         Hitsound hitsound = Hitsound::Kick;
         double hitsoundVolume = 100;
@@ -84,7 +88,8 @@ namespace AdoCpp::Event::GamePlay
         [[nodiscard]] constexpr bool stackable() const noexcept override { return false; };
         [[nodiscard]] constexpr const char* name() const noexcept override { return "SetPlanetRotation"; };
         [[nodiscard]] constexpr SetPlanetRotation* clone() const override { return new SetPlanetRotation(*this); }
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const override;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const override;
         Easing ease = Easing::Linear;
         uint64_t easeParts = 1;
         EasePartBehavior easePartBehavior = EasePartBehavior::Repeat;

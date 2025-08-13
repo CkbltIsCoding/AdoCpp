@@ -14,22 +14,22 @@ namespace AdoCpp::Event::Modifiers
         executeOnCurrentFloor = data.HasMember("executeOnCurrentFloor") ? toBool(data["executeOnCurrentFloor"]) : false;
         tag = cstr2tags(data["tag"].GetString());
     }
-    rapidjson::Value RepeatEvents::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> RepeatEvents::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
+            val->AddMember("active", active, alloc);
         if (repeatType == RepeatType::Floor)
-            val.AddMember("repeatType", "Floor", alloc);
+            val->AddMember("repeatType", "Floor", alloc);
         else if (repeatType == RepeatType::Beat)
-            val.AddMember("repeatType", "Beat", alloc);
-        val.AddMember("repetitions", repetitions, alloc);
-        val.AddMember("floorCount", floorCount, alloc);
-        autoRemoveDecimalPart(val, "interval", interval, alloc);
-        val.AddMember("executeOnCurrentFloor", executeOnCurrentFloor, alloc);
-        addTag(val, tag, alloc, true);
+            val->AddMember("repeatType", "Beat", alloc);
+        val->AddMember("repetitions", repetitions, alloc);
+        val->AddMember("floorCount", floorCount, alloc);
+        autoRemoveDecimalPart(*val, "interval", interval, alloc);
+        val->AddMember("executeOnCurrentFloor", executeOnCurrentFloor, alloc);
+        addTag(*val, tag, alloc, true);
         return val;
     }
 } // namespace AdoCpp::Event::Modifiers

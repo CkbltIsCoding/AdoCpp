@@ -1,9 +1,9 @@
-#include "Game.h"
 #include <iostream>
+#include "Game.h"
 
 #ifdef NDEBUG
 // NO CMD
-#pragma comment(linker,"/subsystem:\"Windows\" /entry:\"mainCRTStartup\"")
+#pragma comment(linker, "/subsystem:\"Windows\" /entry:\"mainCRTStartup\"")
 #endif // NDEBUG
 
 int main()
@@ -22,5 +22,5 @@ int main()
     Game game;
     game.run();
 #endif
-	return 0;
+    return 0;
 }

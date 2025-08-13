@@ -107,8 +107,9 @@ namespace AdoCpp
         explicit Settings(const rapidjson::Value& jsonSettings);
 
         [[nodiscard]] static Settings fromJson(const rapidjson::Value& jsonSettings);
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const;
-        [[nodiscard]] rapidjson::Document intoJson() const;
+        [[nodiscard]] std::unique_ptr<rapidjson::GenericValue<rapidjson::UTF8<>>>
+        intoJson(rapidjson::Document::AllocatorType& alloc) const;
+        [[nodiscard]] std::unique_ptr<rapidjson::Document> intoJson() const;
 
         /**
          * Apply the settings to the tile.
@@ -199,8 +200,8 @@ namespace AdoCpp
          */
         void fromFile(const std::filesystem::path& path);
 
-        [[nodiscard]] rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const;
-        [[nodiscard]] rapidjson::Document intoJson() const;
+        [[nodiscard]] std::unique_ptr<rapidjson::Value> intoJson(rapidjson::Document::AllocatorType& alloc) const;
+        [[nodiscard]] std::unique_ptr<rapidjson::Document> intoJson() const;
 
         /**
          * @brief Parse the level.

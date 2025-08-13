@@ -327,6 +327,7 @@ namespace AdoCpp
             std::optional<double> opacity;
             double opEndSec;
             Easing ease;
+            // double bpm; // TODO
         };
         std::vector<MoveTrackData> moveTrackDatas;
 

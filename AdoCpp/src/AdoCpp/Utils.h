@@ -1,5 +1,6 @@
 #pragma once
 
+#include <complex.h>
 #include <optional>
 #include <rapidjson/document.h>
 #include <stdexcept>
@@ -121,7 +122,7 @@ namespace AdoCpp
         }
         int64_t index{};
         RelativeToTile relativeTo{};
-        rapidjson::Value intoJson(rapidjson::Document::AllocatorType& alloc) const;
+        std::unique_ptr<rapidjson::Value> intoJson(rapidjson::Document::AllocatorType& alloc) const;
     };
 
     enum class RelativeToCamera

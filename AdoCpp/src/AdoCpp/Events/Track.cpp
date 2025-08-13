@@ -21,30 +21,30 @@ namespace AdoCpp::Event::Track
         if (data.HasMember("trackGlowIntensity"))
             trackGlowIntensity = data["trackGlowIntensity"].GetDouble();
     }
-    rapidjson::Value ColorTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> ColorTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
+            val->AddMember("active", active, alloc);
         rapidjson::Value trackColorValue;
         const std::string trackColorStr = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         trackColorValue.SetString(trackColorStr.c_str(), trackColorStr.length(), alloc);
-        val.AddMember("trackColor", trackColorValue, alloc);
+        val->AddMember("trackColor", trackColorValue, alloc);
         rapidjson::Value secondaryTrackColorValue;
         const std::string secondaryTrackColorStr = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         secondaryTrackColorValue.SetString(secondaryTrackColorStr.c_str(), secondaryTrackColorStr.length(), alloc);
-        val.AddMember("secondaryTrackColor", secondaryTrackColorValue, alloc);
-        autoRemoveDecimalPart(val, "trackColorAnimDuration", trackColorAnimDuration, alloc);
-        val.AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
-        val.AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
-        val.AddMember("trackPulseLength", trackPulseLength, alloc);
-        val.AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
+        val->AddMember("secondaryTrackColor", secondaryTrackColorValue, alloc);
+        autoRemoveDecimalPart(*val, "trackColorAnimDuration", trackColorAnimDuration, alloc);
+        val->AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
+        val->AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
+        val->AddMember("trackPulseLength", trackPulseLength, alloc);
+        val->AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
         rapidjson::Value trackTextureValue;
         trackTextureValue.SetString(trackTexture.c_str(), trackTexture.length(), alloc);
-        val.AddMember("trackTexture", trackTextureValue, alloc);
-        autoRemoveDecimalPart(val, "trackGlowIntensity", trackGlowIntensity, alloc);
+        val->AddMember("trackTexture", trackTextureValue, alloc);
+        autoRemoveDecimalPart(*val, "trackGlowIntensity", trackGlowIntensity, alloc);
         return val;
     }
     PositionTrack::PositionTrack(const rapidjson::Value& data) : StaticEvent(data)
@@ -66,13 +66,13 @@ namespace AdoCpp::Event::Track
         if (data.HasMember("stickToFloors"))
             stickToFloors = toBool(data["stickToFloors"]);
     }
-    rapidjson::Value PositionTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> PositionTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
+            val->AddMember("active", active, alloc);
         {
             rapidjson::Value posOffVal(rapidjson::kArrayType);
             if (static_cast<int>(positionOffset.x) == positionOffset.x)
@@ -83,16 +83,16 @@ namespace AdoCpp::Event::Track
                 posOffVal.PushBack(static_cast<int>(positionOffset.y), alloc);
             else
                 posOffVal.PushBack(positionOffset.y, alloc);
-            val.AddMember("positionOffset", posOffVal, alloc);
+            val->AddMember("positionOffset", posOffVal, alloc);
         }
-        val.AddMember("relativeTo", relativeTo.intoJson(alloc), alloc);
-        autoRemoveDecimalPart(val, "rotation", rotation, alloc);
-        autoRemoveDecimalPart(val, "scale", scale, alloc);
-        autoRemoveDecimalPart(val, "opacity", opacity, alloc);
-        val.AddMember("justThisTile", justThisTile, alloc);
-        val.AddMember("editorOnly", editorOnly, alloc);
+        val->AddMember("relativeTo", *relativeTo.intoJson(alloc), alloc);
+        autoRemoveDecimalPart(*val, "rotation", rotation, alloc);
+        autoRemoveDecimalPart(*val, "scale", scale, alloc);
+        autoRemoveDecimalPart(*val, "opacity", opacity, alloc);
+        val->AddMember("justThisTile", justThisTile, alloc);
+        val->AddMember("editorOnly", editorOnly, alloc);
         if (stickToFloors)
-            val.AddMember("stickToFloors", *stickToFloors, alloc);
+            val->AddMember("stickToFloors", *stickToFloors, alloc);
         return val;
     }
     MoveTrack::MoveTrack(const rapidjson::Value& data) : DynamicEvent(data)
@@ -127,28 +127,28 @@ namespace AdoCpp::Event::Track
             opacity = data["opacity"].GetDouble();
         ease = cstr2easing(data["ease"].GetString());
     }
-    rapidjson::Value MoveTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> MoveTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
-        val.AddMember("startTile", startTile.intoJson(alloc), alloc);
-        val.AddMember("endTile", endTile.intoJson(alloc), alloc);
-        autoRemoveDecimalPart(val, "duration", duration, alloc);
+            val->AddMember("active", active, alloc);
+        val->AddMember("startTile", *startTile.intoJson(alloc), alloc);
+        val->AddMember("endTile", *endTile.intoJson(alloc), alloc);
+        autoRemoveDecimalPart(*val, "duration", duration, alloc);
         // ReSharper disable once CppLocalVariableMayBeConst
         if (auto op = optionalPoint2json(positionOffset, alloc); op)
-            val.AddMember("positionOffset", *op, alloc);
+            val->AddMember("positionOffset", *op, alloc);
         if (rotationOffset)
-            autoRemoveDecimalPart(val, "rotationOffset", *rotationOffset, alloc);
+            autoRemoveDecimalPart(*val, "rotationOffset", *rotationOffset, alloc);
         if (auto op = optionalPoint2json(scale, alloc); op)
-            val.AddMember("scale", *op, alloc);
+            val->AddMember("scale", *op, alloc);
         if (opacity)
-            autoRemoveDecimalPart(val, "opacity", *opacity, alloc);
-        autoRemoveDecimalPart(val, "angleOffset", angleOffset, alloc);
-        val.AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
-        addTag(val, eventTag, alloc);
+            autoRemoveDecimalPart(*val, "opacity", *opacity, alloc);
+        autoRemoveDecimalPart(*val, "angleOffset", angleOffset, alloc);
+        val->AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
+        addTag(*val, eventTag, alloc);
         return val;
     }
     AnimateTrack::AnimateTrack(const rapidjson::Value& data) : StaticEvent(data)
@@ -160,20 +160,20 @@ namespace AdoCpp::Event::Track
             trackDisappearAnimation = cstr2trackDisappearAnimation(data["trackDisappearAnimation"].GetString());
         beatsBehind = data["beatsBehind"].GetDouble();
     }
-    rapidjson::Value AnimateTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> AnimateTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
+            val->AddMember("active", active, alloc);
         if (trackAnimation)
-            val.AddMember("trackAnimation", rapidjson::StringRef(trackAnimation2cstr(*trackAnimation)), alloc);
-        autoRemoveDecimalPart(val, "beatsAhead", beatsAhead, alloc);
+            val->AddMember("trackAnimation", rapidjson::StringRef(trackAnimation2cstr(*trackAnimation)), alloc);
+        autoRemoveDecimalPart(*val, "beatsAhead", beatsAhead, alloc);
         if (trackDisappearAnimation)
-            val.AddMember("trackDisappearAnimation",
+            val->AddMember("trackDisappearAnimation",
                           rapidjson::StringRef(trackDisappearAnimation2cstr(*trackDisappearAnimation)), alloc);
-        autoRemoveDecimalPart(val, "beatsBehind", beatsBehind, alloc);
+        autoRemoveDecimalPart(*val, "beatsBehind", beatsBehind, alloc);
         return val;
     }
     RecolorTrack::RecolorTrack(const rapidjson::Value& data) : DynamicEvent(data)
@@ -196,36 +196,36 @@ namespace AdoCpp::Event::Track
         if (data.HasMember("trackGlowIntensity"))
             trackGlowIntensity = data["trackGlowIntensity"].GetDouble();
     }
-    rapidjson::Value RecolorTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> RecolorTrack::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
         if (!active)
-            val.AddMember("active", active, alloc);
-        val.AddMember("startTile", startTile.intoJson(alloc), alloc);
-        val.AddMember("endTile", endTile.intoJson(alloc), alloc);
+            val->AddMember("active", active, alloc);
+        val->AddMember("startTile", *startTile.intoJson(alloc), alloc);
+        val->AddMember("endTile", *endTile.intoJson(alloc), alloc);
         if (duration)
-            autoRemoveDecimalPart(val, "duration", *duration, alloc);
-        val.AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
+            autoRemoveDecimalPart(*val, "duration", *duration, alloc);
+        val->AddMember("trackColorType", rapidjson::StringRef(trackColorType2cstr(trackColorType)), alloc);
         rapidjson::Value trackColorValue;
         const std::string trackColorStr = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         trackColorValue.SetString(trackColorStr.c_str(), trackColorStr.length(), alloc);
-        val.AddMember("trackColor", trackColorValue, alloc);
+        val->AddMember("trackColor", trackColorValue, alloc);
         rapidjson::Value secondaryTrackColorValue;
         const std::string secondaryTrackColorStr = trackColor.toString(false, false, Color::ToStringAlphaMode::Auto);
         secondaryTrackColorValue.SetString(secondaryTrackColorStr.c_str(), secondaryTrackColorStr.length(), alloc);
-        val.AddMember("secondaryTrackColor", secondaryTrackColorValue, alloc);
-        autoRemoveDecimalPart(val, "trackColorAnimDuration", trackColorAnimDuration, alloc);
-        val.AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
-        val.AddMember("trackPulseLength", trackPulseLength, alloc);
-        val.AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
-        autoRemoveDecimalPart(val, "trackColorAnimDuration", trackColorAnimDuration, alloc);
-        autoRemoveDecimalPart(val, "gapLength", gapLength, alloc);
-        val.AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
-        autoRemoveDecimalPart(val, "trackGlowIntensity", trackGlowIntensity, alloc);
-        addTag(val, eventTag, alloc);
-        autoRemoveDecimalPart(val, "angleOffset", angleOffset, alloc);
+        val->AddMember("secondaryTrackColor", secondaryTrackColorValue, alloc);
+        autoRemoveDecimalPart(*val, "trackColorAnimDuration", trackColorAnimDuration, alloc);
+        val->AddMember("trackColorPulse", rapidjson::StringRef(trackColorPulse2cstr(trackColorPulse)), alloc);
+        val->AddMember("trackPulseLength", trackPulseLength, alloc);
+        val->AddMember("trackStyle", rapidjson::StringRef(trackStyle2cstr(trackStyle)), alloc);
+        autoRemoveDecimalPart(*val, "trackColorAnimDuration", trackColorAnimDuration, alloc);
+        autoRemoveDecimalPart(*val, "gapLength", gapLength, alloc);
+        val->AddMember("ease", rapidjson::StringRef(easing2cstr(ease)), alloc);
+        autoRemoveDecimalPart(*val, "trackGlowIntensity", trackGlowIntensity, alloc);
+        addTag(*val, eventTag, alloc);
+        autoRemoveDecimalPart(*val, "angleOffset", angleOffset, alloc);
         return val;
     }
 } // namespace AdoCpp::Event::Track

@@ -8,14 +8,14 @@ namespace AdoCpp::Event::Dlc
         distanceMultiplier = data["distanceMultiplier"].GetDouble();
         landingAnimation = data["landingAnimation"].GetBool();
     }
-    rapidjson::Value Hold::intoJson(rapidjson::Document::AllocatorType& alloc) const
+    std::unique_ptr<rapidjson::Value> Hold::intoJson(rapidjson::Document::AllocatorType& alloc) const
     {
-        rapidjson::Value val(rapidjson::kObjectType);
-        val.AddMember("floor", floor, alloc);
-        val.AddMember("eventType", rapidjson::StringRef(name()), alloc);
-        autoRemoveDecimalPart(val, "duration", duration, alloc);
-        autoRemoveDecimalPart(val, "distanceMultiplier", distanceMultiplier, alloc);
-        val.AddMember("landingAnimation", landingAnimation, alloc);
+        auto val = std::make_unique<rapidjson::Value>(rapidjson::kObjectType);
+        val->AddMember("floor", floor, alloc);
+        val->AddMember("eventType", rapidjson::StringRef(name()), alloc);
+        autoRemoveDecimalPart(*val, "duration", duration, alloc);
+        autoRemoveDecimalPart(*val, "distanceMultiplier", distanceMultiplier, alloc);
+        val->AddMember("landingAnimation", landingAnimation, alloc);
         return val;
     }
 } // namespace AdoCpp::Event::Dlc
