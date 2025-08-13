@@ -44,6 +44,9 @@ void StatePlaying::init(Game* _game)
     }
     game->window.setKeyRepeatEnabled(false);
     isMusicPlayed = false;
+
+    for (auto& hitCount : hitCounts)
+        hitCount = 0;
 }
 
 void StatePlaying::cleanup()
@@ -205,6 +208,7 @@ void StatePlaying::update()
                     keyInputCnt++;
             }
         }
+        using enum AdoCpp::HitMargin;
         while (playerTileIndex < tiles.size() - 1 && keyInputCnt-- > 0)
         {
             playerTileIndex++;
@@ -212,7 +216,7 @@ void StatePlaying::update()
             const double timing = game->level.getTiming(playerTileIndex, seconds),
                          x = std::min(65.0 / 2, std::max(-65.0 / 2, timing / vle * 65.0 / 2.0));
             const AdoCpp::HitMargin hitMargin = game->level.getHitMargin(playerTileIndex, seconds, game->config.difficulty);
-            if (hitMargin == AdoCpp::HitMargin::TooEarly)
+            if (hitMargin == TooEarly)
             {
                 playerTileIndex--;
                 if (playerTileIndex == 0)
@@ -223,6 +227,7 @@ void StatePlaying::update()
                 else
                     pos = game->level.getPlanetsPos(playerTileIndex, seconds).first;
                 hitTextSystem.addHitText(seconds, hitMargin, {float(pos.x), float(pos.y)});
+                hitCounts[static_cast<int>(hitMargin)]++;
             }
             else
             {
@@ -230,21 +235,23 @@ void StatePlaying::update()
                     playerTileIndex++;
                 hitTextSystem.addHitText(
                     seconds, hitMargin, {float(tiles[playerTileIndex].pos.c.x), float(tiles[playerTileIndex].pos.c.y)});
+                hitCounts[static_cast<int>(hitMargin)]++;
             }
             hitErrorMeterSystem.addTick(seconds, hitMargin, x);
         }
         keyInputCnt = 0;
         while (playerTileIndex < tiles.size() - 1 &&
-               game->level.getHitMargin(playerTileIndex + 1, seconds, game->config.difficulty) == AdoCpp::HitMargin::TooLate)
+               game->level.getHitMargin(playerTileIndex + 1, seconds, game->config.difficulty) == TooLate)
         {
             playerTileIndex++;
             if (tiles[playerTileIndex].angle.deg() != 999)
             {
-                hitTextSystem.addHitText(seconds, AdoCpp::HitMargin::TooLate,
+                hitTextSystem.addHitText(seconds, TooLate,
                                          {static_cast<float>(tiles[playerTileIndex].pos.c.x),
                                           static_cast<float>(tiles[playerTileIndex].pos.c.y)});
-                hitErrorMeterSystem.addTick(seconds, AdoCpp::HitMargin::TooLate, 65.0 / 2);
+                hitErrorMeterSystem.addTick(seconds, TooLate, 65.0 / 2);
             }
+            hitCounts[static_cast<int>(TooLate)]++;
         }
     }
 
@@ -322,6 +329,39 @@ void StatePlaying::render()
         ImGui::Text("BPM: %.2f", bpm);
         ImGui::Text("KPS: %.2f", kps);
         ImGui::Text("Floor: %llu", currentTileIndex);
+    }
+    ImGui::End();
+    ImGui::SetNextWindowSize(ImVec2(0, 0));
+    ImGui::SetNextWindowPos(ImVec2(game->windowSize.x / 2, game->windowSize.y), 0, ImVec2(0.5, 1));
+    if (ImGui::Begin("BottomText", nullptr, flags))
+    {
+        using enum AdoCpp::HitMargin;
+        constexpr std::array<size_t, 7> indices = {
+            static_cast<int>(TooEarly),
+            static_cast<int>(VeryEarly),
+            static_cast<int>(EarlyPerfect),
+            static_cast<int>(Perfect),
+            static_cast<int>(LatePerfect),
+            static_cast<int>(VeryLate),
+            static_cast<int>(TooLate)
+        };
+        constexpr std::array<ImVec4, 7> colors = {
+            ImVec4(1, 0, 0, 1),
+            ImVec4(1, 0.5, 0, 1),
+            ImVec4(1, 1, 0, 1),
+            ImVec4(0, 1, 0, 1),
+            ImVec4(1, 1, 0, 1),
+            ImVec4(1, 0.5, 0, 1),
+            ImVec4(1, 0, 0, 1),
+        };
+        for (size_t i = 0; i < 7; i++)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, colors[i]);
+            ImGui::Text("%llu", hitCounts[indices[i]]);
+            if (i != 6)
+                ImGui::SameLine();
+            ImGui::PopStyleColor();
+        }
     }
     ImGui::End();
 }

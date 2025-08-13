@@ -42,4 +42,5 @@ private:
     double spareClockOffset{};
     bool waiting{};
     bool isMusicPlayed{};
+    std::array<size_t, 7> hitCounts;
 };
